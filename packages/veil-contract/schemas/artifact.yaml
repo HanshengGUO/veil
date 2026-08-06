@@ -16,11 +16,23 @@ factor:
 params_locked:                    # C3. Locked in-sample, read-only out-of-sample
   <name>: <value>
 
-declared_literals:                # C3 / threat model. Every numeric literal in the factor code that
-  <name>: <value>                 #   is not a declared parameter must appear here. Promotion scans
-                                  #   for undeclared literals and asks you to classify them:
-                                  #   a constant carried out of exploration is indistinguishable
-                                  #   from a fitted one, so it is treated as a parameter
+declared_literals:                # C3. Only literals *derived from data* — a threshold you found by
+  <name>: <value>                 #   looking, a volatility you measured. Structural constants
+                                  #   (252 trading days, 1e-8 epsilons, and the like) are whitelisted
+                                  #   and need no entry.
+                                  #   An undeclared literal is treated as a parameter anyway: frozen,
+                                  #   and part of the artifact hash. The rule exists to make
+                                  #   declaration worth doing, not to detect anything — nothing can
+                                  #   statically tell where a number came from.
+
+trials_declared: <int>            # C3. How many candidates preceded this one, including those you
+                                  #   explored and never verified. Promoting the best of thirty ideas
+                                  #   is a multiple-testing event.
+                                  #   Effective count = max(this, observed lower bound), where the
+                                  #   bound comes from the session log and from prior experiments
+                                  #   against the same hypothesis family. Under-declaring achieves
+                                  #   nothing; this value is the trials parameter of the significance
+                                  #   test that gates promotion.
 
 data_semantics:
   datasets:                       # which adapters were used, with the guarantee snapshot in force

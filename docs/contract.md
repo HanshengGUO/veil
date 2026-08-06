@@ -3,9 +3,17 @@
 This is the normative specification. It is written before the code that enforces it, and the code
 follows it rather than the other way round.
 
-Status: stable from v0.1. The wording may be sharpened; the meaning of C1-C6 will not change inside
-1.x. Identifiers (`C1`-`C6`) appear in error messages, audit records, and bench task declarations,
-and are part of the public interface.
+Status:
+
+- **Identifiers `C1`-`C6` are stable from v0.1.** They appear in error messages, audit records, and
+  bench task declarations, and are part of the public interface.
+- **The meaning of C1-C5 is frozen from v0.1** and will not change inside 1.x. Wording may be
+  sharpened.
+- **C6 and the degradation tiers in §5 are provisional until v1.0.** Statistical gates arrive in
+  Stage 4, and both are expected to need adjustment once they exist. Changes during 0.x are recorded
+  in the changelog.
+- Moving an invariant's enforcement **earlier** — from claim time to read time, say — is a
+  strengthening, not a semantic change, and is allowed at any point.
 
 ---
 
@@ -76,9 +84,22 @@ after seeing results.
 
 - Locked parameters are part of the artifact hash, so a changed parameter cannot masquerade as the
   same artifact.
-- Numeric literals inside artifact code are parameters. They MUST be declared
-  (`declared_literals`), because a constant carried out of exploration is indistinguishable from a
-  fitted one — see §6.
+- **Data-derived numeric literals inside artifact code are parameters** and MUST be declared
+  (`declared_literals`): a constant carried out of exploration is indistinguishable from a fitted one
+  (§6). Structural constants — trading days per year, numerical epsilons, and similar — are
+  whitelisted and need no declaration. An undeclared literal is treated as a parameter anyway, so it
+  is frozen and enters the artifact hash.
+  This rule reduces friction; it does not detect anything. Nothing can statically tell where a number
+  came from, which is why the real defences against smuggled constants are parameter stability and
+  null-environment falsification.
+- **Promotion MUST declare how many candidates preceded this one** (`trials_declared`). Choosing the
+  best of thirty explored ideas and promoting only that one is a multiple-testing event even though
+  twenty-nine of them were never verified.
+  The declared count is not taken on trust: the effective trial count is
+  `max(declared, observed lower bound)`, where the lower bound is derived from backtest-shaped calls
+  in the session log and prior experiments against the same hypothesis family in memory. Under-
+  declaring therefore has no effect, and the number is not paperwork — it is the trials parameter of
+  the significance test that gates promotion.
 
 *Rejects:* tuning against out-of-sample results, re-running with a "small adjustment" and keeping the
 old record.
@@ -90,6 +111,12 @@ old record.
 - Views carry the mask declared by the adapter; verification applies it before ranking, weighting, or
   optimizing.
 - Users may register additional mask rules. They may not remove the mask.
+- **Exemption, for research whose subject is the untradable instruments themselves** — halt and
+  resumption effects, delisting behaviour, liquidity events. The exemption is explicitly declared,
+  applies only to an **operator's default behaviour**, is recorded in the audit log, and marks every
+  conclusion derived through it. **C4 itself admits no exemption:** a strategy claiming tradable
+  returns is still ranked mask-first. This is the same split used everywhere in Veil — safe defaults
+  may be waived with a declaration, invariants may not.
 
 *Rejects:* signals formed on halted or unlisted instruments and filtered afterwards, which changes
 cross-sectional statistics and quantile boundaries.
@@ -101,7 +128,9 @@ cross-sectional statistics and quantile boundaries.
 
 - Exploration output is labelled `unverified` and stays that way.
 - A claim citing no experiment id is rejected, not degraded.
-- Data source credentials are held by the engine, not by the agent's shell.
+- The engine grants the agent **no new** data-source credentials: what the engine holds, it does not
+  hand out. Access the user already has in their own environment is theirs, and Veil does not take it
+  away — which is why C5 is written about claims rather than about access.
 
 This is the invariant that lets exploration be free. An agent may compute anything it likes; it
 simply cannot promote what it computed.
@@ -111,14 +140,26 @@ simply cannot promote what it computed.
 > A hypothesis MUST be registered, with a timestamp and its source of information, before the result
 > that tests it is verified.
 
-- Registration is automatic: the session's brief and first stated hypothesis are captured and
-  timestamped at session start, so the cost to the researcher is zero.
+C6 has a hard half and a soft half, and the distinction is stated plainly because pretending
+otherwise would make the invariant a ritual.
+
+**Hard — enforced.** The registration entry MUST exist, with a timestamp, before the verification run
+that tests it. Ordering is checked against the session log, so it cannot be arranged afterwards. A
+verification with no prior registration is marked `exploratory` and faces a higher promotion bar.
+
+**Soft — acknowledged.** Registration is automatic: the session's brief and first stated hypothesis
+are captured and timestamped at session start, so the researcher pays nothing. But automatic capture
+cannot guarantee the content is *specific*. "Research momentum" is a registration that any subsequent
+finding fits, and Veil cannot tell that from a real prediction. Capture therefore aims for the
+universe, the holding period, and the predicted direction, and where it falls short, the guard is
+weak. Treat a vague registration as evidence of nothing.
+
 - The record MUST include when the *idea* became available, which is how model-training-period
   contamination is tracked (§6).
-- Findings without a prior registration are marked `exploratory` and face a higher promotion bar.
-  They are not forbidden.
+- Findings without a prior registration are not forbidden, only marked.
 
-*Rejects:* hypotheses written after the answer is known, in a form the answer already fits.
+*Rejects:* hypotheses written after the answer is known — mechanically, by timestamp. It does not
+reject hypotheses written vaguely enough to fit anything; nothing automatic can.
 
 ## 4. Violations
 
@@ -149,6 +190,10 @@ apply and which conclusions are degraded.
 | `vintage` | `false` | Restatement-sensitive conclusions (anything fundamentals-based) are degraded and flagged |
 | `survivorship_free` | `false` or `unknown` | Universe construction is treated as suspect; results are flagged, and long-biased conclusions degraded |
 | `tradability_mask` | `null` | C4 cannot be enforced for this dataset; the omission is recorded on every result derived from it |
+| C4 operator exemption | declared | Permitted for research whose subject is the untradable instruments; recorded in the audit log, and every conclusion reached through it is marked |
+
+The tiers in this table are provisional until v1.0: "a one-step higher significance bar" is given a
+number when the statistical gates exist in Stage 4, not before.
 
 The principle is **degrade, never silently accept, and refuse only when refusing is the honest
 answer**. A missing null generator, a missing cost model, or a missing mask produces a marked and

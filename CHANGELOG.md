@@ -3,10 +3,38 @@
 All notable changes to this project are recorded here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-Versions are shared across all packages. C1-C6 contract semantics are stable from v0.1; other APIs
-may change during 0.x, and every change appears here.
+Versions are shared across all packages. The meaning of C1-C5 is frozen from v0.1; C6 and the
+degradation tiers are provisional until v1.0, and other APIs may change during 0.x. Every change
+appears here.
 
 ## [Unreleased]
+
+### Changed
+
+Contract v1.0 review rulings, applied to the specification:
+
+- **C3 now requires a candidate count** (`trials_declared`): promoting the best of thirty explored
+  ideas is a multiple-testing event even when twenty-nine were never verified. The declared number is
+  not taken on trust — the effective count is `max(declared, observed lower bound)` from the session
+  log and from prior experiments against the same hypothesis family, and it feeds the trials parameter
+  of the significance test rather than sitting in a manifest.
+- **C3's literal declaration narrowed** to data-derived constants, with structural constants (trading
+  days per year, epsilons) whitelisted. Undeclared literals are still treated as parameters. The rule
+  is documented as friction reduction, not detection: nothing can statically tell where a number came
+  from.
+- **C6 split into a hard and a soft half.** Registration preceding verification is machine-checked by
+  timestamp; the *specificity* of automatically captured content cannot be guaranteed, and the
+  specification now says so rather than implying a stronger guarantee.
+- **C5's credential clause corrected.** It claimed the engine holds all data credentials, which is not
+  true of a user who already has database access in their own shell. It now states what is actually
+  enforced: the engine grants the agent no new credentials.
+- **C4 gained a declared operator exemption** for research whose subject is the untradable instruments
+  themselves (halt effects, delistings). It is audited and marks every conclusion reached through it.
+  C4 itself admits no exemption.
+- **Stability promise scoped**: C1-C5 frozen from v0.1; C6 and the §5 degradation tiers provisional
+  until v1.0, since the statistical gates that exercise them arrive in Stage 4. Identifiers `C1`-`C6`
+  are stable from v0.1 regardless, and moving an enforcement point earlier counts as strengthening
+  rather than a semantic change.
 
 ### Added
 
