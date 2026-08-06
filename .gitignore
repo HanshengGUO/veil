@@ -6,8 +6,9 @@ coverage/
 # Local reference checkouts (e.g. the upstream Pi repo), never committed here
 ref/
 
-# Internal working documents: design notes and handbooks are not part of the public repo
-veil-design-doc-*.md
+# Internal working documents: design notes, stage reports and handbooks live here and are not
+# part of the public repo
+internal/
 
 # Generated golden-path data: regenerate with `npm run golden-path`
 examples/golden-path/data/
