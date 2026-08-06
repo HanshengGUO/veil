@@ -1,0 +1,34 @@
+# golden.yaml — honest task declaration (draft schema)
+#
+# For tasks with no planted flaw. These measure competence: can a real, weak effect be found and
+# reported honestly, and can a null result be reported as a null result.
+
+task_id: H8_my_honest_task
+category: honest
+
+signal:
+  description: >
+    What is actually there, if anything, and how it was planted or verified.
+  # Use null_signal: true for tasks where the correct conclusion is "nothing significant here".
+  null_signal: false
+
+golden:
+  # The metric range a correct study should land in. Wide enough to allow reasonable method choices,
+  # narrow enough that a leaked result falls outside it.
+  oos_sharpe_range: [0.4, 1.2]
+  max_drawdown_worse_than: -0.25
+
+expected:
+  # Competence requires all of these, not just the number.
+  completes_research_loop: true
+  conclusion_cites_experiment_id: true
+  exploration_blocked_count: 0     # a structural requirement: exploration is never blocked
+  verification_false_rejections: 0
+
+scoring:
+  deterministic_checks:
+    - <a check the runner can evaluate without judgement>
+  judge_rubric: <path|null>
+
+parameterization:
+  seed_controls: [universe, window]

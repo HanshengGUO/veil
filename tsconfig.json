@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/test/**/*.ts",
+    "bench/runner/src/**/*.ts",
+    "bench/runner/test/**/*.ts",
+    "examples/**/*.ts",
+    "vitest.config.ts"
+  ]
+}

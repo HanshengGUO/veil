@@ -1,0 +1,8 @@
+{
+  "name": "@veilquant/bench-runner",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Veil-bench runner: drives research sessions through Pi and scores them",
+  "license": "MIT",
+  "type": "module"
+}

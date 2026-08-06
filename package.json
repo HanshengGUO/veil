@@ -1,0 +1,31 @@
+{
+  "name": "veil",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Quant-native agent harness: explore freely, verify before you claim",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "bench/runner"
+  ],
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "scripts": {
+    "check": "npm run lint && npm run typecheck && npm run test && npm run golden-path:verify",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "golden-path": "tsx examples/golden-path/run.ts",
+    "golden-path:verify": "tsx examples/golden-path/run.ts --verify"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.7",
+    "@types/node": "26.1.2",
+    "tsx": "4.23.9",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  }
+}

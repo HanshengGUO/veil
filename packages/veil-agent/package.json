@@ -1,0 +1,15 @@
+{
+  "name": "veil-quant",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Veil for Pi: research tools, contract interception, memory, skills and prompts",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "pi",
+    "pi-extension",
+    "quant",
+    "backtest",
+    "agent"
+  ]
+}

@@ -1,0 +1,60 @@
+name: Proposal
+description: Propose a feature, an interface, or a change to the contract
+labels: [proposal]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Veil adds mechanisms reluctantly: the design goal is few mechanisms strictly enforced, not
+        many mechanisms loosely enforced. Proposals that remove or unify something are as welcome as
+        proposals that add.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What research goes wrong today, concretely? A real case is worth more than a category.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Where it belongs
+      options:
+        - the contract (a new or changed invariant)
+        - the engine (views, verification, gates)
+        - the Pi package (tools, interception, memory)
+        - bench (tasks or scoring)
+        - a plugin — cost model, null generator, adapter
+        - docs
+        - not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: mechanism-or-method
+    attributes:
+      label: Mechanism or method?
+      description: >
+        Veil enforces mechanisms (universal inference discipline) and makes methods pluggable
+        (which statistic, which null, which cost model). Which is this, and why?
+    validations:
+      required: true
+
+  - type: textarea
+    id: cost
+    attributes:
+      label: What it costs the user
+      description: >
+        New required fields, new steps before promotion, new concepts to learn. If the answer is
+        "nothing", say why.
+    validations:
+      required: true

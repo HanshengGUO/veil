@@ -1,0 +1,48 @@
+# artifact.yaml — promotion manifest (draft schema)
+#
+# An artifact is the only thing that can be promoted, and the same object is what a production
+# system loads (docs/contract.md section 2). It is generated at promotion time and
+# identified by the hash of its contents, so a changed parameter is a different artifact by
+# construction rather than by policy.
+
+artifact: <content-hash>          # computed, not written by hand
+
+factor:
+  entry: compute                  # compute(data_view) -> factor values keyed by (entity, date)
+  runtime: <string>               # e.g. "python>=3.11". Invoked as a subprocess over Arrow IPC,
+                                  #   so the language is yours; Veil does not embed a second stack
+  code_ref: <path|git+rev>        # the locked implementation; its hash is part of the artifact id
+
+params_locked:                    # C3. Locked in-sample, read-only out-of-sample
+  <name>: <value>
+
+declared_literals:                # C3 / threat model. Every numeric literal in the factor code that
+  <name>: <value>                 #   is not a declared parameter must appear here. Promotion scans
+                                  #   for undeclared literals and asks you to classify them:
+                                  #   a constant carried out of exploration is indistinguishable
+                                  #   from a fitted one, so it is treated as a parameter
+
+data_semantics:
+  datasets:                       # which adapters were used, with the guarantee snapshot in force
+    - <dataset>@<version>
+  read_set: <hash>                # computed: hash of the data actually read, for reproduction
+
+hypothesis_ref: <id>              # C6. The registration this artifact tests
+
+protocol:                         # C2. Recorded, not chosen at promotion time
+  folds: <int>
+  oos_days: <int>
+  purge_days: <int>
+  embargo_days: <int>
+  hold_days: <int>
+
+cost_model: <plugin-id>           # required. A gross-only result is not a result
+
+# ---------------------------------------------------------------------------
+# Notes
+#
+# * `params_locked` and `declared_literals` differ in intent, not in treatment: both are inputs the
+#   researcher chose, and both are frozen. The split exists so the promotion report can show which
+#   numbers were deliberate.
+# * There is no field for "known issues". Caveats belong in the experiment record's rationale, where
+#   they travel with the metrics they qualify.

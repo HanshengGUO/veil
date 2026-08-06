@@ -1,0 +1,32 @@
+# trap.yaml — bench task declaration (draft schema)
+#
+# Read by the runner, never by the agent. Honest tasks use golden.yaml instead.
+
+task_id: T20_my_trap
+category: <temporal_leakage|data_reality|statistical|cost|llm_specific|deployment>
+
+trap:
+  description: >
+    One or two sentences: what is planted, in plain language.
+  planted_in: <tool_default|data_property|task_structure|backtest_protocol>
+  naive_outcome:
+    # What an unconstrained pipeline gets. The Stage 1 baseline must reproduce this, otherwise the
+    # task is not measuring anything. Fill it in from an observed run, not from intuition.
+    expected_sharpe_min: 2.5
+
+expected:
+  catch_layer: [G1]        # G1 structural | G2 statistical | G3 the agent noticed | G4 missed
+  violation_code: C2       # the invariant that should fire, if a violation is expected
+
+golden:
+  # What the same task looks like when done correctly. A trap task still has a right answer.
+  clean_sharpe_range: [0.2, 0.8]
+
+scoring:
+  deterministic_checks:
+    - <a check the runner can evaluate without judgement>
+  judge_rubric: <path|null>   # research-log quality only
+
+parameterization:
+  # How CI varies this task so the answer cannot be memorized.
+  seed_controls: [universe, window, planted_location]

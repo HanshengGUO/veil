@@ -1,0 +1,114 @@
+{
+  "seed": 20260806,
+  "data": {
+    "dates": 2347,
+    "tickers": 165,
+    "priceRows": 370728,
+    "universeRows": 370728,
+    "fundamentalRows": 7426
+  },
+  "protocols": {
+    "honest": {
+      "sharpe": 0.875529,
+      "annualReturn": 0.037702,
+      "annualVolatility": 0.043062,
+      "maxDrawdown": -0.080322,
+      "annualTurnover": 80.312646,
+      "tradingDays": 1512,
+      "lookbacksUsed": [5, 3, 3, 3, 3, 3],
+      "foldSharpes": [1.877039, 1.408974, 0.605811, 0.758248, -0.688522, 1.259915]
+    },
+    "honest_gross": {
+      "sharpe": 2.813141,
+      "annualReturn": 0.118015,
+      "annualVolatility": 0.041951,
+      "maxDrawdown": -0.040121,
+      "annualTurnover": 80.312646,
+      "tradingDays": 1512,
+      "lookbacksUsed": [5, 3, 3, 3, 3, 3],
+      "foldSharpes": [3.782086, 3.256568, 2.481088, 2.713709, 1.284186, 3.304501]
+    },
+    "leak_same_bar_execution": {
+      "sharpe": 8.443426,
+      "annualReturn": 0.815012,
+      "annualVolatility": 0.096526,
+      "maxDrawdown": -0.012105,
+      "annualTurnover": 80.253506,
+      "tradingDays": 1512,
+      "lookbacksUsed": [5, 5, 3, 3, 3, 3],
+      "foldSharpes": [9.014778, 8.653994, 8.28448, 9.098713, 7.676855, 8.381274]
+    },
+    "leak_full_sample_stats": {
+      "sharpe": 0.625261,
+      "annualReturn": 0.026993,
+      "annualVolatility": 0.04317,
+      "maxDrawdown": -0.08556,
+      "annualTurnover": 80.392647,
+      "tradingDays": 1512,
+      "lookbacksUsed": [5, 3, 3, 3, 3, 3],
+      "foldSharpes": [1.225026, 1.138357, 0.371438, 0.823609, -0.953311, 1.154966]
+    },
+    "leak_no_purge": {
+      "sharpe": 0.740157,
+      "annualReturn": 0.031648,
+      "annualVolatility": 0.042759,
+      "maxDrawdown": -0.080322,
+      "annualTurnover": 80.253506,
+      "tradingDays": 1512,
+      "lookbacksUsed": [5, 5, 3, 3, 3, 3],
+      "foldSharpes": [1.877039, 0.619711, 0.605811, 0.758248, -0.688522, 1.259915]
+    },
+    "leak_survivorship": {
+      "sharpe": 0.822264,
+      "annualReturn": 0.035653,
+      "annualVolatility": 0.043359,
+      "maxDrawdown": -0.080641,
+      "annualTurnover": 80.249617,
+      "tradingDays": 1512,
+      "lookbacksUsed": [5, 5, 3, 3, 3, 3],
+      "foldSharpes": [2.28141, 0.772047, 0.281798, 0.974535, -0.680546, 1.259915]
+    },
+    "leak_parameter_snooping": {
+      "sharpe": 1.408812,
+      "annualReturn": 0.060881,
+      "annualVolatility": 0.043215,
+      "maxDrawdown": -0.074183,
+      "annualTurnover": 79.640323,
+      "tradingDays": 2322,
+      "lookbacksUsed": [3],
+      "foldSharpes": []
+    },
+    "naive_pipeline": {
+      "sharpe": 8.609048,
+      "annualReturn": 0.935062,
+      "annualVolatility": 0.108614,
+      "maxDrawdown": -0.012894,
+      "annualTurnover": 79.452713,
+      "tradingDays": 2322,
+      "lookbacksUsed": [3],
+      "foldSharpes": []
+    }
+  },
+  "nullEnvironment": {
+    "honest": {
+      "sharpe": -0.930944,
+      "annualReturn": -0.039563,
+      "annualVolatility": 0.042498,
+      "maxDrawdown": -0.264361,
+      "annualTurnover": 41.379475,
+      "tradingDays": 1512,
+      "lookbacksUsed": [20, 20, 20, 20, 20, 20],
+      "foldSharpes": [0.49445, -1.754166, -1.263185, -1.002229, -1.397813, -0.783924]
+    },
+    "naive_pipeline": {
+      "sharpe": 7.208543,
+      "annualReturn": 0.79872,
+      "annualVolatility": 0.110802,
+      "maxDrawdown": -0.015768,
+      "annualTurnover": 80.523514,
+      "tradingDays": 2322,
+      "lookbacksUsed": [3],
+      "foldSharpes": []
+    }
+  }
+}

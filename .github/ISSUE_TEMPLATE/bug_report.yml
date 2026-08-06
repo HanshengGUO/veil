@@ -1,0 +1,61 @@
+name: Bug report
+description: Something in Veil behaves incorrectly
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a leak or bias you found in your *own* research, use the leak report template instead —
+        that is a contribution, not a bug.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Commands, and the smallest data or task that shows it.
+      placeholder: |
+        1. npm run golden-path
+        2. ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Veil version or commit
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: OS and Node version
+      placeholder: macOS 15 arm64, Node 24.3.0
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: severity
+    attributes:
+      label: Does this affect a verified result?
+      description: >
+        A wrong number that reached an experiment record is much more serious than a wrong number in
+        an exploration log.
+      options:
+        - label: A metric inside an experiment record is wrong or unreproducible
+        - label: A contract violation was raised when nothing was actually wrong (false rejection)
+        - label: Exploration was blocked, which should never happen

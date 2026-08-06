@@ -1,0 +1,73 @@
+name: Leak report
+description: A leak, bias or protocol artifact that fooled you — the most valuable report there is
+labels: [leak, bench-task-candidate]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Veil's working rule: a newly discovered leak becomes a bench task **before** it becomes a
+        fix. You do not need to know how Veil would catch it. Describing what fooled you is the
+        contribution.
+
+        If this is a way to produce a *verified* claim from unavailable information, report it
+        privately instead — see
+        [SECURITY.md](https://github.com/HanshengGUO/veil/blob/master/SECURITY.md).
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What the leak was
+      description: What information reached a decision that could not have been known at the time?
+      placeholder: |
+        Positions were formed from a cross-sectional rank that used the whole sample's volatility to
+        size them, so the sizing knew which periods would be calm.
+    validations:
+      required: true
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: What it looked like before you found it
+      description: The result that seemed fine. Numbers help — Sharpe, drawdown, hit rate.
+      placeholder: |
+        Sharpe 2.4 out of sample, drawdown under 4%, stable across three years. Nothing looked wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: found
+    attributes:
+      label: How you found it
+      description: What made you look? This often matters more than the leak itself.
+    validations:
+      required: true
+
+  - type: textarea
+    id: honest
+    attributes:
+      label: What was left afterwards
+      description: The result under a correct protocol, if you measured it.
+      placeholder: Sharpe 0.3, and not significant.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - temporal leakage (future information reached a decision)
+        - data reality (corporate actions, halts, survivorship, calendars)
+        - statistical (multiple testing, period selection, overfitting)
+        - cost (gross reporting, capacity, slippage)
+        - LLM-specific (contaminated knowledge, agreeable agent, HARKing)
+        - deployment (research and production disagree)
+        - not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: reproducible
+    attributes:
+      label: Can it be reproduced without your data?
+      options:
+        - label: I can describe it well enough for someone to plant it in synthetic data
+        - label: I would be willing to contribute the bench task myself

@@ -1,0 +1,20 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local reference checkouts (e.g. the upstream Pi repo), never committed here
+ref/
+
+# Internal working documents: design notes and handbooks are not part of the public repo
+veil-design-doc-*.md
+
+# Generated golden-path data: regenerate with `npm run golden-path`
+examples/golden-path/data/
+examples/golden-path/data-null/
+
+# Local research state
+.veil/
+
+.DS_Store
+*.log

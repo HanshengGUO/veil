@@ -1,0 +1,8 @@
+{
+  "name": "@veilquant/engine",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Veil engine: point-in-time views, read-set snapshots, walk-forward verification, gates",
+  "license": "MIT",
+  "type": "module"
+}
