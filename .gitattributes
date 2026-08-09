@@ -1,0 +1,10 @@
+# Line endings are LF everywhere, including Windows working trees.
+#
+# Without this, Git's core.autocrlf checks files out with CRLF on Windows, and the formatter then
+# reports every file as needing a rewrite — which is exactly how the Windows CI job failed the first
+# time it ran. Normalising here fixes it for contributors too: no spurious whole-file diffs, and no
+# rewritten results.json after running the golden path.
+#
+# If a genuinely CRLF-only file is ever added (a .cmd or .bat script), give it an explicit
+# `text eol=crlf` rule rather than relaxing this one.
+* text=auto eol=lf
