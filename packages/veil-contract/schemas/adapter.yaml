@@ -16,6 +16,20 @@ available_time: <column|null>     # required, may be null. when it could first b
                                   #   (docs/contract.md section 5). Declaring null honestly is
                                   #   always better than pointing this at event_time.
 
+availability_basis:               # required where available_time is not null. Where that timestamp
+                                  #   came from — having one is not the same as trusting it.
+                                  #     observed      you genuinely received the data then
+                                  #     reconstructed rebuilt from the vendor's publication dates
+                                  #     assumed       inferred using a lag you chose
+                                  #   A single value, or segments, which is the usual shape: the
+                                  #   history a vendor hands you on day one is not something you
+                                  #   observed arriving.
+                                  #     - { until: 2026-08-07, basis: reconstructed, source: "vendor publish_date" }
+                                  #     - { from:  2026-08-07, basis: observed }
+                                  #   `assumed` must state the lag and why, and degrades like
+                                  #   `available_time: null`. Declaring a backfill as `observed`
+                                  #   fabricates point-in-time history and leaves no trace.
+
 frequency: <string>               # optional. 1m | 1d | irregular | ...
 
 guarantees:                       # optional block; omitted fields take the conservative default
@@ -24,6 +38,12 @@ guarantees:                       # optional block; omitted fields take the cons
                                   #   separate rows rather than overwritten
   survivorship_free: <bool|unknown>  # default unknown
   tradability_mask: <column|null> # default null. boolean column: was this tradable on this date
+
+provenance:                       # optional. Absence means "not certified", which is a normal state,
+                                  #   not a defect: such datasets simply degrade per `guarantees`.
+  certified: <bool>               # produced by a pipeline that enforces the ingest invariants
+  lineage_ref: <uri|hash|null>    # manifest identifying which vendor pull this data came from, so a
+                                  #   conclusion can be traced back to it
 
 payload_schema:                   # optional but recommended; used for validation and diagnostics
   <column>: <arrow_type>
@@ -65,3 +85,27 @@ notes: <string>                   # optional. Known defects belong here, in plai
 #   notes: |
 #     published_at is the vendor's editorial timestamp, which can precede the wire by minutes.
 #     Treat any intraday conclusion from this feed as unsupported.
+#
+# ---------------------------------------------------------------------------
+# Example: the common one. You started collecting in August 2026 and the vendor handed you fifteen
+# years of history on the first pull. Only the part after you started is something you observed.
+#
+#   dataset: vendor_fundamentals
+#   version: "2026-08"
+#   entity_key: ticker
+#   event_time: period_end
+#   available_time: first_known_at
+#   availability_basis:
+#     - { until: 2026-08-07, basis: reconstructed, source: "vendor-supplied publish_date" }
+#     - { from:  2026-08-07, basis: observed }
+#   guarantees:
+#     point_in_time: true
+#     vintage: true               # restatements arrive as new rows
+#     survivorship_free: true
+#   source:
+#     type: parquet
+#     connection: /data/fundamentals/
+#   notes: |
+#     The pre-2026-08 segment relies on the vendor's own publish_date. It is credible but we did not
+#     witness it, so conclusions drawn from that period carry the reconstructed mark. Declaring the
+#     whole series `observed` would have been the easy lie: nothing in the data would contradict it.

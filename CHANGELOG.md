@@ -50,6 +50,12 @@ Contract v1.0 review rulings, applied to the specification:
   [`adapter.yaml`](./packages/veil-contract/schemas/adapter.yaml) and
   [`artifact.yaml`](./packages/veil-contract/schemas/artifact.yaml), and a bench task template
   ([`bench/tasks/_TEMPLATE`](./bench/tasks/_TEMPLATE)) that doubles as the task contribution guide.
+- **`availability_basis` and `provenance` in the adapter declaration.** Having an availability
+  timestamp is not the same as being able to trust it: the history a vendor hands over on the first
+  pull was never observed arriving. Its origin is now declared per segment — `observed`,
+  `reconstructed`, or `assumed`, the last degrading exactly like a missing `available_time`.
+  Declaring a backfill as `observed` is the one lie the data itself can never contradict, which is
+  why it has to be declared rather than inferred.
 - **`@veilquant/contract`**: the invariant registry and `ContractViolation`.
 - Package skeletons for `@veilquant/engine`, `veil-quant` (the Pi package users install), and the
   bench runner, each documenting what it delivers and when.

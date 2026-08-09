@@ -59,6 +59,9 @@ The rule that connects them is C5. Everything else exists to make C5 worth obeyi
   contains no rows with `available_time > t`. Absence, not filtering.
 - Full-sample statistics (means, volatilities, quantiles, fitted scalers) computed over a period
   extending beyond `t` and then applied at `t` are violations, whether or not the code looks wrong.
+- Having an `available_time` is not the same as being able to trust it. Where it came from MUST be
+  declared (`availability_basis`): the fifteen years of history a vendor hands over on the first
+  pull were never observed arriving. See §5.
 
 *Rejects:* whole-sample normalization, same-bar execution, forward-filled revisions, any join whose
 right-hand side is keyed only on `event_time`.
@@ -187,13 +190,25 @@ apply and which conclusions are degraded.
 | Declaration | If absent or false | Consequence |
 | --- | --- | --- |
 | `available_time` | `null` | C1 degrades to filtering on `event_time`; the dataset is marked **PIT-unsafe**; every conclusion using it carries the mark and faces a one-step higher significance bar |
+| `availability_basis` | `reconstructed` | The availability timestamp is credible but was not witnessed; conclusions drawn from that segment carry the mark and face a one-step higher bar |
+| `availability_basis` | `assumed` | Availability was inferred from a chosen lag; treated exactly like `available_time: null` — **PIT-degraded** |
 | `vintage` | `false` | Restatement-sensitive conclusions (anything fundamentals-based) are degraded and flagged |
 | `survivorship_free` | `false` or `unknown` | Universe construction is treated as suspect; results are flagged, and long-biased conclusions degraded |
 | `tradability_mask` | `null` | C4 cannot be enforced for this dataset; the omission is recorded on every result derived from it |
+| `provenance.certified` | absent or `false` | Nothing is rejected; the dataset simply gets no credit beyond what `guarantees` claims. Not being certified is a normal state, not a defect |
 | C4 operator exemption | declared | Permitted for research whose subject is the untradable instruments; recorded in the audit log, and every conclusion reached through it is marked |
 
 The tiers in this table are provisional until v1.0: "a one-step higher significance bar" is given a
 number when the statistical gates exist in Stage 4, not before.
+
+**Why `availability_basis` exists.** You start collecting a feed today and the vendor hands you
+fifteen years of history in the first pull. Every row's availability timestamp is *today*. Two exits
+present themselves, and both are wrong: treat it literally, and no research before today is
+possible; or "fix" it by setting availability to `event_time` plus a guessed lag, and you have
+fabricated point-in-time history. The second is the dangerous one, because **nothing in the data
+will ever contradict it** — a backfill declared as `observed` looks exactly like a feed you watched
+arrive. So the origin is declared per segment, and the usual shape is honest: `reconstructed` for the
+backfill, `observed` from the day you started.
 
 The principle is **degrade, never silently accept, and refuse only when refusing is the honest
 answer**. A missing null generator, a missing cost model, or a missing mask produces a marked and
