@@ -7,10 +7,10 @@ three fields the contract needs:
 (entity, event_time, available_time, payload)
 ```
 
-Status: Stage 2C-3. Declaration validation, strict YAML loading, the backend-neutral temporal guard,
+Status: Stage 2C-4. Declaration validation, strict YAML loading, the backend-neutral temporal guard,
 the default single/multi-file CSV/Parquet backend, read-set v0 identities, source manifests, and
-operator-controlled snapshots now feed the minimum `veil-data` point/panel surface. No package is
-published yet.
+operator-controlled snapshots now feed both the minimum `veil-data` point/panel surface and the
+mask-first walk-forward contract path. No package is published yet.
 
 ## Smallest honest CSV declaration
 

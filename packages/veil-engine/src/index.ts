@@ -147,11 +147,38 @@ export {
   type VeilDataCliSnapshotResult,
 } from "./veil-data-cli.ts";
 export {
+  type CreateVerificationViewInput,
+  createVerificationView,
+  VERIFICATION_VIEW_FILTER_VERSION,
+  VERIFICATION_VIEW_FORMAT,
+  type VerificationView,
+  type VerificationViewAudit,
+  type VerificationViewEvidence,
+  type VerificationViewManifest,
+  type VerificationViewRole,
+  verifyVerificationView,
+} from "./verification-view.ts";
+export {
   type ExecuteWalkForwardWindowsInput,
   executeWalkForwardWindows,
   type WalkForwardWindowExecution,
   type WalkForwardWindowsResult,
 } from "./walk-forward.ts";
+export {
+  type ExecuteWalkForwardContractInput,
+  executeWalkForwardContract,
+  type WalkForwardContractExecution,
+  type WalkForwardContractResult,
+} from "./walk-forward-contract.ts";
+export {
+  PARAMETER_LOCK_FORMAT,
+  verifyWalkForwardContractRecord,
+  WALK_FORWARD_CONTRACT_EXECUTION_FORMAT,
+  WALK_FORWARD_CONTRACT_FORMAT,
+  type WalkForwardContractExecutionRecord,
+  type WalkForwardContractRecord,
+  type WalkForwardContractRecordVerificationEvidence,
+} from "./walk-forward-contract-record.ts";
 export {
   type CreateWalkForwardPlanInput,
   createWalkForwardPlan,

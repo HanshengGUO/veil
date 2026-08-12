@@ -9,6 +9,9 @@
 | [`snapshot-recovery/`](./snapshot-recovery) | Detect, quarantine, audit, and explicitly republish corrupt snapshot evidence. |
 | [`veil-data/`](./veil-data) | Cold point Arrow and exploration-grade panel snapshot through the backend-neutral CLI core. |
 | [`artifact-identity/`](./artifact-identity) | Explicit Python code tree → path-independent artifact identity → cold verification. |
+| [`artifact-execution/`](./artifact-execution) | Guarded Arrow → bounded framed child → identity-bound result. |
+| [`walk-forward-windows/`](./walk-forward-windows) | Explicit schedule → replayable training windows → deterministic executed record. |
+| [`walk-forward-contract/`](./walk-forward-contract) | Fresh per-decision PIT reads → mask-first child inputs → complete C1-C4 contract record. |
 | [`golden-path/`](./golden-path) | The reference research run, written by hand. One factor evaluated under an honest protocol and under seven variations, each leaking in exactly one way. |
 
 The golden path is the standard answer for the whole project: Stage 2 re-runs it on the engine,

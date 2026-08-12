@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { tableFromArrays, tableToIPC } from "apache-arrow";
 import {
   createArtifactExecutionResult,
   decodeArtifactExecutionRequest,
@@ -55,12 +56,30 @@ if (mode === "timeout") {
     throw new Error("developer environment or source root crossed the child boundary");
   }
 
+  let arrowIpc = request.arrowIpc;
+  if (mode === "untradable-row") {
+    arrowIpc = tableToIPC(
+      tableFromArrays({
+        ticker: ["HALTED"],
+        event_time: [request.metadata.decisionTime],
+        signal: [1],
+      }),
+      "stream",
+    );
+  } else if (mode === "future-row") {
+    const future = new Date(Date.parse(request.metadata.decisionTime) + 86_400_000).toISOString();
+    arrowIpc = tableToIPC(
+      tableFromArrays({ ticker: ["FUTURE"], event_time: [future], signal: [1] }),
+      "stream",
+    );
+  }
+
   const result = createArtifactExecutionResult({
     requestHash:
       mode === "wrong-request" ? `sha256:${"0".repeat(64)}` : request.metadata.requestHash,
     artifactHash: request.metadata.artifactHash,
     readSetId: request.metadata.readSetId,
-    arrowIpc: request.arrowIpc,
+    arrowIpc,
   });
   const encoded = encodeArtifactExecutionResult(result);
   if (mode === "partial") {

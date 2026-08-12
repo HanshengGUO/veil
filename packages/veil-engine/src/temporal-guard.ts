@@ -156,6 +156,14 @@ function requireColumn(
   if (column === plan.temporalPredicate.column) {
     throw missingTemporalColumn(declaration, plan);
   }
+  if (column === declaration.guarantees.tradabilityMask) {
+    throw new ContractViolation("C4", "backend omitted the declared tradability mask", {
+      dataset: `${declaration.dataset}@${declaration.version}`,
+      asOf: plan.asOf,
+      context: { column },
+      remedy: "Fix the backend adapter; verification fails closed when the mask is absent.",
+    });
+  }
   throw new EngineConfigurationError(
     "INVALID_BACKEND_RESULT",
     `backend omitted required column ${JSON.stringify(column)}`,

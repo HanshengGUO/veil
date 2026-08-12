@@ -12,7 +12,9 @@ describe("public engine API", () => {
     expect(engineApi).toHaveProperty("DuckDbFileBackend");
     expect(engineApi).toHaveProperty("executeArtifact");
     expect(engineApi).toHaveProperty("executeWalkForwardWindows");
+    expect(engineApi).toHaveProperty("executeWalkForwardContract");
     expect(engineApi).toHaveProperty("createWalkForwardPlan");
+    expect(engineApi).toHaveProperty("createVerificationView");
     expect(engineApi).toHaveProperty("createWindowReadSet");
     expect(engineApi).toHaveProperty("loadAdapterFile");
     expect(engineApi).toHaveProperty("ReadSetSnapshotStore");
@@ -23,6 +25,8 @@ describe("public engine API", () => {
     expect(engineApi).toHaveProperty("verifySourceManifest");
     expect(engineApi).toHaveProperty("verifyArtifactCode");
     expect(engineApi).toHaveProperty("verifyArtifactManifest");
+    expect(engineApi).toHaveProperty("verifyWalkForwardContractRecord");
+    expect(engineApi).toHaveProperty("verifyVerificationView");
     expect(engineApi).toHaveProperty("TemporalGuard");
     expect(engineApi).not.toHaveProperty("readRegisteredBackend");
     expect(engineApi).not.toHaveProperty("resolveSourceBinding");
@@ -30,5 +34,8 @@ describe("public engine API", () => {
     expect(engineApi).not.toHaveProperty("executeArtifactWithEvidence");
     expect(engineApi).not.toHaveProperty("createWalkForwardRunRecord");
     expect(engineApi).not.toHaveProperty("createWalkForwardWindowExecutionRecord");
+    expect(engineApi).not.toHaveProperty("createWalkForwardContractRecord");
+    expect(engineApi).not.toHaveProperty("createWalkForwardContractExecutionRecord");
+    expect(engineApi).not.toHaveProperty("parameterLockHashForArtifact");
   });
 });

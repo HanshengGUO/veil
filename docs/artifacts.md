@@ -5,9 +5,10 @@ An artifact is the immutable unit that crosses from free exploration into verifi
 and the data semantics and protocol it expects. Changing any identity-bearing input creates a
 different artifact; a mutable working-tree path is never evidence of identity.
 
-Status: `veil.artifact.v0`, runtime-provider-neutral framed subprocess execution, and deterministic
-Stage 2C-3 training-window orchestration are implemented. OOS mask-first evaluation and the final
-C2/C3/C4 verdict boundary remain Stage 2C-4 work. See the exact normalized artifact shape in
+Status: `veil.artifact.v0`, runtime-provider-neutral framed subprocess execution, deterministic
+training-window orchestration, and per-decision mask-first C1-C4 contract verification are
+implemented. The resulting contract record is structural evidence, not a priced Experiment. See
+the exact normalized artifact shape in
 [`artifact.yaml`](../packages/veil-contract/schemas/artifact.yaml).
 
 ## Build one portable identity
@@ -164,24 +165,70 @@ any child failure prevents a run record. Run identity excludes backend details, 
 temporary roots, stderr, duration, and completion timing. The injected guard can therefore sit over
 DuckDB, another database, a service, or an in-memory backend without changing orchestration.
 
-Run `npm run walk-forward:verify` for a cold custom-backend example. This boundary does not execute
-or price OOS rows yet and deliberately does not emit metrics or a `verified` status; those checks
-land with mask-first C2/C3/C4 enforcement in Stage 2C-4.
+Run `npm run walk-forward:verify` for a cold custom-backend example. This frozen training-only
+surface deliberately remains `executed`; the complete mask-first contract path is separate.
 
-## Four identities, four jobs
+## Verify every train and OOS decision
+
+`executeWalkForwardContract()` enforces C1-C4 without adding a database-specific query language or
+changing the child frame:
+
+```ts
+const checked = await executeWalkForwardContract({
+  artifact,
+  codeRoot: "/absolute/project/factor",
+  decisionSchedule,
+  declaration,
+  guard,
+  binding,
+  runtimes,
+  columns: ["ticker", "value"],
+});
+
+verifyWalkForwardContractRecord(checked.record, {
+  artifact,
+  plan: checked.plan,
+  declaration,
+  expectedHash: checked.record.contractHash,
+});
+```
+
+The declaration must name a tradability mask before any source I/O occurs. For each fold, the engine
+runs one training cutoff and every OOS decision separately. Each invocation obtains a fresh guarded
+read at that exact `as_of`, derives `veil.verification-view.v0` from the fold's training start through
+the current decision, requires a strict boolean mask, and removes false rows before the child can
+form a signal. The child receives neither the full future OOS block nor the rows removed by the mask.
+
+Child output must retain entity and event-time keys. Every output pair must exist in the masked
+input; a child cannot reintroduce a halted entity, duplicate masked evidence, or emit a future row.
+For OOS runs, the parent admits only output at the current decision time, so echoed history cannot
+masquerade as a current signal. Locked parameters and declared data-derived literals are bound to one
+`veil.parameter-lock.v0` identity repeated across every execution.
+
+Invalid WFA topology or an incomplete fold raises C2, parameter identity drift raises C3, and a
+missing, malformed, late-applied, or reintroduced mask raises C4. Future output remains a C1
+violation. No partial failure returns a contract record.
+
+After all decisions succeed, the engine issues `veil.walk-forward-contract.v0` with status
+`contract-verified`. That wording is intentionally narrow: the record contains no pricing, costs,
+returns, metrics, gates, or experiment verdict, so it does not satisfy C5 and cannot make a number
+citable. Run `npm run walk-forward-contract:verify` for the cold custom-backend probe.
+
+## Identities have separate jobs
 
 | Identity | Contains | Changes when |
 | --- | --- | --- |
 | Artifact | Code tree, runtime/entrypoint, locked choices, adapter hashes, development evidence, declared protocol | The promoted object or its declared provenance changes |
 | Window read-set | Source read identity plus exact plan/fold/range and derived Arrow | A training window reads or derives different evidence |
 | Executed run | Plan plus every successful training-window execution identity | A schedule, runtime, input, output, or execution changes |
+| Verification view | Fresh source read plus plan/fold/decision, bounded history, mask audit, and exact Arrow | PIT evidence, decision time, history, or mask result changes |
+| Contract record | Parameter lock plus every train/OOS view, child request/output, and admitted slice | Any C1-C4 execution evidence changes |
 | Experiment | Artifact plus all window executions, metrics, gates, and verdict | A verification run or outcome changes |
 
 Each dataset's `developmentReadSets` records which exploration evidence led to promotion. These are
 not reusable as execution windows and do not authorize a current source query. Every framed request
-is instead bound to a newly guarded and derived window id. Stage 2C-3 aggregates successful training
-executions into a deterministic run record without changing the artifact identity. That run record
-is not the final experiment: it has no OOS metrics, gates, or verdict.
+is instead bound to a newly guarded and derived view id. The training-only run and the complete
+C1-C4 contract record both leave artifact identity unchanged. Neither is the final Experiment.
 
 ## The verification boundary
 
@@ -189,31 +236,32 @@ Veil, not factor code, owns source bindings, backend handles, credentials, sched
 decision-time reads. The implemented boundary:
 
 1. derives deterministic rolling/expanding boundaries from an explicit UTC session schedule;
-2. constructs a fresh point-in-time source view at each training cutoff through the same
-   backend-neutral temporal guard used by `veil-data`;
-3. replays an event-time lower/upper-bound filter into separately identified derived evidence;
-4. passes only that Arrow IPC and immutable run metadata to the artifact subprocess;
-5. validates framing and identities and issues a run record only after every fold succeeds.
-
-Stage 2C-4 will apply the declared tradability mask before OOS signal formation and admit only those
-validated, priced outputs to an experiment record.
+2. constructs a fresh point-in-time source read at each train cutoff and each OOS decision through
+   the same backend-neutral temporal guard used by `veil-data`;
+3. derives bounded history and removes false mask rows before the child starts;
+4. passes only that Arrow IPC and immutable artifact metadata to a fresh subprocess;
+5. validates child entity/event membership and admits only the current OOS decision slice;
+6. issues a contract record only after the exact complete topology succeeds.
 
 ```text
 SourceBinding + TemporalBackend
              |
-    WFA plan → TemporalGuard(train cutoff)
+ WFA plan → TemporalGuard(train or OOS decision)
              |
- source read-set → derived train window
-             |
-     artifact subprocess
-             |
- deterministic executed record
+ source read-set → bounded history → mask-first verification view
+                                        |
+                                artifact subprocess
+                                        |
+                         membership + current OOS slice
+                                        |
+                           complete C1-C4 contract record
 ```
 
 The subprocess will receive no raw source path, DSN, credential, backend object, or escape hatch to
 a current query. A backend may be DuckDB, another database, a service, or an in-memory
 implementation; that choice ends at the guard and is absent from both artifact and child protocols.
 
-Framed execution proves one child ran against one exact guarded input. A 2C-3 run proves every
-declared training fold executed against replayable evidence. Neither makes an artifact or metric
-verified; until 2C-4 OOS C2/C3/C4 enforcement exists, all metrics remain uncitable.
+Framed execution proves one child ran against one exact guarded input. A training run proves every
+declared training fold executed. A contract record additionally proves every declared OOS decision
+used a fresh PIT, mask-first view and one parameter lock. None of these identities contains a priced
+metric; all metrics remain uncitable until an Experiment record applies pricing, costs, and gates.

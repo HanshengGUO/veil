@@ -22,6 +22,8 @@ Run it from the repository root:
 npm run walk-forward:verify
 ```
 
-The record status is deliberately `executed`, not `verified`. This Stage 2C-3 boundary proves the
-training topology, evidence lineage, and child executions. OOS pricing, tradability-mask-first
-evaluation, and citable metrics remain Stage 2C-4 work.
+The record status is deliberately `executed`, not `verified`. This frozen Stage 2C-3 surface proves
+only the training topology, evidence lineage, and child executions. Use
+[`walk-forward-contract`](../walk-forward-contract) for fresh per-decision OOS reads, mask-first
+inputs, parameter-lock checks, and a complete structural C1-C4 record. Neither surface emits a
+priced, citable metric.

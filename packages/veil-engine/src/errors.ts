@@ -36,7 +36,9 @@ export type EngineConfigurationErrorCode =
   | "INVALID_WALK_FORWARD_PLAN"
   | "INVALID_WINDOW_READ_SET"
   | "INVALID_WALK_FORWARD_EXECUTION"
-  | "EMPTY_VERIFICATION_WINDOW";
+  | "EMPTY_VERIFICATION_WINDOW"
+  | "INVALID_VERIFICATION_VIEW"
+  | "INVALID_WALK_FORWARD_CONTRACT";
 
 export class EngineConfigurationError extends Error {
   readonly code: EngineConfigurationErrorCode;

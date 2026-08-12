@@ -142,6 +142,11 @@ cross-sectional statistics and quantile boundaries.
 This is the invariant that lets exploration be free. An agent may compute anything it likes; it
 simply cannot promote what it computed.
 
+The current `veil.walk-forward-contract.v0` record is deliberately below this boundary. It proves
+that every declared train cutoff and OOS decision passed C1-C4 with one parameter lock, but contains
+no pricing, costs, metrics, gates, or verdict. It therefore cannot satisfy C5 or make a number
+citable; that requires a later Experiment record.
+
 ### C6 — Hypothesis pre-registration
 
 > A hypothesis MUST be registered, with a timestamp and its source of information, before the result
