@@ -25,6 +25,45 @@ export {
   verifyArtifactCodeManifest,
 } from "./artifact-code.ts";
 export {
+  ARTIFACT_EXECUTION_FORMAT,
+  type ArtifactExecutionLimits,
+  type ArtifactExecutionResult,
+  type ExecuteArtifactInput,
+  executeArtifact,
+} from "./artifact-execution.ts";
+export {
+  ARTIFACT_EXECUTION_DEFAULT_ARROW_BYTES,
+  ARTIFACT_EXECUTION_DEFAULT_CONTROL_BYTES,
+  ARTIFACT_EXECUTION_FRAME_HEADER_BYTES,
+  ARTIFACT_EXECUTION_REQUEST_FORMAT,
+  ARTIFACT_EXECUTION_RESULT_FORMAT,
+  type ArtifactExecutionDataset,
+  type ArtifactExecutionFrameLimits,
+  type ArtifactExecutionRequest,
+  type ArtifactExecutionRequestMetadata,
+  type ArtifactExecutionResultFrame,
+  type ArtifactExecutionResultMetadata,
+  type ArtifactExecutionRuntime,
+  type CreateArtifactExecutionRequestInput,
+  type CreateArtifactExecutionResultInput,
+  createArtifactExecutionRequest,
+  createArtifactExecutionResult,
+  decodeArtifactExecutionRequest,
+  decodeArtifactExecutionResult,
+  encodeArtifactExecutionRequest,
+  encodeArtifactExecutionResult,
+} from "./artifact-execution-protocol.ts";
+export {
+  type ArtifactRuntimeDescriptor,
+  type ArtifactRuntimeImplementation,
+  type ArtifactRuntimeLaunch,
+  type ArtifactRuntimeLaunchContext,
+  ArtifactRuntimeProvider,
+  type ArtifactRuntimeProviderInput,
+  ArtifactRuntimeRegistry,
+  createArtifactRuntimeProvider,
+} from "./artifact-runtime.ts";
+export {
   type BackendCapabilities,
   type BackendDescriptor,
   type BackendPushdownReport,

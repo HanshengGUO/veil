@@ -5,9 +5,9 @@ An artifact is the immutable unit that crosses from free exploration into verifi
 and the data semantics and protocol it expects. Changing any identity-bearing input creates a
 different artifact; a mutable working-tree path is never evidence of identity.
 
-Status: `veil.artifact.v0` code capture, normalization, content identity, and independent
-verification are implemented. Framed subprocess execution and walk-forward orchestration begin in
-Stage 2C-2 and are not yet a public API. See the exact normalized shape in
+Status: `veil.artifact.v0` identity and runtime-provider-neutral framed subprocess execution are
+implemented. Walk-forward window orchestration and C2/C3/C4 enforcement begin in Stage 2C-3. See
+the exact normalized artifact shape in
 [`artifact.yaml`](../packages/veil-contract/schemas/artifact.yaml).
 
 ## Build one portable identity
@@ -82,6 +82,53 @@ Run `npm run artifact:verify` to build from a real guarded read-set, copy the sa
 a different absolute root and mtimes, reproduce the identity, and verify it in a clean Node process
 without a backend or source binding.
 
+## Execute one guarded window
+
+Runtime providers are injected capabilities. The artifact names a logical runtime and portable
+constraint; a registry selects a trusted provider with a concrete, path-free implementation
+identity. The provider's executable, argv, and environment remain private runtime state.
+
+```ts
+const runtimes = new ArtifactRuntimeRegistry();
+runtimes.register(createArtifactRuntimeProvider({
+  id: "python",
+  implementation: { name: "cpython", version: "3.12.7" },
+  supports: (constraint) => constraint === ">=3.11,<4",
+  launch: () => ({
+    executable: absolutePythonPath,
+    arguments: [absoluteRunnerPath],
+  }),
+}));
+
+const executed = await executeArtifact({
+  artifact,
+  codeRoot: "/absolute/project/factor",
+  readSet: verificationView.readSet,
+  arrowIpc: verificationView.arrowIpc,
+  runtimes,
+  limits: { timeoutMs: 60_000 },
+});
+```
+
+Before launch, the engine independently verifies the artifact, guarded read-set, exact Arrow hash,
+dataset declaration, and code tree. Development read-sets cannot be reused as verification inputs.
+It copies only declared code files into a fresh temporary root, re-hashes the copy before and after
+provider preparation, and executes that copy with an absolute executable and `shell: false`. The
+developer environment is not inherited; common credential- and developer-path-bearing provider
+variables are rejected.
+
+Stdin contains one versioned frame: fixed magic, bounded canonical-JSON control, and exact guarded
+Arrow. The request hash binds the artifact, code tree, concrete runtime identity, entrypoint,
+dataset, read-set, decision time, immutable parameters/literals, and input Arrow hash. Stdout may
+contain exactly one identity-bound result frame with readable Arrow. Partial, malformed, duplicate,
+unknown, non-canonical, oversized, or trailing output fails closed. Stderr is a separately counted
+diagnostic channel and is never copied into public results or errors. Timeouts, cancellation,
+signals, non-zero exits, and stdout/stderr floods have structured sanitized errors.
+
+The codec is public so a thin Python, Rust, or other language adapter can implement the same wire
+contract. The engine itself has no language or database switch. Run
+`npm run artifact-execution:verify` for the clean Node adapter example.
+
 ## Three identities, three jobs
 
 | Identity | Contains | Changes when |
@@ -91,19 +138,22 @@ without a backend or source binding.
 | Experiment | Artifact plus all window executions, metrics, gates, and verdict | A verification run or outcome changes |
 
 Each dataset's `developmentReadSets` records which exploration evidence led to promotion. These are
-not reused as WFA windows and do not authorize a current source query. Stage 2C-2/3 will attach newly
-guarded read-set ids to each child execution, then the experiment record will cite both layers.
+not reusable as execution windows and do not authorize a current source query. Every framed request
+is instead bound to a newly guarded read-set id. Stage 2C-3 will aggregate those window executions
+into a deterministic experiment record without changing the artifact identity.
 
 ## The verification boundary
 
 Veil, not factor code, owns source bindings, backend handles, credentials, and decision-time reads.
-For each verification window the engine will:
+The implemented single-window boundary:
 
-1. construct the point-in-time view through the same backend-neutral temporal guard used by
+1. constructs the point-in-time view through the same backend-neutral temporal guard used by
    `veil-data`;
-2. apply the declared tradability mask before signal formation;
-3. pass only guarded Arrow IPC and immutable run metadata to the artifact subprocess;
-4. validate the subprocess output before it can contribute to an experiment record.
+2. passes only guarded Arrow IPC and immutable run metadata to the artifact subprocess;
+3. validates framing, identities, limits, and Arrow output before returning it.
+
+The Stage 2C-3/4 orchestrator will construct rolling/expanding windows, apply the declared
+tradability mask before signal formation, and admit validated outputs to an experiment record.
 
 ```text
 SourceBinding + TemporalBackend
@@ -121,5 +171,5 @@ The subprocess will receive no raw source path, DSN, credential, backend object,
 a current query. A backend may be DuckDB, another database, a service, or an in-memory
 implementation; that choice ends at the guard and is absent from both artifact and child protocols.
 
-Until framed execution and WFA checks exist, an artifact is content-identified but not verified, and
-its exploration metrics remain uncitable.
+Framed execution proves one child ran against one exact guarded input; it does not by itself make an
+artifact verified. Until WFA and C2/C3/C4 checks exist, exploration metrics remain uncitable.

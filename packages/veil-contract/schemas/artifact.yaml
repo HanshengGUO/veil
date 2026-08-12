@@ -11,7 +11,7 @@ factor:
     constraint: ">=3.11,<4"       # portable version constraint
   entry:
     file: factor.py               # must be one of code.files[].logicalName
-    callable: compute             # compute(data_view); subprocess protocol lands in Stage 2C-2
+    callable: compute             # resolved by the selected runtime provider in the framed child
   code:
     format: veil.artifact-code.v0
     files:                        # explicit, unique, sorted, root-relative regular files

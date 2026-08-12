@@ -12,5 +12,6 @@ manifest and copied code without constructing a backend or source binding.
 npm run artifact:verify
 ```
 
-The Python function is packaged but not executed in this slice. Framed subprocess execution is the
-next Stage 2C boundary. The example removes only its newly created temporary directory.
+This example intentionally stops at portable identity; the separate
+[`artifact-execution`](../artifact-execution/) example runs a promoted artifact through the framed
+child boundary. This example removes only its newly created temporary directory.

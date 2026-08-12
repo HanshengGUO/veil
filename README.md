@@ -13,11 +13,11 @@ and does not ask you to learn a new research API. It changes one thing:
 Nobody would accept an editor that blocks their keystrokes. Everybody accepts CI that blocks their
 merge. Veil is CI for research claims.
 
-Status: **Stage 1 exit / Stage 2C-1 implementation, pre-alpha.** The backend-neutral temporal guard,
+Status: **Stage 1 exit / Stage 2C-2 implementation, pre-alpha.** The backend-neutral temporal guard,
 native runtime gate, single/multi-file CSV/Parquet point-in-time backend, source/read-set v0
 identities, durable snapshots with operator quarantine, minimum `veil-data` point/panel surface, and
-path-independent content-addressed artifact identities are now implemented. The 14-task bench, runner,
-and first real
+path-independent content-addressed artifact identities, and runtime-provider-neutral framed artifact
+execution are now implemented. The 14-task bench, runner, and first real
 [two-model bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are also complete. Independent scoring
 review, an external docs-only trial, and remote CI confirmation remain before Stage 1 closes. An
 independent [QBench Engineering baseline](./bench/baselines/kimi-qbench-engineering-v1/) now also
@@ -97,6 +97,7 @@ examples/read-set/        atomic snapshot + independent-process replay
 examples/snapshot-recovery/ explicit corrupt-evidence quarantine + audit
 examples/veil-data/        cold point Arrow + exploration-grade panel snapshot
 examples/artifact-identity/ explicit code tree + portable artifact identity
+examples/artifact-execution/ guarded Arrow + clean framed artifact child
 docs/                     one page per thing
 ```
 
@@ -108,7 +109,7 @@ docs/                     one page per thing
 | [adapters.md](./docs/adapters.md) | Declare time semantics, conservative defaults, lineage, and source bindings |
 | [read-sets.md](./docs/read-sets.md) | Distinguish source, query, logical result, Arrow, and whole-read identities |
 | [veil-data.md](./docs/veil-data.md) | Query guarded point views and export exploration-grade panels |
-| [artifacts.md](./docs/artifacts.md) | Package code and locked semantics into a portable content identity |
+| [artifacts.md](./docs/artifacts.md) | Package and execute locked artifacts over guarded Arrow |
 | [examples/csv-pit](./examples/csv-pit) | Run the smallest guarded CSV point-in-time view |
 | [examples/parquet-pit](./examples/parquet-pit) | Run the same guarded view over generated Parquet |
 | [examples/multi-file-pit](./examples/multi-file-pit) | Read a stable multi-file view through one portable glob |
@@ -116,6 +117,7 @@ docs/                     one page per thing
 | [examples/snapshot-recovery](./examples/snapshot-recovery) | Quarantine corrupt evidence and cold-verify its audit |
 | [examples/veil-data](./examples/veil-data) | Exercise point/panel output in clean Node processes |
 | [examples/artifact-identity](./examples/artifact-identity) | Reproduce a Python artifact identity across roots and a clean process |
+| [examples/artifact-execution](./examples/artifact-execution) | Execute a materialized artifact through the bounded child protocol |
 | [examples/golden-path](./examples/golden-path) | What a Veil research log looks like, with real numbers |
 | [bench/README.md](./bench/README.md) | How scoring works: two axes, four attribution layers |
 | [bench.md](./docs/bench.md) | Run, score, replay, and contribute Veil-bench tasks |

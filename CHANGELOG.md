@@ -38,6 +38,14 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Added
 
+- **Framed artifact execution**: opaque runtime providers resolve logical runtime constraints while
+  exposing only a path-free concrete implementation identity. The engine verifies and materializes
+  artifact code, rejects reuse of development evidence, supplies only exact guarded Arrow plus
+  immutable identity-bound metadata to a clean no-shell child, and validates one bounded result
+  frame. Timeout/cancel, non-zero/signal exits, malformed/partial/duplicate/oversized/trailing frames,
+  unreadable Arrow, code races, and stdout/stderr floods fail closed without exposing executable
+  paths, inherited developer environment/credentials, or private diagnostics. The wire codec is
+  language- and database-neutral, with a clean Node adapter example in the default check.
 - **Content-addressed artifact v0 identity**: explicit portable code files are captured twice and
   hashed individually and as a tree, independent of checkout root, mtimes, and creation order.
   Normalized manifests bind code to logical runtime/entrypoint, immutable parameters, adapter
