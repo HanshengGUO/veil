@@ -35,7 +35,7 @@ jobs:
 
       - run: npm ci
 
-      # lint, typecheck, tests, DuckDB/Arrow cold runtime probe, bench smoke, and golden path
+      # lint, types, tests, native + CSV cold probes, bench smoke, and golden path
       - run: npm run check
 
       - name: Record parameterized bench smoke metadata

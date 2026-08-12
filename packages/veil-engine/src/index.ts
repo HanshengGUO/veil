@@ -1,3 +1,4 @@
+export { loadAdapterFile } from "./adapter-loader.ts";
 export {
   type BackendCapabilities,
   type BackendDescriptor,
@@ -8,6 +9,7 @@ export {
   type SourceFingerprint,
   type TemporalBackend,
 } from "./backend.ts";
+export { DUCKDB_FILE_BACKEND_ID, DuckDbFileBackend } from "./duckdb-file-backend.ts";
 export * from "./errors.ts";
 export * from "./runtime-smoke.ts";
 export {

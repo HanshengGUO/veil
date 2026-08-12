@@ -15,6 +15,7 @@
   "dependencies": {
     "@veilquant/contract": "0.0.0",
     "@duckdb/node-api": "1.4.5-r.1",
-    "apache-arrow": "21.2.0"
+    "apache-arrow": "21.2.0",
+    "yaml": "2.9.0"
   }
 }

@@ -3,8 +3,8 @@
 The verification surface. Everything that makes a claim expensive lives here.
 
 Status: Stage 2A — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow guard,
-and DuckDB/Arrow runtime gate are implemented. The package remains private until the file adapters
-and stable public API are complete.
+strict adapter YAML loader, and default DuckDB CSV backend are implemented. The package remains
+private until the Parquet adapter and stable public API are complete.
 
 ## The database is replaceable; the guard is not
 
@@ -48,6 +48,44 @@ future backend.
 outside enumerable object state and never appear in JSON, inspection output, guarded results, or
 model-facing diagnostics. Only the selected trusted backend receives accessor functions.
 
+## Default CSV backend
+
+The first real backend is deliberately ordinary to use:
+
+```ts
+import {
+  BackendRegistry,
+  createSourceBinding,
+  DuckDbFileBackend,
+  loadAdapterFile,
+  TemporalGuard,
+} from "@veilquant/engine";
+
+const declaration = await loadAdapterFile("adapter.yaml");
+const backend = new DuckDbFileBackend();
+const registry = new BackendRegistry();
+registry.register(backend);
+
+const result = await new TemporalGuard(registry).read(
+  declaration,
+  { asOf: "2026-08-12", columns: ["ticker", "value"] },
+  createSourceBinding({
+    id: "research-data",
+    backend: backend.id,
+    options: { root: "/absolute/data/root" },
+  }),
+);
+```
+
+The declaration keeps a relative, portable locator. The binding root must be absolute and cannot be
+a filesystem root; realpath containment rejects parent traversal and symlinks escaping that root.
+The backend executes only in-memory read queries, hashes the source bytes before and after the query,
+and returns the SHA-256 as its source fingerprint.
+
+DuckDB validates the temporal column before applying pushdown. If any value is null or unparseable,
+the backend deliberately skips temporal pushdown so the common guard sees the bad row and raises C1
+instead of silently filtering it away. See the runnable [`examples/csv-pit`](../../examples/csv-pit/).
+
 ## Native runtime gate
 
 The engine pins:
@@ -61,14 +99,15 @@ round-trips an Arrow IPC stream. Failures identify `duckdb-load`, `duckdb-query`
 Windows matrix verifies native installation and execution.
 
 No DuckDB type appears in the public data-plane API, and importing the engine does not load the
-native module. The next slice implements the CSV backend behind the same interface.
+native module. The next slice adds Parquet behind the same interface and checks CSV/Parquet
+metamorphic equivalence.
 
 ## What lands here, and when
 
 | Component | Stage | Notes |
 | --- | --- | --- |
 | Backend-neutral temporal guard | 2 | Structured plan → replaceable backend → Arrow IPC → mandatory C1 re-check |
-| Default file backend | 2 | DuckDB implementation for CSV/Parquet; not exposed to callers |
+| Default file backend | 2 | CSV implemented; Parquet is next; neither exposes DuckDB to callers |
 | Read-set snapshots | 2 | What an experiment actually read, content-addressed, for metric-level reproduction |
 | Verification engine | 2 | Re-executes an artifact window by window: rows with `available_time > t` do not exist |
 | Artifact management | 2 | `compute(data_view)` packaging, parameter locking, content-addressed identity |

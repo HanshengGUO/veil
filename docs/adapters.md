@@ -7,9 +7,9 @@ three fields the contract needs:
 (entity, event_time, available_time, payload)
 ```
 
-Status: Stage 2A. Declaration validation and the backend-neutral temporal guard are implemented.
-DuckDB/Arrow native runtimes are pinned and checked, while the actual CSV/Parquet backend is the next
-slice. No package is published yet.
+Status: Stage 2A. Declaration validation, strict YAML loading, the backend-neutral temporal guard,
+and the default CSV backend are implemented. Parquet and read-set manifests are next. No package is
+published yet.
 
 ## Smallest honest CSV declaration
 
@@ -108,6 +108,38 @@ same declaration usable on another machine without putting credentials in an art
 and option/secret **names**, never their values. The selected trusted backend can resolve values while
 reading; they are not returned with query results or placed in model context.
 
+The default CSV binding uses one option, `root`. It must be an absolute directory narrower than the
+filesystem root; `source.locator` is resolved beneath it using real paths, so `..` and escaping
+symlinks cannot cross the boundary. The source is hashed before and after every read.
+
+```ts
+import {
+  BackendRegistry,
+  createSourceBinding,
+  DuckDbFileBackend,
+  loadAdapterFile,
+  TemporalGuard,
+} from "@veilquant/engine";
+
+const declaration = await loadAdapterFile("adapter.yaml");
+const backend = new DuckDbFileBackend();
+const registry = new BackendRegistry();
+registry.register(backend);
+
+const view = await new TemporalGuard(registry).read(
+  declaration,
+  { asOf: "2026-08-12", columns: ["ticker", "value"] },
+  createSourceBinding({
+    id: "local-data",
+    backend: backend.id,
+    options: { root: "/absolute/data/root" },
+  }),
+);
+```
+
+Run the committed future-sentinel example with `npm run csv-pit:verify`; its files are under
+[`examples/csv-pit`](../examples/csv-pit/).
+
 ## Backends are replaceable
 
 Adapters do not emit SQL. The engine builds one structured `TemporalReadPlan` containing projection,
@@ -116,13 +148,19 @@ DuckDB, ClickHouse, DolphinDB, a REST extraction, or a custom in-memory source, 
 
 Predicate pushdown is an optimization, not a guarantee. The common `TemporalGuard` decodes every
 backend's Arrow result and applies the temporal predicate again before returning the data view. Even
-a backend that incorrectly claims successful pushdown cannot expose a future row. Backends without a
-stable source version can still serve exploration reads with a missing fingerprint; later promotion
-and reproduction gates can conservatively reject or degrade that separate capability.
+a backend that incorrectly claims successful pushdown cannot expose a correctly timestamped future
+row. Backends without a stable source version can still serve exploration reads with a missing
+fingerprint; later promotion and reproduction gates can conservatively reject or degrade that
+separate capability.
 
 DuckDB is therefore the default CSV/Parquet backend, not part of the public contract. No DuckDB type
 or SQL fragment crosses the engine API, and the native module is dynamically loaded only by that
 backend or its runtime probe.
+
+For CSV, DuckDB applies projection and temporal predicates only after validating that the guard
+column contains no null or unparseable values. Invalid data disables temporal pushdown and reaches
+the common guard, which fails closed as C1. Pushdown can make a valid read faster; it cannot make bad
+time data disappear.
 
 ## What validation returns
 

@@ -1,0 +1,2 @@
+ticker,event_time,available_time,value
+BROKEN,2026-08-10T00:00:00Z,not-a-time,1.5

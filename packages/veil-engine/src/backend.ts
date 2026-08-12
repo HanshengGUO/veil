@@ -116,7 +116,10 @@ export async function readRegisteredBackend(
       plan,
       binding: resolvedBinding,
     });
-  } catch {
+  } catch (cause) {
+    if (cause instanceof EngineConfigurationError) {
+      throw sanitizedBackendError(cause, resolvedBinding);
+    }
     throw new EngineConfigurationError(
       "BACKEND_READ_FAILED",
       `backend ${backend.id} failed while reading the guarded source`,
@@ -133,6 +136,35 @@ export async function readRegisteredBackend(
       pushdown: Object.freeze({ ...result.pushdown }),
     },
   };
+}
+
+function sanitizedBackendError(
+  error: EngineConfigurationError,
+  binding: ResolvedSourceBinding,
+): EngineConfigurationError {
+  const prefix = `[${error.code}] `;
+  const message = error.message.startsWith(prefix)
+    ? error.message.slice(prefix.length)
+    : error.message;
+  const privateValues = [
+    ...binding.optionKeys.map((key) => binding.option(key)),
+    ...binding.secretKeys.map((key) => binding.secret(key)),
+  ]
+    .filter((value): value is string => value !== undefined)
+    .sort((left, right) => right.length - left.length);
+  return new EngineConfigurationError(
+    error.code,
+    redactValues(message, privateValues),
+    redactValues(error.remedy, privateValues),
+  );
+}
+
+function redactValues(input: string, privateValues: readonly string[]): string {
+  let redacted = input;
+  for (const value of privateValues) {
+    redacted = redacted.split(value).join("[redacted]");
+  }
+  return redacted;
 }
 
 function registryBackends(registry: BackendRegistry): Map<string, TemporalBackend> {

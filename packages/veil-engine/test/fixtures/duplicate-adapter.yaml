@@ -1,0 +1,9 @@
+dataset: first
+dataset: second
+version: "1"
+entity_key: ticker
+event_time: event_time
+available_time: null
+source:
+  type: csv
+  locator: temporal.csv

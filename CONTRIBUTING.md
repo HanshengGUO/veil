@@ -30,9 +30,9 @@ npm install
 npm run check
 ```
 
-`npm run check` runs lint, typecheck, tests, the DuckDB/Arrow native-runtime probe, the four-task bench
-smoke set, and the golden-path reproduction. It must pass before a pull request, and it is what CI
-runs on Linux, macOS and Windows.
+`npm run check` runs lint, typecheck, tests, the DuckDB/Arrow native-runtime probe, the cold CSV PIT
+example, the four-task bench smoke set, and the golden-path reproduction. It must pass before a pull
+request, and it is what CI runs on Linux, macOS and Windows.
 
 Useful individually:
 
@@ -41,6 +41,7 @@ npm run lint:fix       # format and fix what can be fixed
 npm run typecheck
 npm run test
 npm run engine:runtime:smoke
+npm run csv-pit:verify
 npm run bench:smoke    # generate and validate two trap plus two honest tasks
 npm run golden-path    # regenerate the reference study and print its table
 ```

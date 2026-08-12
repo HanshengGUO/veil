@@ -13,9 +13,10 @@ and does not ask you to learn a new research API. It changes one thing:
 Nobody would accept an editor that blocks their keystrokes. Everybody accepts CI that blocks their
 merge. Veil is CI for research claims.
 
-Status: **Stage 1 exit / Stage 2A implementation, pre-alpha.** The backend-neutral temporal guard and
-native runtime gate are now implemented. The 14-task bench, runner, and first real two-model
-[bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are also complete. Independent scoring
+Status: **Stage 1 exit / Stage 2A implementation, pre-alpha.** The backend-neutral temporal guard,
+native runtime gate, and first real CSV point-in-time backend are now implemented. The 14-task bench,
+runner, and first real two-model [bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are
+also complete. Independent scoring
 review, an external docs-only trial, and remote CI confirmation remain before Stage 1 closes. An
 independent [QBench Engineering baseline](./bench/baselines/kimi-qbench-engineering-v1/) now also
 tests cold-start artifacts, causal reconciliation, recovery, and content-addressed manifests.
@@ -87,6 +88,7 @@ packages/veil-engine/     point-in-time views, walk-forward verification, gates
 packages/veil-agent/      the Pi package users install (published as veil-quant)
 bench/                    Veil-bench: tasks, runner, bare-agent baselines
 examples/golden-path/     the reference study, done by hand
+examples/csv-pit/         the smallest adapter → guarded CSV view
 docs/                     one page per thing
 ```
 
@@ -96,6 +98,7 @@ docs/                     one page per thing
 | --- | --- |
 | [contract.md](./docs/contract.md) | The specification: invariants, degradation rules, threat model |
 | [adapters.md](./docs/adapters.md) | Declare time semantics, conservative defaults, lineage, and source bindings |
+| [examples/csv-pit](./examples/csv-pit) | Run the smallest guarded CSV point-in-time view |
 | [examples/golden-path](./examples/golden-path) | What a Veil research log looks like, with real numbers |
 | [bench/README.md](./bench/README.md) | How scoring works: two axes, four attribution layers |
 | [bench.md](./docs/bench.md) | Run, score, replay, and contribute Veil-bench tasks |
