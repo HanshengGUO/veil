@@ -1,0 +1,17 @@
+# hypothesis-registration.yaml — normalized veil.hypothesis-registration.v0 record
+#
+# Stage 3 supplies registeredAt and source.reference from its durable session entry. The engine
+# normalizes and hashes this object; this format is not itself a clock or append-only store.
+
+format: veil.hypothesis-registration.v0
+hypothesisRef: momentum-v1
+statement: Instruments with high trailing returns outperform cross-sectionally after costs.
+registeredAt: 2026-08-12T09:00:00.000Z
+ideaAvailableAt: 2025-01-01T00:00:00.000Z
+source:
+  kind: brief                    # brief | explicit | external
+  reference: session-entry-001  # opaque durable entry id; never a path or inline payload
+registrationHash: <sha256>
+
+# ideaAvailableAt cannot be later than registeredAt. A registration used for standard-tier
+# promotion must also have registeredAt strictly before the verification run started.

@@ -76,6 +76,22 @@ export {
 export { DUCKDB_FILE_BACKEND_ID, DuckDbFileBackend } from "./duckdb-file-backend.ts";
 export * from "./errors.ts";
 export {
+  type CreateHypothesisRegistrationInput,
+  type CreatePromotionCandidateInput,
+  createHypothesisRegistration,
+  createPromotionCandidate,
+  HYPOTHESIS_REGISTRATION_FORMAT,
+  type HypothesisRegistrationRecord,
+  type HypothesisRegistrationSourceKind,
+  type HypothesisRegistrationVerificationEvidence,
+  PROMOTION_CANDIDATE_FORMAT,
+  type PromotionCandidateRecord,
+  type PromotionCandidateVerificationEvidence,
+  type VerificationStartEvidence,
+  verifyHypothesisRegistration,
+  verifyPromotionCandidate,
+} from "./promotion.ts";
+export {
   createReadSetResultIdentity,
   READ_SET_FILTER_VERSION,
   READ_SET_FORMAT,

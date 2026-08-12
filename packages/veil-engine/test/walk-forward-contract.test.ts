@@ -13,11 +13,15 @@ import {
   captureArtifactCode,
   createArtifactManifest,
   createArtifactRuntimeProvider,
+  createHypothesisRegistration,
+  createPromotionCandidate,
   createSourceBinding,
   executeWalkForwardContract,
   type GuardedReadResult,
   type TemporalBackend,
   TemporalGuard,
+  verifyHypothesisRegistration,
+  verifyPromotionCandidate,
   verifyWalkForwardContractRecord,
 } from "../src/index.ts";
 
@@ -38,6 +42,10 @@ const protocol: ArtifactProtocol = {
   embargoDays: 1,
   holdDays: 1,
 };
+const verificationStart = {
+  startedAt: "2026-08-12T12:00:00.000Z",
+  sourceReference: "verification-run-001",
+} as const;
 
 let codeRoot: string;
 let adapter: ReturnType<typeof declaration>;
@@ -397,5 +405,219 @@ describe("walk-forward contract verification", () => {
     expect(serialized).not.toContain("contract-memory-a");
     expect(serialized).not.toContain("contract-memory-b");
     expect(serialized).not.toContain("credential");
+  });
+});
+
+describe("promotion evidence boundary", () => {
+  it("binds a preregistered hypothesis to contract evidence without issuing a claim", async () => {
+    const result = await run();
+    const registration = createHypothesisRegistration({
+      hypothesisRef: artifact.hypothesisRef,
+      statement: "Tradable short-horizon winners outperform after costs.",
+      ideaAvailableAt: "2025-01-01T00:00:00.000Z",
+      registeredAt: "2025-12-01T00:00:00.000Z",
+      source: { kind: "brief", reference: "session-entry-001" },
+    });
+    expect(
+      verifyHypothesisRegistration(JSON.parse(JSON.stringify(registration)), {
+        expectedRegistrationHash: registration.registrationHash,
+      }),
+    ).toEqual(registration);
+
+    const candidate = createPromotionCandidate({
+      artifact,
+      plan: result.plan,
+      declaration: adapter,
+      contractRecord: result.record,
+      verification: verificationStart,
+      registration,
+    });
+    expect(candidate.status).toBe("awaiting-pricing-and-gates");
+    expect(candidate.structuralStatus).toBe("contract-verified");
+    expect(candidate.claimStatus).toBe("unverified");
+    expect(candidate.hypothesis).toEqual({
+      hypothesisRef: artifact.hypothesisRef,
+      registrationHash: registration.registrationHash,
+      registrationStatus: "preregistered",
+    });
+    expect(candidate.gateInputs).toEqual({
+      costModel: artifact.costModel,
+      trialsDeclared: artifact.trialsDeclared,
+      significanceTier: "standard",
+    });
+    expect(candidate.requiredEvidence).toEqual(["pricing", "costs", "statistical-gates"]);
+    expect(
+      verifyPromotionCandidate(JSON.parse(JSON.stringify(candidate)), {
+        artifact,
+        plan: result.plan,
+        declaration: adapter,
+        contractRecord: result.record,
+        registration,
+        verification: verificationStart,
+        expectedCandidateHash: candidate.candidateHash,
+      }),
+    ).toEqual(candidate);
+    expect(() =>
+      verifyPromotionCandidate(candidate, {
+        artifact,
+        plan: result.plan,
+        declaration: adapter,
+        contractRecord: result.record,
+        registration,
+        verification: {
+          ...verificationStart,
+          sourceReference: "verification-run-002",
+        },
+      }),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_PROMOTION_CANDIDATE" }));
+
+    const tampered = JSON.parse(JSON.stringify(candidate)) as { claimStatus: string };
+    tampered.claimStatus = "verified";
+    expect(() =>
+      verifyPromotionCandidate(tampered, {
+        artifact,
+        plan: result.plan,
+        declaration: adapter,
+        contractRecord: result.record,
+        registration,
+        verification: verificationStart,
+      }),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_PROMOTION_CANDIDATE" }));
+
+    const serialized = JSON.stringify(candidate);
+    expect(serialized).not.toContain(codeRoot);
+    expect(serialized).not.toContain(primary.binding.id);
+    for (const absent of ["metric", "return", "sharpe", "verdict", "experimentId"]) {
+      expect(serialized.toLowerCase()).not.toContain(`"${absent.toLowerCase()}"`);
+    }
+  });
+
+  it("normalizes registration content and rejects forged chronology or source references", () => {
+    expect(() =>
+      createHypothesisRegistration({
+        hypothesisRef: artifact.hypothesisRef,
+        statement: "The idea cannot appear after it was registered.",
+        ideaAvailableAt: "2026-01-02T00:00:00.000Z",
+        registeredAt: "2026-01-01T00:00:00.000Z",
+        source: { kind: "brief", reference: "session-entry-002" },
+      }),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_HYPOTHESIS_REGISTRATION" }));
+    expect(() =>
+      createHypothesisRegistration({
+        hypothesisRef: artifact.hypothesisRef,
+        statement: "Runtime paths are not durable registration references.",
+        ideaAvailableAt: "2025-01-01T00:00:00.000Z",
+        registeredAt: "2025-12-01T00:00:00.000Z",
+        source: { kind: "external", reference: "/private/session.jsonl" },
+      }),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_HYPOTHESIS_REGISTRATION" }));
+
+    const registration = createHypothesisRegistration({
+      hypothesisRef: artifact.hypothesisRef,
+      statement: "A replayable hypothesis.",
+      ideaAvailableAt: "2025-01-01T00:00:00.000Z",
+      registeredAt: "2025-12-01T00:00:00.000Z",
+      source: { kind: "explicit", reference: "session-entry-003" },
+    });
+    const tampered = JSON.parse(JSON.stringify(registration)) as { statement: string };
+    tampered.statement = "A rewritten hypothesis.";
+    expect(() => verifyHypothesisRegistration(tampered)).toThrowError(
+      expect.objectContaining({ code: "INVALID_HYPOTHESIS_REGISTRATION" }),
+    );
+  });
+
+  it("keeps an unregistered finding exploratory and rejects late or mismatched registration", async () => {
+    const result = await run();
+    const exploratory = createPromotionCandidate({
+      artifact,
+      plan: result.plan,
+      declaration: adapter,
+      contractRecord: result.record,
+      verification: verificationStart,
+      registration: null,
+    });
+    expect(exploratory.hypothesis.registrationStatus).toBe("exploratory");
+    expect(exploratory.hypothesis.registrationHash).toBeNull();
+    expect(exploratory.gateInputs.significanceTier).toBe("higher");
+
+    const late = createHypothesisRegistration({
+      hypothesisRef: artifact.hypothesisRef,
+      statement: "This was written after verification began.",
+      ideaAvailableAt: "2026-08-12T12:00:00.000Z",
+      registeredAt: "2026-08-12T12:00:00.000Z",
+      source: { kind: "explicit", reference: "session-entry-late" },
+    });
+    expect(() =>
+      createPromotionCandidate({
+        artifact,
+        plan: result.plan,
+        declaration: adapter,
+        contractRecord: result.record,
+        verification: verificationStart,
+        registration: late,
+      }),
+    ).toThrowError(expect.objectContaining({ invariant: "C6" }));
+
+    const wrongHypothesis = createHypothesisRegistration({
+      hypothesisRef: "another-hypothesis",
+      statement: "A different claim.",
+      ideaAvailableAt: "2025-01-01T00:00:00.000Z",
+      registeredAt: "2025-12-01T00:00:00.000Z",
+      source: { kind: "external", reference: "literature-entry-001" },
+    });
+    expect(() =>
+      createPromotionCandidate({
+        artifact,
+        plan: result.plan,
+        declaration: adapter,
+        contractRecord: result.record,
+        verification: verificationStart,
+        registration: wrongHypothesis,
+      }),
+    ).toThrowError(expect.objectContaining({ invariant: "C6" }));
+  });
+
+  it("rejects non-contract promotion inputs as C5 and preserves underlying contract violations", async () => {
+    const result = await run();
+    const input = {
+      artifact,
+      plan: result.plan,
+      declaration: adapter,
+      verification: verificationStart,
+      registration: null,
+    };
+    expect(() =>
+      createPromotionCandidate({
+        ...input,
+        contractRecord: result.executions[0]?.execution,
+      }),
+    ).toThrowError(expect.objectContaining({ invariant: "C5" }));
+    expect(() =>
+      createPromotionCandidate({
+        ...input,
+        contractRecord: { format: "exploration-result", sharpe: 9.9 },
+      }),
+    ).toThrowError(
+      expect.objectContaining({
+        invariant: "C5",
+        detail: expect.objectContaining({
+          context: { recordFormat: "unsupported-object" },
+        }),
+      }),
+    );
+
+    const badHash = JSON.parse(JSON.stringify(result.record)) as { contractHash: string };
+    badHash.contractHash = `sha256:${"0".repeat(64)}`;
+    expect(() => createPromotionCandidate({ ...input, contractRecord: badHash })).toThrowError(
+      expect.objectContaining({ invariant: "C5" }),
+    );
+
+    const parameterDrift = JSON.parse(JSON.stringify(result.record)) as {
+      parameterLockHash: string;
+    };
+    parameterDrift.parameterLockHash = `sha256:${"0".repeat(64)}`;
+    expect(() =>
+      createPromotionCandidate({ ...input, contractRecord: parameterDrift }),
+    ).toThrowError(expect.objectContaining({ invariant: "C3" }));
   });
 });

@@ -1,6 +1,6 @@
 # Concepts
 
-Six terms. Once these are clear, the rest of Veil is mechanical.
+Seven terms. Once these are clear, the rest of Veil is mechanical.
 
 ## Exploration surface
 
@@ -37,6 +37,12 @@ Two consequences worth knowing:
 
 Packaging is not ceremony: turning exploration code into `compute(data_view)` is work you would do
 anyway before deploying anything.
+
+## Promotion candidate
+
+The structural handoff after an artifact completes every PIT, mask-first walk-forward decision and
+its hypothesis chronology is checked. It is an input to later pricing and gates, not a result.
+Its claim status remains `unverified`, and a candidate hash cannot be cited as an experiment id.
 
 ## Experiment record
 

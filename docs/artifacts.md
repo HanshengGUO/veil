@@ -214,6 +214,50 @@ After all decisions succeed, the engine issues `veil.walk-forward-contract.v0` w
 returns, metrics, gates, or experiment verdict, so it does not satisfy C5 and cannot make a number
 citable. Run `npm run walk-forward-contract:verify` for the cold custom-backend probe.
 
+## Prepare promotion evidence without making a claim
+
+The next boundary accepts only the complete contract record. It cannot ingest a child result, an
+exploration backtest, the legacy training-only run, or a free-form metric:
+
+```ts
+const registration = createHypothesisRegistration({
+  hypothesisRef: artifact.hypothesisRef,
+  statement: "Winners outperform cross-sectionally after costs.",
+  ideaAvailableAt: "2025-01-01T00:00:00.000Z",
+  registeredAt: "2026-08-12T09:00:00.000Z",
+  source: { kind: "brief", reference: "session-entry-001" },
+});
+
+const candidate = createPromotionCandidate({
+  artifact,
+  plan: checked.plan,
+  declaration,
+  contractRecord: checked.record,
+  verification: {
+    startedAt: "2026-08-12T10:00:00.000Z",
+    sourceReference: "verification-run-001",
+  },
+  registration,
+});
+```
+
+`veil.hypothesis-registration.v0` records the statement, when the idea became available, when it
+was durably registered, and an opaque source-entry reference. `registeredAt` must be strictly before
+`verification.startedAt` to receive `preregistered` status. A missing registration is not rewritten
+as a violation: the candidate is marked `exploratory` and its future significance tier is `higher`.
+A late, malformed, or wrong-hypothesis registration raises C6. Supplying anything other than a valid
+contract record raises C5, while genuine C2/C3/C4 evidence failures retain their original invariant.
+
+The low-level engine functions normalize and compare chronology; they do not manufacture a trusted
+clock or session history. Stage 3 supplies both timestamps and resolves `source.reference` and
+`verification.sourceReference` from durable Pi session entries. Passing arbitrary timestamps or
+references directly to the library is not proof of preregistration.
+
+The output `veil.promotion-candidate.v0` has structural status `contract-verified` but claim status
+`unverified`. It carries only identities and future gate inputs: cost-model reference, declared trial
+count, significance tier, and the still-required pricing/cost/statistical evidence. It has no metric,
+verdict, or experiment id and therefore cannot satisfy C5 by itself.
+
 ## Identities have separate jobs
 
 | Identity | Contains | Changes when |
@@ -223,6 +267,8 @@ citable. Run `npm run walk-forward-contract:verify` for the cold custom-backend 
 | Executed run | Plan plus every successful training-window execution identity | A schedule, runtime, input, output, or execution changes |
 | Verification view | Fresh source read plus plan/fold/decision, bounded history, mask audit, and exact Arrow | PIT evidence, decision time, history, or mask result changes |
 | Contract record | Parameter lock plus every train/OOS view, child request/output, and admitted slice | Any C1-C4 execution evidence changes |
+| Hypothesis registration | Statement, registration/idea timestamps, and durable source-entry reference | The registered idea, chronology, or source changes |
+| Promotion candidate | Contract and registration identities plus future gate inputs and required evidence | Structural evidence, chronology, or gate inputs change |
 | Experiment | Artifact plus all window executions, metrics, gates, and verdict | A verification run or outcome changes |
 
 Each dataset's `developmentReadSets` records which exploration evidence led to promotion. These are

@@ -147,6 +147,10 @@ that every declared train cutoff and OOS decision passed C1-C4 with one paramete
 no pricing, costs, metrics, gates, or verdict. It therefore cannot satisfy C5 or make a number
 citable; that requires a later Experiment record.
 
+`veil.promotion-candidate.v0` is the enforced handoff to those later stages: it accepts only a
+replay-verified contract record and rejects exploration, child, or training-only results as C5. Its
+own `claimStatus` remains `unverified`; a candidate id is never an experiment id.
+
 ### C6 — Hypothesis pre-registration
 
 > A hypothesis MUST be registered, with a timestamp and its source of information, before the result
@@ -172,6 +176,12 @@ weak. Treat a vague registration as evidence of nothing.
 
 *Rejects:* hypotheses written after the answer is known — mechanically, by timestamp. It does not
 reject hypotheses written vaguely enough to fit anything; nothing automatic can.
+
+The engine-side `veil.hypothesis-registration.v0` freezes the portable evidence shape now. A
+registration that matches the artifact and strictly predates verification receives the standard
+future gate tier. Missing evidence remains explicitly `exploratory` with a higher tier; a supplied
+late or mismatched entry raises C6. Stage 3 remains responsible for taking both timestamps and the
+source reference from the durable session log—the pure record API is not itself a trusted clock.
 
 ## 4. Violations
 

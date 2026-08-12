@@ -8,6 +8,8 @@ describe("public engine API", () => {
     expect(engineApi).toHaveProperty("captureArtifactCode");
     expect(engineApi).toHaveProperty("createArtifactManifest");
     expect(engineApi).toHaveProperty("createArtifactRuntimeProvider");
+    expect(engineApi).toHaveProperty("createHypothesisRegistration");
+    expect(engineApi).toHaveProperty("createPromotionCandidate");
     expect(engineApi).toHaveProperty("createSourceManifest");
     expect(engineApi).toHaveProperty("DuckDbFileBackend");
     expect(engineApi).toHaveProperty("executeArtifact");
@@ -25,6 +27,8 @@ describe("public engine API", () => {
     expect(engineApi).toHaveProperty("verifySourceManifest");
     expect(engineApi).toHaveProperty("verifyArtifactCode");
     expect(engineApi).toHaveProperty("verifyArtifactManifest");
+    expect(engineApi).toHaveProperty("verifyHypothesisRegistration");
+    expect(engineApi).toHaveProperty("verifyPromotionCandidate");
     expect(engineApi).toHaveProperty("verifyWalkForwardContractRecord");
     expect(engineApi).toHaveProperty("verifyVerificationView");
     expect(engineApi).toHaveProperty("TemporalGuard");

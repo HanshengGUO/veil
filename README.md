@@ -13,14 +13,16 @@ and does not ask you to learn a new research API. It changes one thing:
 Nobody would accept an editor that blocks their keystrokes. Everybody accepts CI that blocks their
 merge. Veil is CI for research claims.
 
-Status: **Stage 1 exit / Stage 2C-4 implementation, pre-alpha.** The backend-neutral temporal guard,
+Status: **Stage 1 exit / Stage 2D implementation, pre-alpha.** The backend-neutral temporal guard,
 native runtime gate, single/multi-file CSV/Parquet point-in-time backend, source/read-set v0
 identities, durable snapshots with operator quarantine, minimum `veil-data` point/panel surface, and
 path-independent content-addressed artifact identities, runtime-provider-neutral framed execution,
 deterministic rolling/expanding training-window runs, and per-decision OOS mask-first contract
 verification are now implemented. A `contract-verified` record binds complete C1-C4 evidence but
-contains no prices, metrics, gates, or experiment verdict; it is not yet a citable Experiment. The
-14-task bench, runner, and first real
+contains no prices, metrics, gates, or experiment verdict. The promotion boundary now admits only
+that replay-verified record, checks hypothesis-registration chronology, and emits an explicitly
+`unverified` candidate for later pricing and gates—not a citable Experiment. The 14-task bench,
+runner, and first real
 [two-model bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are also complete. Independent scoring
 review, an external docs-only trial, and remote CI confirmation remain before Stage 1 closes. An
 independent [QBench Engineering baseline](./bench/baselines/kimi-qbench-engineering-v1/) now also

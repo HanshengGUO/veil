@@ -1,0 +1,26 @@
+# promotion-candidate.yaml — normalized veil.promotion-candidate.v0 record
+#
+# This is a Stage 2 structural handoff to future pricing and gates. It is not an Experiment and
+# cannot carry a verified metric, conclusion, verdict, or experiment id.
+
+format: veil.promotion-candidate.v0
+status: awaiting-pricing-and-gates
+structuralStatus: contract-verified
+claimStatus: unverified
+artifactHash: <sha256>
+planHash: <sha256>
+contractHash: <sha256>
+parameterLockHash: <sha256>
+hypothesis:
+  hypothesisRef: momentum-v1
+  registrationHash: <sha256|null>
+  registrationStatus: preregistered # preregistered | exploratory
+verification:
+  startedAt: 2026-08-12T10:00:00.000Z
+  sourceReference: verification-run-001
+gateInputs:
+  costModel: equities-bps-v1
+  trialsDeclared: 3
+  significanceTier: standard       # standard | higher; exploratory always means higher
+requiredEvidence: [pricing, costs, statistical-gates]
+candidateHash: <sha256>

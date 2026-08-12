@@ -2,14 +2,15 @@
 
 The verification surface. Everything that makes a claim expensive lives here.
 
-Status: Stage 2C-3 — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
+Status: Stage 2D — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
 guard, strict adapter YAML loader, default single/multi-file DuckDB CSV/Parquet backend, source and
 read-set v0 identities, durable content-addressed snapshots, and the minimum `veil-data` point/panel
 surface are implemented and hardened with operator-controlled snapshot quarantine. Portable
 content-addressed artifact identity and runtime-provider-neutral framed execution are also
-implemented. Explicit-session rolling/expanding plans, replayable derived training windows, and
-deterministic `executed` run records now form the 2C-3 orchestration layer. OOS mask-first evaluation
-and the C2/C3/C4 verdict boundary remain next. The package stays private while that API is completed.
+implemented. Explicit-session rolling/expanding plans, replayable derived views, per-decision OOS
+mask-first execution, and complete C1-C4 contract records now feed a narrow promotion boundary.
+That boundary checks C5/C6 evidence and emits only an unverified candidate for later pricing and
+gates. The package stays private while the full promotion integration is completed.
 
 ## The database is replaceable; the guard is not
 
@@ -255,9 +256,24 @@ Successful folds produce `veil.walk-forward-window-execution.v0` records, then o
 `veil.walk-forward-run.v0`. Hashes include artifact, plan, source/window, request, input/output, and
 runtime identities plus all fold boundaries. Temporary roots, stderr, wall time, and completion
 order are excluded. An empty fold fails before child launch; any later failure returns no run record.
-Records say `executed`, never `verified`: OOS pricing and tradability-mask-first evaluation belong to
-2C-4. See the custom in-memory backend probe in
+Records say `executed`, never `verified`: this frozen API remains the training-only layer. See the
+custom in-memory backend probe in
 [`examples/walk-forward-windows`](../../examples/walk-forward-windows/).
+
+## Contract and promotion boundary
+
+`executeWalkForwardContract()` performs a fresh guarded read at every train cutoff and OOS decision,
+derives a bounded history, applies the declared boolean mask before child execution, and validates
+that child entity/event output came from that masked view. Only the current OOS decision slice is
+admitted. One immutable parameter-lock identity and the exact complete fold topology are required
+before `veil.walk-forward-contract.v0` is issued.
+
+`createPromotionCandidate()` accepts that replay-verified contract and no lower-level result. It
+binds a `veil.hypothesis-registration.v0` whose durable timestamp must predate verification. Missing
+registration stays exploratory at a higher future gate tier; late or mismatched registration raises
+C6. The candidate remains `unverified` and requires pricing, costs, and statistical gates before an
+Experiment can exist. The session log supplying trusted chronology belongs to Stage 3, not this
+database-neutral engine.
 
 ## Native runtime gate
 
@@ -283,8 +299,9 @@ contains a backend id, SQL, DSN, binding, or physical path.
 | Default file backend | 2 | Single/multi-file CSV/Parquet with stable source manifests; DuckDB stays private |
 | Read-set identity | 2 | v0 manifest and independent Arrow verification implemented |
 | Snapshot persistence | 2 | Durable local content-addressed storage plus explicit inspect/quarantine/audit recovery |
-| Verification engine | 2 | Training-window execution is implemented; OOS mask-first verdict enforcement remains 2C-4 |
-| Artifact management | 2 | Explicit code identity, bounded child execution, and deterministic WFA run records implemented |
+| Verification engine | 2 | Per-decision PIT/mask-first C1-C4 contract and replay verifier implemented |
+| Promotion boundary | 2 | Contract-only C5 admission plus C6 chronology/exploratory tier implemented; no metrics issued |
+| Artifact management | 2 | Explicit code identity, bounded child execution, and deterministic WFA evidence implemented |
 | Statistical gates | 4 | Trials-aware deflated Sharpe, parameter stability, null falsification, cost sensitivity |
 | Plugin interfaces | 4 | `CostModel`, `NullGenerator` |
 

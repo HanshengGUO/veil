@@ -7,10 +7,13 @@ import {
   captureArtifactCode,
   createArtifactManifest,
   createArtifactRuntimeProvider,
+  createHypothesisRegistration,
+  createPromotionCandidate,
   createSourceBinding,
   executeWalkForwardContract,
   type TemporalBackend,
   TemporalGuard,
+  verifyPromotionCandidate,
   verifyWalkForwardContractRecord,
 } from "../../packages/veil-engine/src/index.ts";
 
@@ -125,6 +128,33 @@ verifyWalkForwardContractRecord(result.record, {
   declaration,
   expectedHash: result.record.contractHash,
 });
+const registration = createHypothesisRegistration({
+  hypothesisRef: artifact.hypothesisRef,
+  statement: "Tradable short-horizon winners outperform after costs.",
+  ideaAvailableAt: "2025-01-01T00:00:00.000Z",
+  registeredAt: "2025-12-01T00:00:00.000Z",
+  source: { kind: "brief", reference: "example-session-entry-001" },
+});
+const candidate = createPromotionCandidate({
+  artifact,
+  plan: result.plan,
+  declaration,
+  contractRecord: result.record,
+  verification: {
+    startedAt: "2026-08-12T12:00:00.000Z",
+    sourceReference: "example-verification-run-001",
+  },
+  registration,
+});
+verifyPromotionCandidate(candidate, {
+  artifact,
+  plan: result.plan,
+  declaration,
+  contractRecord: result.record,
+  registration,
+  verification: candidate.verification,
+  expectedCandidateHash: candidate.candidateHash,
+});
 const admittedRows = result.executions.map((execution) => execution.admitted.result.rowCount);
 if (JSON.stringify(admittedRows) !== JSON.stringify([6, 1, 6, 2])) {
   throw new Error("contract execution did not admit the expected train and OOS rows");
@@ -136,12 +166,18 @@ if (JSON.stringify(oosTimes) !== JSON.stringify([[schedule[5]], [schedule[6], sc
   throw new Error("historical child output was admitted as a current OOS signal");
 }
 const serialized = JSON.stringify(result.record);
+const serializedCandidate = JSON.stringify(candidate);
 if (
   serialized.includes(backendId) ||
   serialized.includes(codeRoot) ||
   serialized.includes("never-crosses-the-guard") ||
   ["metrics", "prices", "returns", "gates", "verdict"].some((key) =>
     serialized.includes(`"${key}"`),
+  ) ||
+  serializedCandidate.includes(backendId) ||
+  serializedCandidate.includes(codeRoot) ||
+  ["metric", "return", "sharpe", "verdict", "experimentId"].some((key) =>
+    serializedCandidate.toLowerCase().includes(`"${key.toLowerCase()}"`),
   )
 ) {
   throw new Error("contract record exposed private state or claimed an experiment outcome");
@@ -155,6 +191,10 @@ console.log(
     planHash: result.record.planHash,
     parameterLockHash: result.record.parameterLockHash,
     contractHash: result.record.contractHash,
+    candidateStatus: candidate.status,
+    claimStatus: candidate.claimStatus,
+    registrationStatus: candidate.hypothesis.registrationStatus,
+    candidateHash: candidate.candidateHash,
     admittedRows,
     oosTimes,
   }),
