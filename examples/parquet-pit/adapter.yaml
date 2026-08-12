@@ -1,0 +1,13 @@
+dataset: example-prices
+version: "2026-08"
+entity_key: ticker
+event_time: event_time
+available_time: available_time
+availability_basis: observed
+guarantees:
+  point_in_time: true
+payload_schema:
+  value: float64
+source:
+  type: parquet
+  locator: prices.parquet

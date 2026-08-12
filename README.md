@@ -14,9 +14,9 @@ Nobody would accept an editor that blocks their keystrokes. Everybody accepts CI
 merge. Veil is CI for research claims.
 
 Status: **Stage 1 exit / Stage 2A implementation, pre-alpha.** The backend-neutral temporal guard,
-native runtime gate, and first real CSV point-in-time backend are now implemented. The 14-task bench,
-runner, and first real two-model [bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are
-also complete. Independent scoring
+native runtime gate, and default CSV/Parquet point-in-time backend are now implemented. The 14-task
+bench, runner, and first real two-model
+[bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are also complete. Independent scoring
 review, an external docs-only trial, and remote CI confirmation remain before Stage 1 closes. An
 independent [QBench Engineering baseline](./bench/baselines/kimi-qbench-engineering-v1/) now also
 tests cold-start artifacts, causal reconciliation, recovery, and content-addressed manifests.
@@ -89,6 +89,7 @@ packages/veil-agent/      the Pi package users install (published as veil-quant)
 bench/                    Veil-bench: tasks, runner, bare-agent baselines
 examples/golden-path/     the reference study, done by hand
 examples/csv-pit/         the smallest adapter → guarded CSV view
+examples/parquet-pit/     the same guarded contract over Parquet
 docs/                     one page per thing
 ```
 
@@ -99,6 +100,7 @@ docs/                     one page per thing
 | [contract.md](./docs/contract.md) | The specification: invariants, degradation rules, threat model |
 | [adapters.md](./docs/adapters.md) | Declare time semantics, conservative defaults, lineage, and source bindings |
 | [examples/csv-pit](./examples/csv-pit) | Run the smallest guarded CSV point-in-time view |
+| [examples/parquet-pit](./examples/parquet-pit) | Run the same guarded view over generated Parquet |
 | [examples/golden-path](./examples/golden-path) | What a Veil research log looks like, with real numbers |
 | [bench/README.md](./bench/README.md) | How scoring works: two axes, four attribution layers |
 | [bench.md](./docs/bench.md) | Run, score, replay, and contribute Veil-bench tasks |
@@ -129,7 +131,7 @@ Requires Node 20 or newer.
 
 ```bash
 npm install
-npm run check          # lint, typecheck, tests, bench smoke, golden-path reproduction
+npm run check          # lint, types, tests, file cold probes, bench smoke, golden path
 npm run golden-path    # regenerate the reference study and print the table above
 ```
 

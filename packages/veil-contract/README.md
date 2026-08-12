@@ -8,8 +8,8 @@ guarantee declaration formats, and the validators that enforce them.
 
 Status: Stage 2A — adapter declaration normalization, semantic validation, conservative degradation
 derivation, lineage cross-checking, and content identity are implemented. Backend-neutral temporal
-reads and their mandatory Arrow guard live in `@veilquant/engine`; its default DuckDB CSV backend is
-implemented and Parquet lands in the next slice.
+reads and their mandatory Arrow guard live in `@veilquant/engine`; its default DuckDB backend now
+serves equivalent guarded CSV and Parquet views behind one storage-neutral contract.
 
 ## What lives here
 

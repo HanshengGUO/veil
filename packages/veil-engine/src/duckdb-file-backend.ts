@@ -51,17 +51,19 @@ const CAPABILITIES: BackendCapabilities = Object.freeze({
 
 const CSV_SCAN =
   "read_csv(?, header = true, auto_detect = true, sample_size = -1, strict_mode = true, null_padding = false)";
+const PARQUET_SCAN = "read_parquet(?)";
 
-/** The default CSV implementation. Its SQL and native connection never cross the backend boundary. */
+/** The default CSV/Parquet implementation. Its SQL and native connection stay private. */
 export class DuckDbFileBackend implements TemporalBackend {
   readonly id = DUCKDB_FILE_BACKEND_ID;
   readonly capabilities = CAPABILITIES;
 
   accepts(source: BackendReadRequest["source"]): boolean {
-    return source.type === "csv";
+    return source.type === "csv" || source.type === "parquet";
   }
 
   async read(request: BackendReadRequest): Promise<BackendReadResult> {
+    const scan = sourceScan(request.source.type);
     const sourcePath = await resolveBoundFile(request);
     const sourceHash = await sha256File(sourcePath);
     const duckdb = await import("@duckdb/node-api");
@@ -74,9 +76,7 @@ export class DuckDbFileBackend implements TemporalBackend {
     try {
       connection = await instance.connect();
       await configureConnection(connection);
-      const schema = await connection.runAndReadAll(`select * from ${CSV_SCAN} limit 0`, [
-        sourcePath,
-      ]);
+      const schema = await connection.runAndReadAll(`select * from ${scan} limit 0`, [sourcePath]);
       const sourceColumns = schema.columnNames();
       const sourceColumnSet = new Set(sourceColumns);
       const projection = request.plan.backendProjection;
@@ -89,7 +89,12 @@ export class DuckDbFileBackend implements TemporalBackend {
       const temporalColumn = request.plan.temporalPredicate.column;
       if (sourceColumnSet.has(temporalColumn)) {
         const temporalIdentifier = quoteIdentifier(temporalColumn);
-        const invalid = await invalidTemporalValueCount(connection, sourcePath, temporalIdentifier);
+        const invalid = await invalidTemporalValueCount(
+          connection,
+          sourcePath,
+          scan,
+          temporalIdentifier,
+        );
         temporalPredicateApplied = invalid === 0;
       }
 
@@ -98,7 +103,7 @@ export class DuckDbFileBackend implements TemporalBackend {
         : "";
       const values = temporalPredicateApplied ? [sourcePath, request.plan.asOf] : [sourcePath];
       const result = await connection.runAndReadAll(
-        `select ${selectedColumns} from ${CSV_SCAN}${temporalClause}`,
+        `select ${selectedColumns} from ${scan}${temporalClause}`,
         values,
       );
       arrowIpc = readerToArrowIpc(result, duckdb.DuckDBTypeId);
@@ -111,7 +116,7 @@ export class DuckDbFileBackend implements TemporalBackend {
     if (sourceHashAfterRead !== sourceHash) {
       throw new EngineConfigurationError(
         "SOURCE_CHANGED",
-        "CSV source changed while a point-in-time view was being built",
+        "file source changed while a point-in-time view was being built",
         "Retry against a stable source version or snapshot the source before reading.",
       );
     }
@@ -131,6 +136,19 @@ export class DuckDbFileBackend implements TemporalBackend {
   }
 }
 
+function sourceScan(sourceType: BackendReadRequest["source"]["type"]): string {
+  if (sourceType === "csv") {
+    return CSV_SCAN;
+  }
+  if (sourceType === "parquet") {
+    return PARQUET_SCAN;
+  }
+  throw invalidSource(
+    `DuckDB file backend does not support source type ${sourceType}`,
+    "Declare a CSV or Parquet source, or choose a compatible backend.",
+  );
+}
+
 async function resolveBoundFile(request: BackendReadRequest): Promise<string> {
   const root = request.binding.option("root");
   if (root === undefined || !isAbsolute(root)) {
@@ -147,7 +165,7 @@ async function resolveBoundFile(request: BackendReadRequest): Promise<string> {
   }
   if (isAbsolute(request.source.locator)) {
     throw invalidSource(
-      "portable CSV locators must be relative to the binding root",
+      "portable file locators must be relative to the binding root",
       "Move the absolute path into SourceBinding.root and keep a relative source locator.",
     );
   }
@@ -159,7 +177,7 @@ async function resolveBoundFile(request: BackendReadRequest): Promise<string> {
     canonicalSource = await realpath(resolve(canonicalRoot, request.source.locator));
   } catch {
     throw invalidSource(
-      "CSV binding root or declared source does not exist",
+      "file binding root or declared source does not exist",
       "Correct the binding root or the declaration's relative source locator.",
     );
   }
@@ -167,7 +185,7 @@ async function resolveBoundFile(request: BackendReadRequest): Promise<string> {
   const relation = relative(canonicalRoot, canonicalSource);
   if (relation === ".." || relation.startsWith(`..${sep}`) || isAbsolute(relation)) {
     throw invalidSource(
-      "CSV source resolves outside its binding root",
+      "file source resolves outside its binding root",
       "Keep the source inside the bound root and avoid escaping symlinks or parent segments.",
     );
   }
@@ -177,8 +195,8 @@ async function resolveBoundFile(request: BackendReadRequest): Promise<string> {
   ]);
   if (!rootStatus.isDirectory() || !sourceStatus.isFile()) {
     throw invalidSource(
-      "CSV binding must resolve from a directory root to one regular file",
-      "Bind a directory and point the declaration at a regular CSV file beneath it.",
+      "file binding must resolve from a directory root to one regular file",
+      "Bind a directory and point the declaration at a regular file beneath it.",
     );
   }
   return canonicalSource;
@@ -193,10 +211,11 @@ async function configureConnection(connection: DuckDBConnection): Promise<void> 
 async function invalidTemporalValueCount(
   connection: DuckDBConnection,
   sourcePath: string,
+  scan: string,
   temporalIdentifier: string,
 ): Promise<number> {
   const result = await connection.runAndReadAll(
-    `select count(*) as invalid_count from ${CSV_SCAN} where ${temporalIdentifier} is null or try_cast(${temporalIdentifier} as timestamptz) is null`,
+    `select count(*) as invalid_count from ${scan} where ${temporalIdentifier} is null or try_cast(${temporalIdentifier} as timestamptz) is null`,
     [sourcePath],
   );
   const value = result.getColumnsJS()[0]?.[0];
@@ -205,7 +224,7 @@ async function invalidTemporalValueCount(
       return Number(value);
     }
     throw invalidSource(
-      "CSV temporal validation count exceeds the supported range",
+      "file temporal validation count exceeds the supported range",
       "Split the source into smaller immutable files before reading.",
     );
   }
@@ -214,7 +233,7 @@ async function invalidTemporalValueCount(
   }
   throw invalidSource(
     "DuckDB returned an invalid temporal validation result",
-    "Check the CSV schema and temporal column before retrying.",
+    "Check the source schema and temporal column before retrying.",
   );
 }
 
@@ -226,7 +245,7 @@ function readerToArrowIpc(
   const duplicate = names.find((name, index) => names.indexOf(name) !== index);
   if (duplicate !== undefined) {
     throw invalidSource(
-      `CSV query produced duplicate column ${JSON.stringify(duplicate)}`,
+      `file query produced duplicate column ${JSON.stringify(duplicate)}`,
       "Use unique source column names and an unambiguous projection.",
     );
   }
@@ -300,8 +319,8 @@ function arrowType(
       return new Null();
     default:
       throw invalidSource(
-        `CSV column ${JSON.stringify(column)} has an unsupported inferred type`,
-        "Declare a primitive CSV representation or add an explicit canonical type adapter.",
+        `file column ${JSON.stringify(column)} has an unsupported inferred type`,
+        "Declare a primitive scalar representation or add an explicit canonical type adapter.",
       );
   }
 }

@@ -41,11 +41,13 @@ Contract v1.0 review rulings, applied to the specification:
 - **Database-neutral temporal protection** in `@veilquant/engine`: SQL-free read plans, replaceable
   capability-declared backends, opaque runtime source bindings, and one mandatory Arrow IPC guard
   that independently removes future rows even when a backend claims predicate pushdown.
-- **Default CSV point-in-time backend**: strict `adapter.yaml` loading, realpath-confined source
-  bindings, read-only DuckDB projection/time pushdown, SHA-256 source identity checked before and
-  after each query, preserved Arrow schemas for empty results, and fail-closed fallback when temporal
-  values are invalid. A committed cold example keeps a future sentinel out of the guarded view.
-  DuckDB v1.4 LTS remains an implementation detail behind the same replaceable backend contract.
+- **Default CSV/Parquet point-in-time backend**: strict `adapter.yaml` loading, realpath-confined
+  source bindings, read-only DuckDB projection/time pushdown, SHA-256 source identity checked before
+  and after each query, preserved Arrow schemas for empty results, and fail-closed fallback when
+  temporal values are invalid. Cold examples keep a future sentinel out of both formats. Metamorphic
+  tests verify that reordered Parquet and CSV produce the same guarded rows and primitive Arrow
+  schema while retaining distinct physical source hashes. DuckDB v1.4 LTS remains an implementation
+  detail behind the same replaceable backend contract.
 - **Adapter declaration validation** in `@veilquant/contract`: strict field-addressable errors,
   conservative defaults, event-time `[from, until)` availability segments, evidence requirements for
   reconstructed/assumed timestamps, orthogonal degradation and engine-obligation derivation,

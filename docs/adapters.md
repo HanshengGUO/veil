@@ -8,7 +8,7 @@ three fields the contract needs:
 ```
 
 Status: Stage 2A. Declaration validation, strict YAML loading, the backend-neutral temporal guard,
-and the default CSV backend are implemented. Parquet and read-set manifests are next. No package is
+and the default CSV/Parquet backend are implemented. Read-set manifests are next. No package is
 published yet.
 
 ## Smallest honest CSV declaration
@@ -58,7 +58,7 @@ payload_schema:
   currency: utf8
 source:
   type: parquet
-  locator: fundamentals/**/*.parquet
+  locator: fundamentals/quarterly.parquet
 ```
 
 Segment boundaries apply to `event_time`. They use `[from, until)`: `from` is included, `until` is
@@ -108,9 +108,11 @@ same declaration usable on another machine without putting credentials in an art
 and option/secret **names**, never their values. The selected trusted backend can resolve values while
 reading; they are not returned with query results or placed in model context.
 
-The default CSV binding uses one option, `root`. It must be an absolute directory narrower than the
-filesystem root; `source.locator` is resolved beneath it using real paths, so `..` and escaping
-symlinks cannot cross the boundary. The source is hashed before and after every read.
+The default file binding currently resolves one regular CSV or Parquet file and uses one option,
+`root`. It must be an absolute directory narrower than the filesystem root; `source.locator` is
+resolved beneath it using real paths, so `..` and escaping symlinks cannot cross the boundary. The
+source is hashed before and after every read. Multi-file manifests arrive with read-set snapshots;
+do not put a glob in the locator yet.
 
 ```ts
 import {
@@ -137,8 +139,11 @@ const view = await new TemporalGuard(registry).read(
 );
 ```
 
-Run the committed future-sentinel example with `npm run csv-pit:verify`; its files are under
-[`examples/csv-pit`](../examples/csv-pit/).
+Run the committed future-sentinel examples with `npm run csv-pit:verify` and
+`npm run parquet-pit:verify`; their entrypoints are under
+[`examples/csv-pit`](../examples/csv-pit/) and
+[`examples/parquet-pit`](../examples/parquet-pit/). The latter generates a temporary Parquet source
+from the committed CSV data, so no opaque binary fixture is stored in the repository.
 
 ## Backends are replaceable
 
@@ -157,10 +162,11 @@ DuckDB is therefore the default CSV/Parquet backend, not part of the public cont
 or SQL fragment crosses the engine API, and the native module is dynamically loaded only by that
 backend or its runtime probe.
 
-For CSV, DuckDB applies projection and temporal predicates only after validating that the guard
-column contains no null or unparseable values. Invalid data disables temporal pushdown and reaches
-the common guard, which fails closed as C1. Pushdown can make a valid read faster; it cannot make bad
-time data disappear.
+For CSV and Parquet, DuckDB applies projection and temporal predicates only after validating that
+the guard column contains no null or unparseable values. Invalid data disables temporal pushdown and
+reaches the common guard, which fails closed as C1. Pushdown can make a valid read faster; it cannot
+make bad time data disappear. The current canonical Arrow mapping accepts primitive scalar columns;
+unsupported nested Parquet types fail closed pending an explicit type adapter.
 
 ## What validation returns
 

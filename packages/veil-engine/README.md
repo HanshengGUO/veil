@@ -3,8 +3,8 @@
 The verification surface. Everything that makes a claim expensive lives here.
 
 Status: Stage 2A — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow guard,
-strict adapter YAML loader, and default DuckDB CSV backend are implemented. The package remains
-private until the Parquet adapter and stable public API are complete.
+strict adapter YAML loader, and default DuckDB CSV/Parquet backend are implemented. The package
+remains private until read-set identity and the stable public API are complete.
 
 ## The database is replaceable; the guard is not
 
@@ -20,7 +20,7 @@ TemporalGuard (always re-checks and removes rows after as_of)
 safe data_view
 ```
 
-DuckDB is the default implementation for zero-copy CSV/Parquet access, not an architectural
+DuckDB is the default implementation for in-place CSV/Parquet access, not an architectural
 boundary. A backend receives a structured projection and temporal predicate, then returns Arrow IPC.
 Its pushdown capabilities are performance hints only: even if it reports that the predicate was
 applied, `TemporalGuard` independently checks every returned decision-time value. A missing or broken
@@ -48,7 +48,7 @@ future backend.
 outside enumerable object state and never appear in JSON, inspection output, guarded results, or
 model-facing diagnostics. Only the selected trusted backend receives accessor functions.
 
-## Default CSV backend
+## Default file backend
 
 The first real backend is deliberately ordinary to use:
 
@@ -84,7 +84,14 @@ and returns the SHA-256 as its source fingerprint.
 
 DuckDB validates the temporal column before applying pushdown. If any value is null or unparseable,
 the backend deliberately skips temporal pushdown so the common guard sees the bad row and raises C1
-instead of silently filtering it away. See the runnable [`examples/csv-pit`](../../examples/csv-pit/).
+instead of silently filtering it away. CSV and Parquet use the same backend, binding rules, hash
+semantics, and guard. The metamorphic suite verifies equal rows and schemas across formats while
+their physical source hashes remain different. See the runnable
+[`examples/csv-pit`](../../examples/csv-pit/) and
+[`examples/parquet-pit`](../../examples/parquet-pit/).
+
+The current canonical Arrow mapping covers primitive scalar columns. Unsupported nested Parquet
+types fail closed until an explicit canonical type adapter is provided.
 
 ## Native runtime gate
 
@@ -99,15 +106,15 @@ round-trips an Arrow IPC stream. Failures identify `duckdb-load`, `duckdb-query`
 Windows matrix verifies native installation and execution.
 
 No DuckDB type appears in the public data-plane API, and importing the engine does not load the
-native module. The next slice adds Parquet behind the same interface and checks CSV/Parquet
-metamorphic equivalence.
+native module. The next slice records declaration, source, query, and result identities in a
+portable read-set manifest.
 
 ## What lands here, and when
 
 | Component | Stage | Notes |
 | --- | --- | --- |
 | Backend-neutral temporal guard | 2 | Structured plan → replaceable backend → Arrow IPC → mandatory C1 re-check |
-| Default file backend | 2 | CSV implemented; Parquet is next; neither exposes DuckDB to callers |
+| Default file backend | 2 | CSV/Parquet implemented with metamorphic equivalence; DuckDB stays private |
 | Read-set snapshots | 2 | What an experiment actually read, content-addressed, for metric-level reproduction |
 | Verification engine | 2 | Re-executes an artifact window by window: rows with `available_time > t` do not exist |
 | Artifact management | 2 | `compute(data_view)` packaging, parameter locking, content-addressed identity |
