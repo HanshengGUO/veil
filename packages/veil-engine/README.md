@@ -2,10 +2,10 @@
 
 The verification surface. Everything that makes a claim expensive lives here.
 
-Status: Stage 2A — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow guard,
-strict adapter YAML loader, default DuckDB CSV/Parquet backend, and read-set v0 identity are
-implemented. The package remains private until durable snapshots and the stable public API are
-complete.
+Status: Stage 2B-1 — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
+guard, strict adapter YAML loader, default DuckDB CSV/Parquet backend, read-set v0 identity, and
+durable content-addressed snapshots are implemented. The package remains private while the
+multi-file source manifest, `veil-data` surface, and remaining verification API are completed.
 
 ## The database is replaceable; the guard is not
 
@@ -109,6 +109,34 @@ differ. A separate Arrow hash remains order/layout-sensitive for exact replay.
 and expected-id evidence. See [`docs/read-sets.md`](../../docs/read-sets.md) and the runnable
 [`examples/read-set`](../../examples/read-set/).
 
+## Durable snapshot store
+
+The snapshot store accepts only a completed read-set manifest and the exact guarded Arrow IPC. It is
+therefore independent of the backend that produced the view:
+
+```ts
+import { openReadSetSnapshotStore } from "@veilquant/engine";
+
+const store = await openReadSetSnapshotStore({ root: "/absolute/veil-snapshots" });
+const written = await store.put(result.readSet, result.arrowIpc);
+const replayed = await store.read(written.snapshot.id, {
+  declaration,
+  sourceFingerprint: result.sourceFingerprint,
+});
+```
+
+The manifest hash is the content address. Publication uses a same-shard temporary directory, synced
+files, directory metadata sync where supported, and atomic directory rename. Every existing object
+and every replay is fully revalidated; concurrent writers converge on one verified object. Missing
+objects raise `SNAPSHOT_NOT_FOUND`, while missing files, extra files, symlinks, truncation, tampering,
+or mismatched evidence raise `INVALID_SNAPSHOT`. The store never substitutes a fresh source query
+for the requested snapshot and never overwrites a corrupt object implicitly.
+
+Store roots are absolute runtime configuration. They are excluded from content identity and from
+the public object's JSON representation, so the same snapshot namespace can be copied between
+machines without changing ids. The cold example performs the replay in a second process without a
+backend or source binding.
+
 ## Native runtime gate
 
 The engine pins:
@@ -122,7 +150,7 @@ round-trips an Arrow IPC stream. Failures identify `duckdb-load`, `duckdb-query`
 Windows matrix verifies native installation and execution.
 
 No DuckDB type appears in the public data-plane API, and importing the engine does not load the
-native module. The next slice persists durable snapshots and exposes the first `veil-data` surface.
+native module. The next slices add multi-file source manifests and the first `veil-data` surface.
 
 ## What lands here, and when
 
@@ -131,7 +159,7 @@ native module. The next slice persists durable snapshots and exposes the first `
 | Backend-neutral temporal guard | 2 | Structured plan → replaceable backend → Arrow IPC → mandatory C1 re-check |
 | Default file backend | 2 | CSV/Parquet implemented with metamorphic equivalence; DuckDB stays private |
 | Read-set identity | 2 | v0 manifest and independent Arrow verification implemented |
-| Snapshot persistence | 2 | Durable storage/recovery and multi-file source manifests are next |
+| Snapshot persistence | 2 | Durable local content-addressed storage implemented; multi-file source manifests and operator recovery tooling remain |
 | Verification engine | 2 | Re-executes an artifact window by window: rows with `available_time > t` do not exist |
 | Artifact management | 2 | `compute(data_view)` packaging, parameter locking, content-addressed identity |
 | Statistical gates | 4 | Trials-aware deflated Sharpe, parameter stability, null falsification, cost sensitivity |
@@ -142,7 +170,7 @@ native module. The next slice persists durable snapshots and exposes the first `
 - **The Arrow boundary is the guarantee.** Future rows are absent before data reaches factor code.
 - **Pushdown is never trust.** It reduces work but cannot weaken or strengthen C1.
 - **Data stays put.** Backends may query in place or extract locally; durable writes are limited to
-  explicit read-set snapshots (the next slice) and bench fixtures.
+  explicit read-set snapshots and bench fixtures.
 - **User factor code is a subprocess.** Artifacts run in the user's language over Arrow IPC.
 - **Exploration stays free.** The guard protects Veil reads and verification claims; it does not
   intercept arbitrary user code.

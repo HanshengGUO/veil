@@ -1,10 +1,11 @@
-# Read-set v0 cold reproduction
+# Durable read-set cold reproduction
 
-This example materializes the two pieces needed to verify one guarded read:
+This example persists one guarded read in the content-addressed snapshot layout:
 
 ```text
-read-set.json   versioned declaration/source/query/result identities
-data.arrow      the exact guarded Arrow evidence
+read-set-snapshots-v0/<shard>/<manifest-hash>/
+├── manifest.json   declaration/source/query/result identities
+└── data.arrow      exact guarded Arrow evidence
 ```
 
 Run it from the repository root:
@@ -13,10 +14,13 @@ Run it from the repository root:
 npm run read-set:verify
 ```
 
-The script performs a real CSV point-in-time read, writes both files to a fresh temporary directory,
-loads them back, and independently verifies the manifest against the declaration, source
-fingerprint, expected manifest id, and Arrow rows. The temporary directory is removed afterward.
+The parent process performs a real CSV point-in-time read and atomically publishes the snapshot. It
+first verifies the stored object against the declaration, source fingerprint, expected manifest id,
+and Arrow rows. It then launches a clean child process with no backend or source binding and asks it
+to reproduce the same identity from the snapshot alone. The temporary store is removed afterward.
 
-The manifest deliberately excludes absolute roots, binding ids, mtimes, hostnames, and secrets. It
-is an identity envelope, not yet a durable snapshot store; persistence and multi-file source
-manifests arrive in the Stage 2B snapshot slice.
+The manifest and public store handle deliberately exclude absolute roots, binding ids, mtimes,
+hostnames, and secrets. Publication uses same-directory temporary files, file sync, directory sync
+where supported, and atomic rename. Missing, truncated, tampered, or unexpected files fail loudly;
+the store never queries the current source as a substitute. Multi-file source manifests are the next
+Stage 2B slice.

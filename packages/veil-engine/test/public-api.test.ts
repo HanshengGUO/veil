@@ -6,6 +6,7 @@ describe("public engine API", () => {
     expect(engineApi).toHaveProperty("BackendRegistry");
     expect(engineApi).toHaveProperty("DuckDbFileBackend");
     expect(engineApi).toHaveProperty("loadAdapterFile");
+    expect(engineApi).toHaveProperty("ReadSetSnapshotStore");
     expect(engineApi).toHaveProperty("TemporalGuard");
     expect(engineApi).not.toHaveProperty("readRegisteredBackend");
     expect(engineApi).not.toHaveProperty("resolveSourceBinding");

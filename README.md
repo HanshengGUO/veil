@@ -13,9 +13,9 @@ and does not ask you to learn a new research API. It changes one thing:
 Nobody would accept an editor that blocks their keystrokes. Everybody accepts CI that blocks their
 merge. Veil is CI for research claims.
 
-Status: **Stage 1 exit / Stage 2A implementation, pre-alpha.** The backend-neutral temporal guard,
-native runtime gate, default CSV/Parquet point-in-time backend, and read-set v0 identities are now
-implemented. The 14-task bench, runner, and first real two-model
+Status: **Stage 1 exit / Stage 2B-1 implementation, pre-alpha.** The backend-neutral temporal guard,
+native runtime gate, default CSV/Parquet point-in-time backend, read-set v0 identities, and durable
+content-addressed snapshots are now implemented. The 14-task bench, runner, and first real two-model
 [bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are also complete. Independent scoring
 review, an external docs-only trial, and remote CI confirmation remain before Stage 1 closes. An
 independent [QBench Engineering baseline](./bench/baselines/kimi-qbench-engineering-v1/) now also
@@ -90,7 +90,7 @@ bench/                    Veil-bench: tasks, runner, bare-agent baselines
 examples/golden-path/     the reference study, done by hand
 examples/csv-pit/         the smallest adapter → guarded CSV view
 examples/parquet-pit/     the same guarded contract over Parquet
-examples/read-set/        manifest + Arrow disk round-trip verification
+examples/read-set/        atomic snapshot + independent-process replay
 docs/                     one page per thing
 ```
 
@@ -103,7 +103,7 @@ docs/                     one page per thing
 | [read-sets.md](./docs/read-sets.md) | Distinguish source, query, logical result, Arrow, and whole-read identities |
 | [examples/csv-pit](./examples/csv-pit) | Run the smallest guarded CSV point-in-time view |
 | [examples/parquet-pit](./examples/parquet-pit) | Run the same guarded view over generated Parquet |
-| [examples/read-set](./examples/read-set) | Persist and independently verify one read-set round trip |
+| [examples/read-set](./examples/read-set) | Atomically persist and cold-replay one guarded read set |
 | [examples/golden-path](./examples/golden-path) | What a Veil research log looks like, with real numbers |
 | [bench/README.md](./bench/README.md) | How scoring works: two axes, four attribution layers |
 | [bench.md](./docs/bench.md) | Run, score, replay, and contribute Veil-bench tasks |

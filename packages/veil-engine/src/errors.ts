@@ -12,7 +12,10 @@ export type EngineConfigurationErrorCode =
   | "INVALID_BINDING"
   | "INVALID_QUERY"
   | "INVALID_BACKEND_RESULT"
-  | "INVALID_READ_SET";
+  | "INVALID_READ_SET"
+  | "INVALID_SNAPSHOT_STORE"
+  | "SNAPSHOT_NOT_FOUND"
+  | "INVALID_SNAPSHOT";
 
 export class EngineConfigurationError extends Error {
   readonly code: EngineConfigurationErrorCode;

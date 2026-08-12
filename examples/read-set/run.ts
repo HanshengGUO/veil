@@ -1,4 +1,5 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,56 +9,131 @@ import {
   DUCKDB_FILE_BACKEND_ID,
   DuckDbFileBackend,
   loadAdapterFile,
+  openReadSetSnapshotStore,
+  type ReadSetSnapshot,
   TemporalGuard,
-  verifyReadSetManifest,
 } from "../../packages/veil-engine/src/index.ts";
 
-const sourceRoot = fileURLToPath(new URL("../csv-pit/", import.meta.url));
-const declaration = await loadAdapterFile(new URL("adapter.yaml", import.meta.url));
-const registry = new BackendRegistry();
-registry.register(new DuckDbFileBackend());
+interface ReplaySummary {
+  readonly format: string;
+  readonly rows: number;
+  readonly resultHash: string;
+  readonly arrowHash: string;
+  readonly manifestHash: string;
+}
 
-const result = await new TemporalGuard(registry).read(
-  declaration,
-  { asOf: "2026-08-12", columns: ["ticker", "value"] },
-  createSourceBinding({
-    id: "read-set-example",
-    backend: DUCKDB_FILE_BACKEND_ID,
-    options: { root: sourceRoot },
-  }),
-);
+function summarize(snapshot: ReadSetSnapshot): ReplaySummary {
+  return {
+    format: snapshot.manifest.format,
+    rows: snapshot.manifest.result.rowCount,
+    resultHash: snapshot.manifest.result.resultHash,
+    arrowHash: snapshot.manifest.result.arrowHash,
+    manifestHash: snapshot.manifest.manifestHash,
+  };
+}
 
-const snapshotRoot = await mkdtemp(join(tmpdir(), "veil-read-set-"));
-try {
-  const manifestPath = join(snapshotRoot, "read-set.json");
-  const arrowPath = join(snapshotRoot, "data.arrow");
-  await Promise.all([
-    writeFile(manifestPath, `${JSON.stringify(result.readSet, null, 2)}\n`, "utf8"),
-    writeFile(arrowPath, result.arrowIpc),
-  ]);
+async function coldReplay(root: string, id: string): Promise<void> {
+  const store = await openReadSetSnapshotStore({ root });
+  console.log(JSON.stringify(summarize(await store.read(id))));
+}
 
-  const storedManifest: unknown = JSON.parse(await readFile(manifestPath, "utf8"));
-  const storedArrow = await readFile(arrowPath);
-  const verified = verifyReadSetManifest(storedManifest, {
-    arrowIpc: storedArrow,
-    declaration,
-    sourceFingerprint: result.sourceFingerprint,
-    expectedManifestHash: result.readSet.manifestHash,
+function coldEnvironment(): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {};
+  for (const name of [
+    "PATH",
+    "SystemRoot",
+    "WINDIR",
+    "ComSpec",
+    "PATHEXT",
+    "TMP",
+    "TEMP",
+    "TMPDIR",
+  ]) {
+    if (process.env[name] !== undefined) {
+      environment[name] = process.env[name];
+    }
+  }
+  return environment;
+}
+
+function executeColdReplay(root: string, id: string): Promise<ReplaySummary> {
+  const entrypoint = fileURLToPath(import.meta.url);
+  const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
+  return new Promise((resolve, reject) => {
+    execFile(
+      process.execPath,
+      ["--import=tsx", entrypoint, "--cold-replay", root, id],
+      {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+        env: coldEnvironment(),
+      },
+      (error, stdout, stderr) => {
+        if (error !== null) {
+          reject(new Error(`cold snapshot replay failed: ${stderr.trim()}`));
+          return;
+        }
+        try {
+          resolve(JSON.parse(stdout) as ReplaySummary);
+        } catch {
+          reject(new Error("cold snapshot replay returned invalid JSON"));
+        }
+      },
+    );
   });
+}
 
-  console.log(
-    JSON.stringify({
-      ok: true,
-      format: verified.format,
-      rows: verified.result.rowCount,
-      declarationHash: verified.declarationHash,
-      queryHash: verified.queryHash,
-      sourceFingerprint: verified.source.fingerprint?.algorithm ?? null,
-      resultHash: verified.result.resultHash,
-      arrowHash: verified.result.arrowHash,
-      manifestHash: verified.manifestHash,
+async function produceAndReplay(): Promise<void> {
+  const sourceRoot = fileURLToPath(new URL("../csv-pit/", import.meta.url));
+  const declaration = await loadAdapterFile(new URL("adapter.yaml", import.meta.url));
+  const registry = new BackendRegistry();
+  registry.register(new DuckDbFileBackend());
+  const result = await new TemporalGuard(registry).read(
+    declaration,
+    { asOf: "2026-08-12", columns: ["ticker", "value"] },
+    createSourceBinding({
+      id: "read-set-example",
+      backend: DUCKDB_FILE_BACKEND_ID,
+      options: { root: sourceRoot },
     }),
   );
-} finally {
-  await rm(snapshotRoot, { recursive: true, force: true });
+
+  const snapshotRoot = await mkdtemp(join(tmpdir(), "veil-read-set-"));
+  try {
+    const store = await openReadSetSnapshotStore({ root: snapshotRoot });
+    const write = await store.put(result.readSet, result.arrowIpc);
+    const expected = summarize(
+      await store.read(write.snapshot.id, {
+        declaration,
+        sourceFingerprint: result.sourceFingerprint,
+      }),
+    );
+    const replayed = await executeColdReplay(snapshotRoot, write.snapshot.id);
+    if (JSON.stringify(replayed) !== JSON.stringify(expected)) {
+      throw new Error("cold snapshot replay did not reproduce the expected identity");
+    }
+
+    console.log(
+      JSON.stringify({
+        ok: true,
+        coldReplay: true,
+        created: write.created,
+        ...replayed,
+      }),
+    );
+  } finally {
+    await rm(snapshotRoot, { recursive: true, force: true });
+  }
+}
+
+const [mode, root, id] = process.argv.slice(2);
+if (mode === "--cold-replay") {
+  if (root === undefined || id === undefined) {
+    throw new Error("cold replay requires a snapshot root and content id");
+  }
+  await coldReplay(root, id);
+} else if (mode === undefined) {
+  await produceAndReplay();
+} else {
+  throw new Error(`unknown read-set example mode: ${mode}`);
 }

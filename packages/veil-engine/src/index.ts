@@ -27,6 +27,16 @@ export {
 } from "./read-set.ts";
 export * from "./runtime-smoke.ts";
 export {
+  openReadSetSnapshotStore,
+  READ_SET_SNAPSHOT_FORMAT,
+  type ReadSetSnapshot,
+  type ReadSetSnapshotEvidence,
+  type ReadSetSnapshotReference,
+  ReadSetSnapshotStore,
+  type ReadSetSnapshotStoreInput,
+  type ReadSetSnapshotWriteResult,
+} from "./snapshot-store.ts";
+export {
   createSourceBinding,
   type ResolvedSourceBinding,
   SourceBinding,
