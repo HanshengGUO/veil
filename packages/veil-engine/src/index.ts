@@ -76,6 +76,7 @@ export {
 export { DUCKDB_FILE_BACKEND_ID, DuckDbFileBackend } from "./duckdb-file-backend.ts";
 export * from "./errors.ts";
 export {
+  createReadSetResultIdentity,
   READ_SET_FILTER_VERSION,
   READ_SET_FORMAT,
   READ_SET_RESULT_VERSION,
@@ -87,6 +88,7 @@ export {
   type ReadSetSchemaField,
   type ReadSetVerificationEvidence,
   verifyReadSetManifest,
+  verifyReadSetResultIdentity,
 } from "./read-set.ts";
 export * from "./runtime-smoke.ts";
 export {
@@ -144,3 +146,39 @@ export {
   type VeilDataCliResult,
   type VeilDataCliSnapshotResult,
 } from "./veil-data-cli.ts";
+export {
+  type ExecuteWalkForwardWindowsInput,
+  executeWalkForwardWindows,
+  type WalkForwardWindowExecution,
+  type WalkForwardWindowsResult,
+} from "./walk-forward.ts";
+export {
+  type CreateWalkForwardPlanInput,
+  createWalkForwardPlan,
+  verifyWalkForwardPlan,
+  WALK_FORWARD_MAX_SCHEDULE_ENTRIES,
+  WALK_FORWARD_PLAN_FORMAT,
+  type WalkForwardFold,
+  type WalkForwardPlan,
+  type WalkForwardPlanVerificationEvidence,
+  type WalkForwardScheduleRange,
+} from "./walk-forward-plan.ts";
+export {
+  verifyWalkForwardRunRecord,
+  verifyWalkForwardWindowExecutionRecord,
+  WALK_FORWARD_RUN_FORMAT,
+  WALK_FORWARD_WINDOW_EXECUTION_FORMAT,
+  type WalkForwardRecordVerificationEvidence,
+  type WalkForwardRunRecord,
+  type WalkForwardWindowExecutionRecord,
+} from "./walk-forward-record.ts";
+export {
+  type CreateWindowReadSetInput,
+  createWindowReadSet,
+  verifyWindowReadSetManifest,
+  WINDOW_READ_SET_FILTER_VERSION,
+  WINDOW_READ_SET_FORMAT,
+  type WindowReadSet,
+  type WindowReadSetManifest,
+  type WindowReadSetVerificationEvidence,
+} from "./window-read-set.ts";

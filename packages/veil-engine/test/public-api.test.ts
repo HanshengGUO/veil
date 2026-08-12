@@ -11,6 +11,9 @@ describe("public engine API", () => {
     expect(engineApi).toHaveProperty("createSourceManifest");
     expect(engineApi).toHaveProperty("DuckDbFileBackend");
     expect(engineApi).toHaveProperty("executeArtifact");
+    expect(engineApi).toHaveProperty("executeWalkForwardWindows");
+    expect(engineApi).toHaveProperty("createWalkForwardPlan");
+    expect(engineApi).toHaveProperty("createWindowReadSet");
     expect(engineApi).toHaveProperty("loadAdapterFile");
     expect(engineApi).toHaveProperty("ReadSetSnapshotStore");
     expect(engineApi).toHaveProperty("ReadSetSnapshotRecovery");
@@ -24,5 +27,8 @@ describe("public engine API", () => {
     expect(engineApi).not.toHaveProperty("readRegisteredBackend");
     expect(engineApi).not.toHaveProperty("resolveSourceBinding");
     expect(engineApi).not.toHaveProperty("selectArtifactRuntimeProvider");
+    expect(engineApi).not.toHaveProperty("executeArtifactWithEvidence");
+    expect(engineApi).not.toHaveProperty("createWalkForwardRunRecord");
+    expect(engineApi).not.toHaveProperty("createWalkForwardWindowExecutionRecord");
   });
 });

@@ -5,9 +5,9 @@ An artifact is the immutable unit that crosses from free exploration into verifi
 and the data semantics and protocol it expects. Changing any identity-bearing input creates a
 different artifact; a mutable working-tree path is never evidence of identity.
 
-Status: `veil.artifact.v0` identity and runtime-provider-neutral framed subprocess execution are
-implemented. Walk-forward window orchestration and C2/C3/C4 enforcement begin in Stage 2C-3. See
-the exact normalized artifact shape in
+Status: `veil.artifact.v0`, runtime-provider-neutral framed subprocess execution, and deterministic
+Stage 2C-3 training-window orchestration are implemented. OOS mask-first evaluation and the final
+C2/C3/C4 verdict boundary remain Stage 2C-4 work. See the exact normalized artifact shape in
 [`artifact.yaml`](../packages/veil-contract/schemas/artifact.yaml).
 
 ## Build one portable identity
@@ -129,47 +129,91 @@ The codec is public so a thin Python, Rust, or other language adapter can implem
 contract. The engine itself has no language or database switch. Run
 `npm run artifact-execution:verify` for the clean Node adapter example.
 
-## Three identities, three jobs
+## Execute deterministic training windows
+
+The WFA planner does not guess a trading calendar. Supply the exact ordered UTC sessions required by
+the artifact protocol; every `*Days` field counts entries in this schedule:
+
+```ts
+const run = await executeWalkForwardWindows({
+  artifact,
+  codeRoot: "/absolute/project/factor",
+  decisionSchedule,
+  declaration,
+  guard,
+  binding,
+  runtimes,
+  columns: ["ticker", "value"],
+});
+```
+
+The schedule length must be exactly
+`trainDays + purgeDays + embargoDays + folds * oosDays`. It must contain unique, strictly increasing
+instants. Each fold records rolling or expanding training, purge, embargo, and contiguous OOS
+boundaries. Purge must cover the holding horizon and embargo is always non-zero.
+
+For each training cutoff, orchestration creates a new guarded source read-set. It then derives
+`veil.window-read-set.v0` by filtering the retained event-time column to the fold's inclusive training
+range. The derived identity commits to the source read-set, declaration, plan/fold/range, and exact
+Arrow result. `verifyWindowReadSetManifest()` requires the original source manifest and Arrow and
+replays that filter; an in-memory slice cannot masquerade under the source id.
+
+Only derived training Arrow reaches the child. Successful folds issue deterministic `executed`
+records, and a complete run issues `veil.walk-forward-run.v0`. Empty windows fail before launch and
+any child failure prevents a run record. Run identity excludes backend details, SQL, bindings,
+temporary roots, stderr, duration, and completion timing. The injected guard can therefore sit over
+DuckDB, another database, a service, or an in-memory backend without changing orchestration.
+
+Run `npm run walk-forward:verify` for a cold custom-backend example. This boundary does not execute
+or price OOS rows yet and deliberately does not emit metrics or a `verified` status; those checks
+land with mask-first C2/C3/C4 enforcement in Stage 2C-4.
+
+## Four identities, four jobs
 
 | Identity | Contains | Changes when |
 | --- | --- | --- |
 | Artifact | Code tree, runtime/entrypoint, locked choices, adapter hashes, development evidence, declared protocol | The promoted object or its declared provenance changes |
-| Window read-set | Exact source/query/guarded Arrow delivered for one decision-time window | A verification window reads different evidence |
+| Window read-set | Source read identity plus exact plan/fold/range and derived Arrow | A training window reads or derives different evidence |
+| Executed run | Plan plus every successful training-window execution identity | A schedule, runtime, input, output, or execution changes |
 | Experiment | Artifact plus all window executions, metrics, gates, and verdict | A verification run or outcome changes |
 
 Each dataset's `developmentReadSets` records which exploration evidence led to promotion. These are
 not reusable as execution windows and do not authorize a current source query. Every framed request
-is instead bound to a newly guarded read-set id. Stage 2C-3 will aggregate those window executions
-into a deterministic experiment record without changing the artifact identity.
+is instead bound to a newly guarded and derived window id. Stage 2C-3 aggregates successful training
+executions into a deterministic run record without changing the artifact identity. That run record
+is not the final experiment: it has no OOS metrics, gates, or verdict.
 
 ## The verification boundary
 
-Veil, not factor code, owns source bindings, backend handles, credentials, and decision-time reads.
-The implemented single-window boundary:
+Veil, not factor code, owns source bindings, backend handles, credentials, schedules, and
+decision-time reads. The implemented boundary:
 
-1. constructs the point-in-time view through the same backend-neutral temporal guard used by
-   `veil-data`;
-2. passes only guarded Arrow IPC and immutable run metadata to the artifact subprocess;
-3. validates framing, identities, limits, and Arrow output before returning it.
+1. derives deterministic rolling/expanding boundaries from an explicit UTC session schedule;
+2. constructs a fresh point-in-time source view at each training cutoff through the same
+   backend-neutral temporal guard used by `veil-data`;
+3. replays an event-time lower/upper-bound filter into separately identified derived evidence;
+4. passes only that Arrow IPC and immutable run metadata to the artifact subprocess;
+5. validates framing and identities and issues a run record only after every fold succeeds.
 
-The Stage 2C-3/4 orchestrator will construct rolling/expanding windows, apply the declared
-tradability mask before signal formation, and admit validated outputs to an experiment record.
+Stage 2C-4 will apply the declared tradability mask before OOS signal formation and admit only those
+validated, priced outputs to an experiment record.
 
 ```text
 SourceBinding + TemporalBackend
              |
-       TemporalGuard(as_of)
+    WFA plan → TemporalGuard(train cutoff)
              |
-    guarded Arrow + read-set
+ source read-set → derived train window
              |
      artifact subprocess
              |
-      validated factor output
+ deterministic executed record
 ```
 
 The subprocess will receive no raw source path, DSN, credential, backend object, or escape hatch to
 a current query. A backend may be DuckDB, another database, a service, or an in-memory
 implementation; that choice ends at the guard and is absent from both artifact and child protocols.
 
-Framed execution proves one child ran against one exact guarded input; it does not by itself make an
-artifact verified. Until WFA and C2/C3/C4 checks exist, exploration metrics remain uncitable.
+Framed execution proves one child ran against one exact guarded input. A 2C-3 run proves every
+declared training fold executed against replayable evidence. Neither makes an artifact or metric
+verified; until 2C-4 OOS C2/C3/C4 enforcement exists, all metrics remain uncitable.

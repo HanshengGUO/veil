@@ -8,6 +8,7 @@ import { inspect } from "node:util";
 import { normalizeAdapterDeclaration } from "@veilquant/contract";
 import { tableFromArrays, tableFromIPC, tableToIPC } from "apache-arrow";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { executeArtifactWithEvidence } from "../src/artifact-execution.ts";
 import {
   type ArtifactManifest,
   ArtifactRuntimeRegistry,
@@ -347,6 +348,26 @@ describe("framed artifact subprocess", () => {
         codeRoot,
         readSet: execution.readSet,
         arrowIpc: execution.arrowIpc,
+        runtimes: runtimes().registry,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_ARTIFACT_EXECUTION" });
+  });
+
+  it("binds the internal derived-evidence bridge to the exact input Arrow", async () => {
+    await expect(
+      executeArtifactWithEvidence({
+        artifact,
+        codeRoot,
+        evidence: {
+          readSetId: execution.readSet.manifestHash,
+          dataset: execution.readSet.query.dataset,
+          version: execution.readSet.query.adapterVersion,
+          declarationHash: execution.readSet.declarationHash,
+          decisionTime: execution.readSet.query.asOf,
+          inputArrowHash: execution.readSet.result.arrowHash,
+          developmentReadSetIds: [execution.readSet.manifestHash],
+        },
+        arrowIpc: development.arrowIpc,
         runtimes: runtimes().registry,
       }),
     ).rejects.toMatchObject({ code: "INVALID_ARTIFACT_EXECUTION" });

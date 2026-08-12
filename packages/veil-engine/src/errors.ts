@@ -32,7 +32,11 @@ export type EngineConfigurationErrorCode =
   | "ARTIFACT_EXECUTION_TIMEOUT"
   | "ARTIFACT_EXECUTION_ABORTED"
   | "ARTIFACT_OUTPUT_LIMIT"
-  | "INVALID_ARTIFACT_OUTPUT";
+  | "INVALID_ARTIFACT_OUTPUT"
+  | "INVALID_WALK_FORWARD_PLAN"
+  | "INVALID_WINDOW_READ_SET"
+  | "INVALID_WALK_FORWARD_EXECUTION"
+  | "EMPTY_VERIFICATION_WINDOW";
 
 export class EngineConfigurationError extends Error {
   readonly code: EngineConfigurationErrorCode;

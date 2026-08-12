@@ -204,26 +204,48 @@ export function verifyReadSetManifest(
     );
   }
 
+  verifyReadSetResultIdentity(manifest.result, evidence.arrowIpc);
+
+  return manifest;
+}
+
+/** Builds the same canonical Arrow identity used inside read-set and derived-window manifests. */
+export function createReadSetResultIdentity(arrowIpc: Uint8Array): ReadSetResultIdentity {
+  if (!(arrowIpc instanceof Uint8Array) || arrowIpc.byteLength === 0) {
+    throw invalidReadSet("read-set result identity requires non-empty Arrow IPC evidence");
+  }
   let table: Table;
   try {
-    table = tableFromIPC(evidence.arrowIpc);
+    table = tableFromIPC(arrowIpc);
   } catch {
     throw invalidReadSet("read-set Arrow IPC evidence is unreadable");
   }
-  const actual = canonicalArrowResult(table, evidence.arrowIpc);
-  requireHash(
-    canonicalJson(actual.schema) === canonicalJson(manifest.result.schema),
-    "read-set Arrow schema differs from the manifest",
-  );
-  requireHash(actual.schemaHash === manifest.result.schemaHash, "read-set schema hash differs");
-  requireHash(actual.rowCount === manifest.result.rowCount, "read-set row count differs");
-  requireHash(actual.resultHash === manifest.result.resultHash, "read-set result hash differs");
-  requireHash(
-    actual.arrowHash === manifest.result.arrowHash,
-    "read-set Arrow content hash differs",
-  );
+  return canonicalArrowResult(table, arrowIpc);
+}
 
-  return manifest;
+/** Independently recomputes schema, logical rows, and exact Arrow bytes for a result identity. */
+export function verifyReadSetResultIdentity(
+  input: unknown,
+  arrowIpc: Uint8Array,
+): ReadSetResultIdentity {
+  const expected = normalizeResult(input);
+  requireHash(
+    hashCanonical(SCHEMA_HASH_DOMAIN, {
+      canonicalizationVersion: expected.canonicalizationVersion,
+      schema: expected.schema,
+    }) === expected.schemaHash,
+    "read-set result schema hash does not match its schema",
+  );
+  const actual = createReadSetResultIdentity(arrowIpc);
+  requireHash(
+    canonicalJson(actual.schema) === canonicalJson(expected.schema),
+    "read-set Arrow schema differs from the result identity",
+  );
+  requireHash(actual.schemaHash === expected.schemaHash, "read-set schema hash differs");
+  requireHash(actual.rowCount === expected.rowCount, "read-set row count differs");
+  requireHash(actual.resultHash === expected.resultHash, "read-set result hash differs");
+  requireHash(actual.arrowHash === expected.arrowHash, "read-set Arrow content hash differs");
+  return deepFreeze(expected);
 }
 
 function queryEnvelope(plan: TemporalReadPlan): ReadSetQueryEnvelope {

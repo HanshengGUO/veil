@@ -1,10 +1,12 @@
 import { Buffer } from "node:buffer";
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { normalizeDecisionTime } from "@veilquant/contract";
 import { tableFromIPC } from "apache-arrow";
-import { verifyArtifactManifest } from "./artifact.ts";
+import { type ArtifactManifest, verifyArtifactManifest } from "./artifact.ts";
 import { verifyArtifactCode } from "./artifact-code.ts";
 import {
   ARTIFACT_EXECUTION_DEFAULT_ARROW_BYTES,
@@ -30,6 +32,8 @@ const DEFAULT_TIMEOUT_MS = 60_000;
 const DEFAULT_TERMINATE_GRACE_MS = 500;
 const DEFAULT_STDERR_BYTES = 64 * 1024;
 const MAX_TIMEOUT_MS = 24 * 60 * 60 * 1000;
+const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/;
+const PORTABLE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 export interface ArtifactExecutionLimits {
   readonly timeoutMs?: number;
@@ -46,6 +50,27 @@ export interface ExecuteArtifactInput {
   readonly codeRoot: string;
   readonly readSet: unknown;
   /** Exact guarded Arrow associated with readSet. */
+  readonly arrowIpc: Uint8Array;
+  readonly runtimes: ArtifactRuntimeRegistry;
+  readonly limits?: ArtifactExecutionLimits;
+  readonly signal?: AbortSignal;
+}
+
+/** Internal neutral evidence envelope used by derived verification windows. */
+export interface ArtifactExecutionDataEvidence {
+  readonly readSetId: string;
+  readonly dataset: string;
+  readonly version: string;
+  readonly declarationHash: string;
+  readonly decisionTime: string;
+  readonly inputArrowHash: string;
+  readonly developmentReadSetIds: readonly string[];
+}
+
+export interface ExecuteArtifactWithEvidenceInput {
+  readonly artifact: unknown;
+  readonly codeRoot: string;
+  readonly evidence: ArtifactExecutionDataEvidence;
   readonly arrowIpc: Uint8Array;
   readonly runtimes: ArtifactRuntimeRegistry;
   readonly limits?: ArtifactExecutionLimits;
@@ -90,14 +115,7 @@ export async function executeArtifact(
   input: ExecuteArtifactInput,
 ): Promise<ArtifactExecutionResult> {
   const limits = normalizeLimits(input.limits);
-  throwIfAborted(input.signal);
-  if (!(input.arrowIpc instanceof Uint8Array) || input.arrowIpc.byteLength === 0) {
-    throw invalidExecution("artifact execution requires non-empty guarded Arrow IPC");
-  }
-  if (input.arrowIpc.byteLength > limits.maxInputArrowBytes) {
-    throw outputLimit("artifact execution input exceeds its Arrow byte limit");
-  }
-
+  validateInputArrow(input.arrowIpc, limits, input.signal);
   const artifact = verifyArtifactManifest(input.artifact);
   const readSet = verifyReadSetManifest(input.readSet, {
     arrowIpc: input.arrowIpc,
@@ -106,18 +124,56 @@ export async function executeArtifact(
         ? input.readSet.manifestHash
         : undefined,
   });
+  return executeVerifiedArtifact(
+    input,
+    artifact,
+    normalizeDataEvidence(
+      {
+        readSetId: readSet.manifestHash,
+        dataset: readSet.query.dataset,
+        version: readSet.query.adapterVersion,
+        declarationHash: readSet.declarationHash,
+        decisionTime: readSet.query.asOf,
+        inputArrowHash: readSet.result.arrowHash,
+        developmentReadSetIds: [readSet.manifestHash],
+      },
+      input.arrowIpc,
+    ),
+    limits,
+  );
+}
+
+/** Engine-internal bridge for replayed window evidence; deliberately omitted from index.ts. */
+export async function executeArtifactWithEvidence(
+  input: ExecuteArtifactWithEvidenceInput,
+): Promise<ArtifactExecutionResult> {
+  const limits = normalizeLimits(input.limits);
+  validateInputArrow(input.arrowIpc, limits, input.signal);
+  const artifact = verifyArtifactManifest(input.artifact);
+  const evidence = normalizeDataEvidence(input.evidence, input.arrowIpc);
+  return executeVerifiedArtifact(input, artifact, evidence, limits);
+}
+
+async function executeVerifiedArtifact(
+  input: Pick<ExecuteArtifactWithEvidenceInput, "codeRoot" | "arrowIpc" | "runtimes" | "signal">,
+  artifact: ArtifactManifest,
+  evidence: ArtifactExecutionDataEvidence,
+  limits: NormalizedExecutionLimits,
+): Promise<ArtifactExecutionResult> {
   const dataset = artifact.dataSemantics.datasets.find(
     (candidate) =>
-      candidate.dataset === readSet.query.dataset &&
-      candidate.version === readSet.query.adapterVersion &&
-      candidate.declarationHash === readSet.declarationHash,
+      candidate.dataset === evidence.dataset &&
+      candidate.version === evidence.version &&
+      candidate.declarationHash === evidence.declarationHash,
   );
   if (dataset === undefined) {
-    throw invalidExecution(
-      "guarded read-set semantics are not declared by the artifact being executed",
-    );
+    throw invalidExecution("execution evidence semantics are not declared by the artifact");
   }
-  if (dataset.developmentReadSets.includes(readSet.manifestHash)) {
+  if (
+    evidence.developmentReadSetIds.some((readSetId) =>
+      dataset.developmentReadSets.includes(readSetId),
+    )
+  ) {
     throw invalidExecution(
       "artifact development evidence cannot be reused as a verification execution window",
     );
@@ -160,8 +216,8 @@ export async function executeArtifact(
         version: dataset.version,
         declarationHash: dataset.declarationHash,
       },
-      readSetId: readSet.manifestHash,
-      decisionTime: readSet.query.asOf,
+      readSetId: evidence.readSetId,
+      decisionTime: evidence.decisionTime,
       paramsLocked: artifact.paramsLocked,
       declaredLiterals: artifact.declaredLiterals,
       arrowIpc: input.arrowIpc,
@@ -195,8 +251,8 @@ export async function executeArtifact(
       format: ARTIFACT_EXECUTION_FORMAT,
       requestHash: request.metadata.requestHash,
       artifactHash: artifact.artifactHash,
-      readSetId: readSet.manifestHash,
-      decisionTime: readSet.query.asOf,
+      readSetId: evidence.readSetId,
+      decisionTime: evidence.decisionTime,
       runtime: provider.descriptor,
       outputArrowHash: resultFrame.metadata.outputArrowHash,
       arrowIpc: Uint8Array.from(resultFrame.arrowIpc),
@@ -415,6 +471,85 @@ function cleanEnvironment(
   return environment;
 }
 
+function validateInputArrow(
+  arrowIpc: unknown,
+  limits: NormalizedExecutionLimits,
+  signal: AbortSignal | undefined,
+): asserts arrowIpc is Uint8Array {
+  throwIfAborted(signal);
+  if (!(arrowIpc instanceof Uint8Array) || arrowIpc.byteLength === 0) {
+    throw invalidExecution("artifact execution requires non-empty guarded Arrow IPC");
+  }
+  if (arrowIpc.byteLength > limits.maxInputArrowBytes) {
+    throw outputLimit("artifact execution input exceeds its Arrow byte limit");
+  }
+}
+
+function normalizeDataEvidence(
+  input: unknown,
+  arrowIpc: Uint8Array,
+): ArtifactExecutionDataEvidence {
+  if (
+    !isPlainRecord(input) ||
+    !hasExactKeys(input, [
+      "readSetId",
+      "dataset",
+      "version",
+      "declarationHash",
+      "decisionTime",
+      "inputArrowHash",
+      "developmentReadSetIds",
+    ])
+  ) {
+    throw invalidExecution("artifact execution evidence has missing or unknown fields");
+  }
+  const readSetId = sha256(input.readSetId, "execution read-set id");
+  if (typeof input.dataset !== "string" || !PORTABLE_ID.test(input.dataset)) {
+    throw invalidExecution("artifact execution evidence dataset must be a portable name");
+  }
+  if (
+    typeof input.version !== "string" ||
+    input.version.length === 0 ||
+    input.version.trim() !== input.version
+  ) {
+    throw invalidExecution("artifact execution evidence version must be portable text");
+  }
+  if (!Array.isArray(input.developmentReadSetIds) || input.developmentReadSetIds.length === 0) {
+    throw invalidExecution("artifact execution evidence must retain its development lineage ids");
+  }
+  const developmentReadSetIds = input.developmentReadSetIds
+    .map((value) => sha256(value, "development lineage id"))
+    .sort(compareText);
+  if (
+    new Set(developmentReadSetIds).size !== developmentReadSetIds.length ||
+    !developmentReadSetIds.includes(readSetId)
+  ) {
+    throw invalidExecution(
+      "artifact execution development lineage ids must be unique and include the active read-set",
+    );
+  }
+  let decisionTime: string;
+  try {
+    decisionTime = normalizeDecisionTime(input.decisionTime);
+    if (decisionTime !== input.decisionTime) throw new Error("not canonical");
+  } catch {
+    throw invalidExecution("artifact execution decision time must be a canonical UTC instant");
+  }
+  const inputArrowHash = sha256(input.inputArrowHash, "execution input Arrow hash");
+  if (inputArrowHash !== hashBytes(arrowIpc)) {
+    throw invalidExecution("artifact execution Arrow does not match its verified evidence");
+  }
+  return Object.freeze({
+    readSetId,
+    dataset: input.dataset,
+    version: input.version,
+    declarationHash: sha256(input.declarationHash, "execution declaration hash"),
+    decisionTime,
+    inputArrowHash,
+    developmentReadSetIds: Object.freeze(developmentReadSetIds),
+  });
+}
+
 function normalizeLimits(input: ArtifactExecutionLimits | undefined): NormalizedExecutionLimits {
   if (
     input !== undefined &&
@@ -486,6 +621,25 @@ function isPlainRecord(input: unknown): input is Record<string, unknown> {
 function hasOnlyKeys(input: Record<string, unknown>, keys: readonly string[]): boolean {
   const allowed = new Set(keys);
   return Object.keys(input).every((key) => allowed.has(key));
+}
+
+function hasExactKeys(input: Record<string, unknown>, keys: readonly string[]): boolean {
+  return Object.keys(input).length === keys.length && hasOnlyKeys(input, keys);
+}
+
+function sha256(input: unknown, field: string): string {
+  if (typeof input !== "string" || !SHA256_PATTERN.test(input)) {
+    throw invalidExecution(`${field} must be a lowercase sha256 identity`);
+  }
+  return input;
+}
+
+function hashBytes(input: Uint8Array): string {
+  return `sha256:${createHash("sha256").update(input).digest("hex")}`;
+}
+
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function invalidExecution(message: string): EngineConfigurationError {

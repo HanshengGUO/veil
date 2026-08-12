@@ -13,11 +13,13 @@ and does not ask you to learn a new research API. It changes one thing:
 Nobody would accept an editor that blocks their keystrokes. Everybody accepts CI that blocks their
 merge. Veil is CI for research claims.
 
-Status: **Stage 1 exit / Stage 2C-2 implementation, pre-alpha.** The backend-neutral temporal guard,
+Status: **Stage 1 exit / Stage 2C-3 implementation, pre-alpha.** The backend-neutral temporal guard,
 native runtime gate, single/multi-file CSV/Parquet point-in-time backend, source/read-set v0
 identities, durable snapshots with operator quarantine, minimum `veil-data` point/panel surface, and
-path-independent content-addressed artifact identities, and runtime-provider-neutral framed artifact
-execution are now implemented. The 14-task bench, runner, and first real
+path-independent content-addressed artifact identities, runtime-provider-neutral framed execution,
+and deterministic rolling/expanding training-window runs are now implemented. These runs remain
+explicitly `executed`, not `verified`, until OOS mask-first enforcement lands. The 14-task bench,
+runner, and first real
 [two-model bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are also complete. Independent scoring
 review, an external docs-only trial, and remote CI confirmation remain before Stage 1 closes. An
 independent [QBench Engineering baseline](./bench/baselines/kimi-qbench-engineering-v1/) now also
@@ -98,6 +100,7 @@ examples/snapshot-recovery/ explicit corrupt-evidence quarantine + audit
 examples/veil-data/        cold point Arrow + exploration-grade panel snapshot
 examples/artifact-identity/ explicit code tree + portable artifact identity
 examples/artifact-execution/ guarded Arrow + clean framed artifact child
+examples/walk-forward-windows/ explicit schedule + derived windows + deterministic run record
 docs/                     one page per thing
 ```
 
@@ -118,6 +121,7 @@ docs/                     one page per thing
 | [examples/veil-data](./examples/veil-data) | Exercise point/panel output in clean Node processes |
 | [examples/artifact-identity](./examples/artifact-identity) | Reproduce a Python artifact identity across roots and a clean process |
 | [examples/artifact-execution](./examples/artifact-execution) | Execute a materialized artifact through the bounded child protocol |
+| [examples/walk-forward-windows](./examples/walk-forward-windows) | Execute derived rolling windows through a custom backend and deterministic run record |
 | [examples/golden-path](./examples/golden-path) | What a Veil research log looks like, with real numbers |
 | [bench/README.md](./bench/README.md) | How scoring works: two axes, four attribution layers |
 | [bench.md](./docs/bench.md) | Run, score, replay, and contribute Veil-bench tasks |

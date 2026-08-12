@@ -2,13 +2,14 @@
 
 The verification surface. Everything that makes a claim expensive lives here.
 
-Status: Stage 2C-2 — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
+Status: Stage 2C-3 — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
 guard, strict adapter YAML loader, default single/multi-file DuckDB CSV/Parquet backend, source and
 read-set v0 identities, durable content-addressed snapshots, and the minimum `veil-data` point/panel
 surface are implemented and hardened with operator-controlled snapshot quarantine. Portable
 content-addressed artifact identity and runtime-provider-neutral framed execution are also
-implemented. WFA orchestration is the next slice. The package remains private while the
-verification API is completed.
+implemented. Explicit-session rolling/expanding plans, replayable derived training windows, and
+deterministic `executed` run records now form the 2C-3 orchestration layer. OOS mask-first evaluation
+and the C2/C3/C4 verdict boundary remain next. The package stays private while that API is completed.
 
 ## The database is replaceable; the guard is not
 
@@ -209,7 +210,8 @@ entrypoint fail closed. `verifyArtifactManifest()` recomputes the complete ident
 
 Artifact, per-window read-set, and experiment identities are deliberately distinct. Framed requests
 now bind an artifact, concrete runtime implementation, and one new guarded read-set without
-mutating either identity. WFA will aggregate those executions into the final experiment. See
+mutating either identity. WFA training orchestration aggregates those executions into a separate
+deterministic run record; it does not yet create the final experiment or a citable metric. See
 [`docs/artifacts.md`](../../docs/artifacts.md),
 [`examples/artifact-identity`](../../examples/artifact-identity/), and the clean child
 [`examples/artifact-execution`](../../examples/artifact-execution/).
@@ -233,6 +235,30 @@ The frame codec is exported for thin language adapters and contains no Node- or 
 semantics. The first example adapter happens to use Node; Python and other providers can consume the
 same protocol.
 
+## Walk-forward training windows
+
+`createWalkForwardPlan()` accepts only the artifact protocol plus an explicit, strictly increasing
+UTC decision schedule. Protocol `*Days` count schedule entries, never guessed calendar days. The
+schedule must have exactly
+`trainDays + purgeDays + embargoDays + folds * oosDays` entries. Rolling and expanding training
+ranges differ only at the training start; purge, embargo, and contiguous OOS boundaries are derived
+and content-hashed in both modes.
+
+`executeWalkForwardWindows()` owns the data capability. At each fold's training cutoff it asks the
+injected `TemporalGuard` for a fresh read, retains the declared event-time column, and derives an
+inclusive training slice. `veil.window-read-set.v0` binds that slice to the source read-set, plan,
+fold, declaration, range, and exact Arrow identity. Its verifier must replay the filter from the
+source Arrow; a copied hash is insufficient. Only the derived Arrow crosses the existing framed
+child boundary.
+
+Successful folds produce `veil.walk-forward-window-execution.v0` records, then one
+`veil.walk-forward-run.v0`. Hashes include artifact, plan, source/window, request, input/output, and
+runtime identities plus all fold boundaries. Temporary roots, stderr, wall time, and completion
+order are excluded. An empty fold fails before child launch; any later failure returns no run record.
+Records say `executed`, never `verified`: OOS pricing and tradability-mask-first evaluation belong to
+2C-4. See the custom in-memory backend probe in
+[`examples/walk-forward-windows`](../../examples/walk-forward-windows/).
+
 ## Native runtime gate
 
 The engine pins:
@@ -246,7 +272,8 @@ round-trips an Arrow IPC stream. Failures identify `duckdb-load`, `duckdb-query`
 Windows matrix verifies native installation and execution.
 
 No DuckDB type appears in the public data-plane API, and importing the engine does not load the
-native module. Framed execution uses that same Arrow boundary; WFA orchestration follows next.
+native module. Framed and WFA execution use that same Arrow boundary; neither planner nor run record
+contains a backend id, SQL, DSN, binding, or physical path.
 
 ## What lands here, and when
 
@@ -256,8 +283,8 @@ native module. Framed execution uses that same Arrow boundary; WFA orchestration
 | Default file backend | 2 | Single/multi-file CSV/Parquet with stable source manifests; DuckDB stays private |
 | Read-set identity | 2 | v0 manifest and independent Arrow verification implemented |
 | Snapshot persistence | 2 | Durable local content-addressed storage plus explicit inspect/quarantine/audit recovery |
-| Verification engine | 2 | Re-executes an artifact window by window: rows with `available_time > t` do not exist |
-| Artifact management | 2 | Explicit code identity plus bounded runtime-provider-neutral child execution implemented |
+| Verification engine | 2 | Training-window execution is implemented; OOS mask-first verdict enforcement remains 2C-4 |
+| Artifact management | 2 | Explicit code identity, bounded child execution, and deterministic WFA run records implemented |
 | Statistical gates | 4 | Trials-aware deflated Sharpe, parameter stability, null falsification, cost sensitivity |
 | Plugin interfaces | 4 | `CostModel`, `NullGenerator` |
 
