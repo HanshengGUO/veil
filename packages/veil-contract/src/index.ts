@@ -112,3 +112,4 @@ export * from "./canonical.ts";
 export * from "./errors.ts";
 export * from "./lineage.ts";
 export * from "./semantics.ts";
+export * from "./temporal.ts";

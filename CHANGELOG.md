@@ -38,6 +38,11 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Added
 
+- **Database-neutral temporal protection** in `@veilquant/engine`: SQL-free read plans, replaceable
+  capability-declared backends, opaque runtime source bindings, and one mandatory Arrow IPC guard
+  that independently removes future rows even when a backend claims predicate pushdown. DuckDB v1.4
+  LTS is pinned only as the default future file backend; a cold native probe plus Apache Arrow IPC
+  round-trip now runs in the cross-platform `npm run check` path.
 - **Adapter declaration validation** in `@veilquant/contract`: strict field-addressable errors,
   conservative defaults, event-time `[from, until)` availability segments, evidence requirements for
   reconstructed/assumed timestamps, orthogonal degradation and engine-obligation derivation,

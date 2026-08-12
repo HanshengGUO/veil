@@ -30,8 +30,9 @@ npm install
 npm run check
 ```
 
-`npm run check` runs lint, typecheck, tests, the four-task bench smoke set, and the golden-path
-reproduction. It must pass before a pull request, and it is what CI runs on Linux, macOS and Windows.
+`npm run check` runs lint, typecheck, tests, the DuckDB/Arrow native-runtime probe, the four-task bench
+smoke set, and the golden-path reproduction. It must pass before a pull request, and it is what CI
+runs on Linux, macOS and Windows.
 
 Useful individually:
 
@@ -39,6 +40,7 @@ Useful individually:
 npm run lint:fix       # format and fix what can be fixed
 npm run typecheck
 npm run test
+npm run engine:runtime:smoke
 npm run bench:smoke    # generate and validate two trap plus two honest tasks
 npm run golden-path    # regenerate the reference study and print its table
 ```
@@ -56,8 +58,8 @@ Two rules are specific to this project and matter more than style:
 And the ordinary ones:
 
 - TypeScript, strict, no `any` unless there is genuinely no alternative.
-- Top-level imports only. The one exception is the Pi runtime boundary: it checks Node 22.19 before
-  dynamically loading Pi so model-free bench commands remain usable on the project's Node 20 floor.
+- Top-level imports by default. Dynamic imports are limited to explicit runtime boundaries: the Pi
+  Node-version gate and native/storage backends kept out of the engine's public data-plane import.
 - Comments explain *why*, when the why is not obvious. Code that needs a comment to say what it does
   usually needs a better name instead.
 - No new dependency without a reason in the pull request. Direct dependencies are pinned exactly.

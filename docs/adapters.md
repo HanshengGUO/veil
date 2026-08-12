@@ -7,9 +7,9 @@ three fields the contract needs:
 (entity, event_time, available_time, payload)
 ```
 
-Status: Stage 2A. Declaration normalization, validation, degradation derivation, lineage
-cross-checking, and stable content identity are implemented in `@veilquant/contract`. YAML file
-loading and DuckDB-backed CSV/Parquet queries are the next engine slice; no package is published yet.
+Status: Stage 2A. Declaration validation and the backend-neutral temporal guard are implemented.
+DuckDB/Arrow native runtimes are pinned and checked, while the actual CSV/Parquet backend is the next
+slice. No package is published yet.
 
 ## Smallest honest CSV declaration
 
@@ -103,6 +103,26 @@ The engine will resolve that locator through a runtime `SourceBinding`. Absolute
 DSNs, usernames, passwords, tokens, and environment-variable values belong there. Inline URL
 credentials and secret-looking query parameters in `source.locator` are rejected. This keeps the
 same declaration usable on another machine without putting credentials in an artifact or hash.
+
+`SourceBinding` is opaque: serialized and inspected forms contain only the binding id, backend id,
+and option/secret **names**, never their values. The selected trusted backend can resolve values while
+reading; they are not returned with query results or placed in model context.
+
+## Backends are replaceable
+
+Adapters do not emit SQL. The engine builds one structured `TemporalReadPlan` containing projection,
+`as_of`, and the required `column <= as_of` predicate. A `TemporalBackend` may translate that plan to
+DuckDB, ClickHouse, DolphinDB, a REST extraction, or a custom in-memory source, then returns Arrow IPC.
+
+Predicate pushdown is an optimization, not a guarantee. The common `TemporalGuard` decodes every
+backend's Arrow result and applies the temporal predicate again before returning the data view. Even
+a backend that incorrectly claims successful pushdown cannot expose a future row. Backends without a
+stable source version can still serve exploration reads with a missing fingerprint; later promotion
+and reproduction gates can conservatively reject or degrade that separate capability.
+
+DuckDB is therefore the default CSV/Parquet backend, not part of the public contract. No DuckDB type
+or SQL fragment crosses the engine API, and the native module is dynamically loaded only by that
+backend or its runtime probe.
 
 ## What validation returns
 

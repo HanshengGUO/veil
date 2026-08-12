@@ -7,8 +7,9 @@ guarantee declaration formats, and the validators that enforce them.
 - Declaration formats: [`schemas/`](./schemas)
 
 Status: Stage 2A — adapter declaration normalization, semantic validation, conservative degradation
-derivation, lineage cross-checking, and content identity are implemented. YAML file I/O and the
-DuckDB-backed source registration live in `@veilquant/engine` and land in the next slice.
+derivation, lineage cross-checking, and content identity are implemented. Backend-neutral temporal
+reads and their mandatory Arrow guard live in `@veilquant/engine`; its default DuckDB CSV/Parquet
+backend lands in the next slice.
 
 ## What lives here
 

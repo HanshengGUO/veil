@@ -57,6 +57,10 @@ The rule that connects them is C5. Everything else exists to make C5 worth obeyi
 - Point-in-time reads MUST carry `as_of`. There is no default.
 - On the verification surface, this is enforced by construction: a window for decision time `t`
   contains no rows with `available_time > t`. Absence, not filtering.
+- Storage backends may push the temporal predicate down for efficiency, but pushdown is never a
+  trust boundary. Every backend returns Arrow IPC through the common temporal guard, which checks and
+  removes rows after `t` again before factor code receives the view. The same protection therefore
+  applies to files, databases, extracts, and custom adapters without depending on a SQL dialect.
 - Full-sample statistics (means, volatilities, quantiles, fitted scalers) computed over a period
   extending beyond `t` and then applied at `t` are violations, whether or not the code looks wrong.
 - Having an `available_time` is not the same as being able to trust it. Where it came from MUST be
