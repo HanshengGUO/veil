@@ -214,6 +214,31 @@ The principle is **degrade, never silently accept, and refuse only when refusing
 answer**. A missing null generator, a missing cost model, or a missing mask produces a marked and
 weakened result — not a blocked line of research, and not an unmarked strong one.
 
+### Adapter declaration validation
+
+An adapter is a portable semantic declaration, not a connection profile. Registration normalizes
+and validates it before any source is opened:
+
+- `dataset`, `version`, `entity_key`, `event_time`, `available_time`, and `source` are required.
+- A non-null `available_time` requires `availability_basis`; a null one forbids it. There is no safe
+  default for where a timestamp came from.
+- Basis segments select rows by `event_time` and are ordered, contiguous `[from, until)` intervals.
+  `reconstructed` requires its vendor/publication source; `assumed` requires a positive ISO-8601 lag
+  and a rationale.
+- `point_in_time: true` with `available_time: null`, and `certified: true` without `lineage_ref`, are
+  contradictory declarations and are rejected.
+- Unknown fields are errors, not ignored extensions. This turns misspellings into field-addressable
+  failures instead of silent weakening.
+- The portable `source.locator` contains a relative file locator or logical table name. Runtime
+  paths, DSNs, and credentials are supplied separately to the engine and never enter declaration
+  hashes, artifacts, logs, or model context.
+
+`observed` is not self-authenticating. For certified data the engine resolves `lineage_ref` and
+cross-checks observed rows against the recorded collection boundary. A row claiming an
+`available_time` before collection began is rejected at registration; historical rows must instead
+be marked `reconstructed` or `assumed`. Uncertified data may still be used, but it never silently
+acquires certified semantics.
+
 ## 6. Threat model for v1
 
 Veil v1 defends against **carelessness, self-deception, and protocol-induced false discovery**: the

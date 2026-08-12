@@ -1,111 +1,100 @@
-# adapter.yaml — dataset declaration (draft schema)
+# adapter.yaml — portable dataset declaration
 #
-# One per dataset. Three fields are required; everything else defaults to the conservative
-# interpretation, so a minimal adapter is safe rather than permissive.
-#
-# Veil never inspects payload meaning. It only needs to know, for every row: when did this happen,
-# and when could I have known it. See docs/contract.md sections 2 and 5.
+# This file documents the wire format accepted by normalizeAdapterDeclaration(). The declaration
+# contains data meaning, not runtime credentials. YAML file I/O and SourceBinding resolution belong
+# to @veilquant/engine.
 
-dataset: <string>                 # required. unique name, referenced by experiment records
-version: <string>                 # required. bump when the meaning changes, not when rows are added
+dataset: <string>                 # required; registry name: letters/digits/dot/_/-
+version: <string>                 # required; bump when meaning changes, not when rows are appended
 
-entity_key: <column>              # required. instrument / contract / whatever the research subject is
-event_time: <column>              # required. when the event happened
-available_time: <column|null>     # required, may be null. when it could first be known.
-                                  #   null => dataset is marked PIT-unsafe and conclusions degrade
-                                  #   (docs/contract.md section 5). Declaring null honestly is
-                                  #   always better than pointing this at event_time.
+entity_key: <column>              # required; instrument / contract / research subject
+event_time: <column>              # required; when the event happened
+available_time: <column|null>     # required; when the row could first be known
+                                  # null => event_time fallback + PIT_UNSAFE degradation
 
-availability_basis:               # required where available_time is not null. Where that timestamp
-                                  #   came from — having one is not the same as trusting it.
-                                  #     observed      you genuinely received the data then
-                                  #     reconstructed rebuilt from the vendor's publication dates
-                                  #     assumed       inferred using a lag you chose
-                                  #   A single value, or segments, which is the usual shape: the
-                                  #   history a vendor hands you on day one is not something you
-                                  #   observed arriving.
-                                  #     - { until: 2026-08-07, basis: reconstructed, source: "vendor publish_date" }
-                                  #     - { from:  2026-08-07, basis: observed }
-                                  #   `assumed` must state the lag and why, and degrades like
-                                  #   `available_time: null`. Declaring a backfill as `observed`
-                                  #   fabricates point-in-time history and leaves no trace.
+# Required when available_time is not null; forbidden when it is null. A plain `observed` shorthand
+# covers the whole dataset. reconstructed/assumed need evidence, so use an object or segments.
+# Segment boundaries select rows by event_time and use [from, until): from inclusive, until exclusive.
+availability_basis:
+  - until: 2026-08-07             # date-only means 00:00:00Z
+    basis: reconstructed           # observed | reconstructed | assumed
+    source: vendor publish_date    # required for reconstructed
+  - from: 2026-08-07
+    basis: observed                # observed evidence is cross-checked through lineage
 
-frequency: <string>               # optional. 1m | 1d | irregular | ...
+# A whole-range assumption is also valid:
+# availability_basis:
+#   basis: assumed
+#   lag: P2D                       # positive ISO-8601 duration; required for assumed
+#   rationale: vendor SLA says filings arrive within two days
 
-guarantees:                       # optional block; omitted fields take the conservative default
-  point_in_time: <bool>           # default false
-  vintage: <bool>                 # default false. true only if historical revisions are kept as
-                                  #   separate rows rather than overwritten
+frequency: <string>               # optional; 1m | 1d | irregular | ...
+
+guarantees:                       # optional; omitted fields take conservative defaults
+  point_in_time: <bool>           # default false; true contradicts available_time: null
+  vintage: <bool>                 # default false; true only when revisions are append-only rows
   survivorship_free: <bool|unknown>  # default unknown
-  tradability_mask: <column|null> # default null. boolean column: was this tradable on this date
+  tradability_mask: <column|null> # default null; boolean mask applied before signal formation
 
-provenance:                       # optional. Absence means "not certified", which is a normal state,
-                                  #   not a defect: such datasets simply degrade per `guarantees`.
-  certified: <bool>               # produced by a pipeline that enforces the ingest invariants
-  lineage_ref: <uri|hash|null>    # manifest identifying which vendor pull this data came from, so a
-                                  #   conclusion can be traced back to it
+provenance:                       # optional; absence means uncertified, which is a normal state
+  certified: <bool>               # default false
+  lineage_ref: <uri|sha256|null>  # required when certified=true; resolved by the engine
 
-payload_schema:                   # optional but recommended; used for validation and diagnostics
+payload_schema:                   # optional; exact source column -> Arrow type
   <column>: <arrow_type>
 
-source:
+source:                           # required; portable and non-secret
   type: <parquet|csv|duckdb|dolphindb|clickhouse|custom>
-  connection: <string>            # path or connection string. Held by the engine process only;
-                                  #   the agent never receives it
+  locator: <string>               # local relative path/glob or logical table name
+                                  # paths, DSNs, tokens and passwords are runtime SourceBinding data
 
-# Stage 7 (deployment alignment). Required only for adapters registered as a live/historical pair,
-# where a silent mismatch between them is the failure being prevented.
+# Stage 7 deployment alignment. Optional now; when present all four fields are required.
 time_semantics:
-  bar_labeling: <open|close|na>          # which end of the bar the timestamp names
+  bar_labeling: <open|close|na>
   timestamp_basis: <exchange|receipt|processed>
-  timezone: <string>                     # IANA name, e.g. Asia/Hong_Kong
+  timezone: <string>              # IANA name, e.g. Asia/Hong_Kong
   latency_class: <realtime|delayed|eod>
 
-notes: <string>                   # optional. Known defects belong here, in plain language
+notes: <string>                   # optional; known limitations in plain language
 
 # ---------------------------------------------------------------------------
-# Example: a file feed with no availability timestamp, declared honestly.
+# Minimal honest declaration: no availability timestamp.
 #
-#   dataset: alt_news_sentiment
-#   version: "2024-11"
-#   entity_key: ticker
-#   event_time: published_at
-#   available_time: null          # vendor gives no ingestion time
-#   frequency: irregular
-#   guarantees:
-#     point_in_time: false
-#     vintage: false
-#     survivorship_free: unknown
-#   payload_schema:
-#     sentiment: float32
-#     source: string
-#   source:
-#     type: parquet
-#     connection: /data/news/*.parquet
-#   notes: |
-#     published_at is the vendor's editorial timestamp, which can precede the wire by minutes.
-#     Treat any intraday conclusion from this feed as unsupported.
+# dataset: alt_news_sentiment
+# version: "2024-11"
+# entity_key: ticker
+# event_time: published_at
+# available_time: null
+# frequency: irregular
+# payload_schema:
+#   sentiment: float32
+#   source: utf8
+# source:
+#   type: csv
+#   locator: data/news.csv
+# notes: Vendor supplies no receipt timestamp; intraday conclusions are unsupported.
 #
+# Normalized consequences:
+#   FILTER_EVENT_TIME, PIT_UNSAFE, POINT-IN-TIME conclusions degraded.
+
 # ---------------------------------------------------------------------------
-# Example: the common one. You started collecting in August 2026 and the vendor handed you fifteen
-# years of history on the first pull. Only the part after you started is something you observed.
+# Typical vendor history: reconstructed backfill, then genuinely observed feed.
 #
-#   dataset: vendor_fundamentals
-#   version: "2026-08"
-#   entity_key: ticker
-#   event_time: period_end
-#   available_time: first_known_at
-#   availability_basis:
-#     - { until: 2026-08-07, basis: reconstructed, source: "vendor-supplied publish_date" }
-#     - { from:  2026-08-07, basis: observed }
-#   guarantees:
-#     point_in_time: true
-#     vintage: true               # restatements arrive as new rows
-#     survivorship_free: true
-#   source:
-#     type: parquet
-#     connection: /data/fundamentals/
-#   notes: |
-#     The pre-2026-08 segment relies on the vendor's own publish_date. It is credible but we did not
-#     witness it, so conclusions drawn from that period carry the reconstructed mark. Declaring the
-#     whole series `observed` would have been the easy lie: nothing in the data would contradict it.
+# dataset: vendor_fundamentals
+# version: "2026-08"
+# entity_key: ticker
+# event_time: period_end
+# available_time: first_known_at
+# availability_basis:
+#   - { until: 2026-08-07, basis: reconstructed, source: vendor publish_date }
+#   - { from: 2026-08-07, basis: observed }
+# guarantees:
+#   point_in_time: true
+#   vintage: true
+#   survivorship_free: true
+# provenance:
+#   certified: true
+#   lineage_ref: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+# source:
+#   type: parquet
+#   locator: fundamentals/**/*.parquet

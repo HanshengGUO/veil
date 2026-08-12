@@ -38,6 +38,12 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Added
 
+- **Adapter declaration validation** in `@veilquant/contract`: strict field-addressable errors,
+  conservative defaults, event-time `[from, until)` availability segments, evidence requirements for
+  reconstructed/assumed timestamps, orthogonal degradation and engine-obligation derivation,
+  canonical declaration hashes, and lineage cross-validation for certified observed data. Portable
+  source locators are now separated from runtime paths and credentials. See
+  [`docs/adapters.md`](./docs/adapters.md).
 - **Veil-bench v1 task set and runner**: 14 deterministic, parameterized tasks (seven calibrated
   traps and seven honest tasks), loud/silent/structural calibration, oracle-isolated workspaces,
   structured submissions, Pi event capture, deterministic G1-G4 attribution, safety/competence
