@@ -2,10 +2,11 @@
 
 The verification surface. Everything that makes a claim expensive lives here.
 
-Status: Stage 2B-4 — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
+Status: Stage 2C-1 — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
 guard, strict adapter YAML loader, default single/multi-file DuckDB CSV/Parquet backend, source and
 read-set v0 identities, durable content-addressed snapshots, and the minimum `veil-data` point/panel
-surface are implemented and hardened with operator-controlled snapshot quarantine. The package
+surface are implemented and hardened with operator-controlled snapshot quarantine. Portable
+content-addressed artifact identity is also implemented; execution is the next slice. The package
 remains private while the verification API is completed.
 
 ## The database is replaceable; the guard is not
@@ -192,6 +193,24 @@ Restoration requires a later explicit `put()` of the exact trusted manifest and 
 operator contract in [`docs/read-sets.md`](../../docs/read-sets.md) and the cold
 [`examples/snapshot-recovery`](../../examples/snapshot-recovery/).
 
+## Artifact v0 identity
+
+Artifact packaging starts from an explicit code set. `captureArtifactCode()` rejects symlinks and
+unsafe/case-colliding paths, captures exact bytes twice, and returns sorted per-file hashes plus a
+code-tree hash. The local absolute root and mtimes never enter the manifest.
+
+`createArtifactManifest()` binds that code identity to a logical runtime and entrypoint, immutable
+parameters and data-derived literals, normalized adapter declaration hashes and development
+read-sets, declared trials, WFA protocol, hypothesis, and cost model. Canonical JSON values only;
+unknown fields, credentials, runtime paths, ambiguous numbers, malformed protocol, or a missing
+entrypoint fail closed. `verifyArtifactManifest()` recomputes the complete identity, while
+`verifyArtifactCode()` re-hashes the files from any checkout.
+
+Artifact, per-window read-set, and experiment identities are deliberately distinct. This slice
+implements the first; later execution records will bind each child window to the second, and a final
+experiment to both. See [`docs/artifacts.md`](../../docs/artifacts.md) and the clean-process
+[`examples/artifact-identity`](../../examples/artifact-identity/).
+
 ## Native runtime gate
 
 The engine pins:
@@ -205,8 +224,8 @@ round-trips an Arrow IPC stream. Failures identify `duckdb-load`, `duckdb-query`
 Windows matrix verifies native installation and execution.
 
 No DuckDB type appears in the public data-plane API, and importing the engine does not load the
-native module. The next slice starts the artifact subprocess and walk-forward verification core;
-its public boundary is sketched in [`docs/artifacts.md`](../../docs/artifacts.md).
+native module. The next slice adds the framed artifact subprocess; WFA orchestration follows only
+after that protocol is stable.
 
 ## What lands here, and when
 
@@ -217,7 +236,7 @@ its public boundary is sketched in [`docs/artifacts.md`](../../docs/artifacts.md
 | Read-set identity | 2 | v0 manifest and independent Arrow verification implemented |
 | Snapshot persistence | 2 | Durable local content-addressed storage plus explicit inspect/quarantine/audit recovery |
 | Verification engine | 2 | Re-executes an artifact window by window: rows with `available_time > t` do not exist |
-| Artifact management | 2 | `compute(data_view)` packaging, parameter locking, content-addressed identity |
+| Artifact management | 2 | Explicit code tree, locked semantics, content-addressed v0 identity implemented; subprocess next |
 | Statistical gates | 4 | Trials-aware deflated Sharpe, parameter stability, null falsification, cost sensitivity |
 | Plugin interfaces | 4 | `CostModel`, `NullGenerator` |
 

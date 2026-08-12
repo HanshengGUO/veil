@@ -13,7 +13,7 @@ appears here.
 
 Contract v1.0 review rulings, applied to the specification:
 
-- **C3 now requires a candidate count** (`trials_declared`): promoting the best of thirty explored
+- **C3 now requires a candidate count** (`trialsDeclared`): promoting the best of thirty explored
   ideas is a multiple-testing event even when twenty-nine were never verified. The declared number is
   not taken on trust — the effective count is `max(declared, observed lower bound)` from the session
   log and from prior experiments against the same hypothesis family, and it feeds the trials parameter
@@ -38,6 +38,12 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Added
 
+- **Content-addressed artifact v0 identity**: explicit portable code files are captured twice and
+  hashed individually and as a tree, independent of checkout root, mtimes, and creation order.
+  Normalized manifests bind code to logical runtime/entrypoint, immutable parameters, adapter
+  declaration hashes and their development read-sets, trials, WFA protocol, hypothesis, and cost model.
+  Independent verification rejects tampering, unknown fields, symlinks, unsafe paths, credentials,
+  and non-canonical values; a clean-process Python-package identity probe runs in the default check.
 - **`veil-data` minimum surface**: backend-neutral point reads and exploration-grade bitemporal panel
   exports require an explicit `as_of`, retain a declared tradability mask, and expose only Arrow
   that passed the common temporal guard. Snapshot writes are a separate explicit action. The
@@ -98,7 +104,7 @@ Contract v1.0 review rulings, applied to the specification:
   lagged fundamentals feed), one momentum factor evaluated under an honest protocol and seven
   variations, and a null-environment comparison. Metrics are committed and reproduced bit-identically
   on Linux, macOS and Windows.
-- **Declaration formats**: draft schemas for
+- **Declaration formats**: annotated schemas for
   [`adapter.yaml`](./packages/veil-contract/schemas/adapter.yaml) and
   [`artifact.yaml`](./packages/veil-contract/schemas/artifact.yaml), and a bench task template
   ([`bench/tasks/_TEMPLATE`](./bench/tasks/_TEMPLATE)) that doubles as the task contribution guide.

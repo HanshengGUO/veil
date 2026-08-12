@@ -8,6 +8,7 @@
 | [`read-set/`](./read-set) | Atomic content-addressed snapshot publication and independent-process replay. |
 | [`snapshot-recovery/`](./snapshot-recovery) | Detect, quarantine, audit, and explicitly republish corrupt snapshot evidence. |
 | [`veil-data/`](./veil-data) | Cold point Arrow and exploration-grade panel snapshot through the backend-neutral CLI core. |
+| [`artifact-identity/`](./artifact-identity) | Explicit Python code tree → path-independent artifact identity → cold verification. |
 | [`golden-path/`](./golden-path) | The reference research run, written by hand. One factor evaluated under an honest protocol and under seven variations, each leaking in exactly one way. |
 
 The golden path is the standard answer for the whole project: Stage 2 re-runs it on the engine,

@@ -4,6 +4,8 @@ import * as engineApi from "../src/index.ts";
 describe("public engine API", () => {
   it("exports extension points without exporting unguarded internal capabilities", () => {
     expect(engineApi).toHaveProperty("BackendRegistry");
+    expect(engineApi).toHaveProperty("captureArtifactCode");
+    expect(engineApi).toHaveProperty("createArtifactManifest");
     expect(engineApi).toHaveProperty("createSourceManifest");
     expect(engineApi).toHaveProperty("DuckDbFileBackend");
     expect(engineApi).toHaveProperty("loadAdapterFile");
@@ -13,6 +15,8 @@ describe("public engine API", () => {
     expect(engineApi).toHaveProperty("runVeilDataCli");
     expect(engineApi).toHaveProperty("VeilDataService");
     expect(engineApi).toHaveProperty("verifySourceManifest");
+    expect(engineApi).toHaveProperty("verifyArtifactCode");
+    expect(engineApi).toHaveProperty("verifyArtifactManifest");
     expect(engineApi).toHaveProperty("TemporalGuard");
     expect(engineApi).not.toHaveProperty("readRegisteredBackend");
     expect(engineApi).not.toHaveProperty("resolveSourceBinding");

@@ -92,16 +92,16 @@ after seeing results.
 - Locked parameters are part of the artifact hash, so a changed parameter cannot masquerade as the
   same artifact.
 - **Data-derived numeric literals inside artifact code are parameters** and MUST be declared
-  (`declared_literals`): a constant carried out of exploration is indistinguishable from a fitted one
+  (`declaredLiterals`): a constant carried out of exploration is indistinguishable from a fitted one
   (§6). Structural constants — trading days per year, numerical epsilons, and similar — are
   whitelisted and need no declaration. An undeclared literal is treated as a parameter anyway, so it
   is frozen and enters the artifact hash.
   This rule reduces friction; it does not detect anything. Nothing can statically tell where a number
   came from, which is why the real defences against smuggled constants are parameter stability and
   null-environment falsification.
-- **Promotion MUST declare how many candidates preceded this one** (`trials_declared`). Choosing the
-  best of thirty explored ideas and promoting only that one is a multiple-testing event even though
-  twenty-nine of them were never verified.
+- **Promotion MUST declare the total candidates considered up to and including this one**
+  (`trialsDeclared`). Choosing the best of thirty explored ideas and promoting only that one is a
+  multiple-testing event even though twenty-nine of them were never verified.
   The declared count is not taken on trust: the effective trial count is
   `max(declared, observed lower bound)`, where the lower bound is derived from backtest-shaped calls
   in the session log and prior experiments against the same hypothesis family in memory. Under-
@@ -259,7 +259,7 @@ Veil v1 does **not** defend against a deliberately adversarial agent or user:
   allowlisting is best-effort auditing, not containment.
 - **Constant smuggling** has no static defence: statistics computed during exploration can be
   hardcoded as literals in an artifact, and re-execution cannot tell where a number came from.
-  Mitigations are declaration (`declared_literals`), the parameter lock, parameter-stability
+  Mitigations are declaration (`declaredLiterals`), the parameter lock, parameter-stability
   requirements, and null-environment falsification.
 - **Training-data contamination** cannot be eliminated. If the research period lies inside a model's
   training window, the model may have seen the answer. Veil records when each hypothesis became

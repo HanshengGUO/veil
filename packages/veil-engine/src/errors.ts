@@ -19,7 +19,10 @@ export type EngineConfigurationErrorCode =
   | "INVALID_SNAPSHOT"
   | "SNAPSHOT_RECOVERY_BUSY"
   | "SNAPSHOT_RECOVERY_REFUSED"
-  | "INVALID_SNAPSHOT_RECOVERY";
+  | "INVALID_SNAPSHOT_RECOVERY"
+  | "INVALID_ARTIFACT_CODE"
+  | "ARTIFACT_CODE_CHANGED"
+  | "INVALID_ARTIFACT";
 
 export class EngineConfigurationError extends Error {
   readonly code: EngineConfigurationErrorCode;

@@ -1,13 +1,13 @@
 # Declaration formats
 
-Wire formats for the declarations Veil reads. Adapter machine validation now lives in
-`@veilquant/contract`; artifact validation arrives with the verification engine later in Stage 2.
-These annotated files remain the copyable human reference.
+Wire formats for the declarations Veil reads. Adapter machine validation lives in
+`@veilquant/contract`; normalized artifact identity and code-tree validation live in
+`@veilquant/engine`. These annotated files remain the copyable human reference.
 
 | File | Declares | Validation |
 | --- | --- | --- |
 | [`adapter.yaml`](./adapter.yaml) | What a dataset means in time, and what it can guarantee | Implemented: normalize, validate, derive semantics, hash |
-| [`artifact.yaml`](./artifact.yaml) | What is being promoted: code, locked parameters, data semantics | Stage 2 verification slice |
+| [`artifact.yaml`](./artifact.yaml) | What is being promoted: code, locked parameters, data semantics | Implemented: explicit code capture, normalize, verify, hash |
 
 The bench task declaration (`trap.yaml`) lives with the tasks it belongs to:
 [`bench/tasks/_TEMPLATE`](../../../bench/tasks/_TEMPLATE).

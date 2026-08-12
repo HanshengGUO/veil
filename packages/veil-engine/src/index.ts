@@ -1,5 +1,30 @@
 export { loadAdapterFile } from "./adapter-loader.ts";
 export {
+  ARTIFACT_FORMAT,
+  type ArtifactDataSemantics,
+  type ArtifactDatasetSemantics,
+  type ArtifactEntrypoint,
+  type ArtifactFactor,
+  type ArtifactManifest,
+  type ArtifactParameterValue,
+  type ArtifactProtocol,
+  type ArtifactRuntime,
+  type ArtifactVerificationEvidence,
+  type CreateArtifactDatasetSemanticsInput,
+  type CreateArtifactManifestInput,
+  createArtifactManifest,
+  verifyArtifactManifest,
+} from "./artifact.ts";
+export {
+  ARTIFACT_CODE_FORMAT,
+  type ArtifactCodeCaptureInput,
+  type ArtifactCodeFile,
+  type ArtifactCodeManifest,
+  captureArtifactCode,
+  verifyArtifactCode,
+  verifyArtifactCodeManifest,
+} from "./artifact-code.ts";
+export {
   type BackendCapabilities,
   type BackendDescriptor,
   type BackendPushdownReport,
