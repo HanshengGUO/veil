@@ -74,7 +74,7 @@ beforeAll(async () => {
     await connection.run("set threads = 1");
     const csvScan = `read_csv(${sqlString(csvPath)}, header = true, auto_detect = true, sample_size = -1, strict_mode = true, null_padding = false)`;
     await connection.run(
-      `copy (select value, available_time, ticker, event_time from ${csvScan}) to ${sqlString(parquetPath)} (format parquet)`,
+      `copy (select value, available_time, ticker, event_time from ${csvScan} order by ticker) to ${sqlString(parquetPath)} (format parquet)`,
     );
     const invalidScan = `read_csv(${sqlString(join(fixturesRoot, "invalid-temporal.csv"))}, header = true, auto_detect = true, sample_size = -1, strict_mode = true, null_padding = false)`;
     await connection.run(
@@ -114,13 +114,19 @@ describe("DuckDB file backend format equivalence", () => {
       ["ticker", "Utf8"],
       ["value", "Float64"],
     ]);
-    expect(column(parquetTable, "ticker")).toEqual(column(csvTable, "ticker"));
     expect(column(csvTable, "ticker")).toEqual(["PAST", "NULLPAYLOAD", "BOUNDARY"]);
-    expect(column(parquetTable, "value")).toEqual(column(csvTable, "value"));
+    expect(column(parquetTable, "ticker")).toEqual(["BOUNDARY", "NULLPAYLOAD", "PAST"]);
     expect(column(csvTable, "value")).toEqual([1.5, null, 2.5]);
+    expect(column(parquetTable, "value")).toEqual([2.5, null, 1.5]);
     expect(csv.sourceFingerprint?.algorithm).toBe("sha256");
     expect(parquet.sourceFingerprint?.algorithm).toBe("sha256");
     expect(parquet.sourceFingerprint?.value).not.toBe(csv.sourceFingerprint?.value);
+    expect(parquet.readSet.declarationHash).not.toBe(csv.readSet.declarationHash);
+    expect(parquet.readSet.queryHash).toBe(csv.readSet.queryHash);
+    expect(parquet.readSet.result.schemaHash).toBe(csv.readSet.result.schemaHash);
+    expect(parquet.readSet.result.resultHash).toBe(csv.readSet.result.resultHash);
+    expect(parquet.readSet.result.arrowHash).not.toBe(csv.readSet.result.arrowHash);
+    expect(parquet.readSet.manifestHash).not.toBe(csv.readSet.manifestHash);
     expect(csv.audit.backendClaimedProjectionPushdown).toBe(true);
     expect(parquet.audit.backendClaimedProjectionPushdown).toBe(true);
     expect(csv.audit.backendClaimedTemporalPushdown).toBe(true);
@@ -148,6 +154,29 @@ describe("DuckDB file backend format equivalence", () => {
     expect(csvTable.numRows).toBe(0);
     expect(parquetTable.numRows).toBe(0);
     expect(schema(parquetTable)).toEqual(schema(csvTable));
+    expect(parquet.readSet.result.resultHash).toBe(csv.readSet.result.resultHash);
+  });
+
+  it("canonicalizes physical column and row order when no projection is requested", async () => {
+    const temporalGuard = guard();
+    const sourceBinding = binding();
+    const [csv, parquet] = await Promise.all([
+      temporalGuard.read(
+        declaration("csv", "metamorphic.csv"),
+        { asOf: "2026-08-12" },
+        sourceBinding,
+      ),
+      temporalGuard.read(
+        declaration("parquet", "metamorphic.parquet"),
+        { asOf: "2026-08-12" },
+        sourceBinding,
+      ),
+    ]);
+
+    expect(schema(tableFromIPC(parquet.arrowIpc))).not.toEqual(schema(tableFromIPC(csv.arrowIpc)));
+    expect(parquet.readSet.result.schema).toEqual(csv.readSet.result.schema);
+    expect(parquet.readSet.result.schemaHash).toBe(csv.readSet.result.schemaHash);
+    expect(parquet.readSet.result.resultHash).toBe(csv.readSet.result.resultHash);
   });
 
   it("routes invalid Parquet temporal values through the common C1 guard", async () => {

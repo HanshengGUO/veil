@@ -3,8 +3,9 @@
 The verification surface. Everything that makes a claim expensive lives here.
 
 Status: Stage 2A — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow guard,
-strict adapter YAML loader, and default DuckDB CSV/Parquet backend are implemented. The package
-remains private until read-set identity and the stable public API are complete.
+strict adapter YAML loader, default DuckDB CSV/Parquet backend, and read-set v0 identity are
+implemented. The package remains private until durable snapshots and the stable public API are
+complete.
 
 ## The database is replaceable; the guard is not
 
@@ -31,11 +32,12 @@ the data lives. Backend-specific SQL, connections, and credentials stay behind t
 
 ## Extension surface
 
-`TemporalBackend` has four responsibilities:
+`TemporalBackend` has five responsibilities:
 
 - identify which portable `AdapterSource` declarations it accepts;
 - consume a SQL-free `TemporalReadPlan`;
 - return Arrow IPC plus an optional source fingerprint;
+- report its runtime name/version, or explicitly return `null`;
 - report which projection/predicate optimizations it attempted.
 
 `BackendRegistry` accepts custom implementations but exposes no raw read method. Reads leave the
@@ -93,6 +95,20 @@ their physical source hashes remain different. See the runnable
 The current canonical Arrow mapping covers primitive scalar columns. Unsupported nested Parquet
 types fail closed until an explicit canonical type adapter is provided.
 
+## Read-set v0
+
+Every `GuardedReadResult` includes a versioned `readSet` manifest. It records the normalized adapter
+hash, physical source fingerprint, canonical query, guarded schema/row count/result hash, and runtime
+identities. It also hashes the exact guarded Arrow IPC delivered to factor code. Absolute paths,
+binding ids, mtimes, hostnames, and secrets are excluded.
+
+The result hash canonicalizes column order and hashes a sorted multiset of rows, so equivalent CSV
+and reordered Parquet inputs share a result identity even though their source and manifest hashes
+differ. A separate Arrow hash remains order/layout-sensitive for exact replay.
+`verifyReadSetManifest()` independently checks stored Arrow bytes and optional declaration, source,
+and expected-id evidence. See [`docs/read-sets.md`](../../docs/read-sets.md) and the runnable
+[`examples/read-set`](../../examples/read-set/).
+
 ## Native runtime gate
 
 The engine pins:
@@ -106,8 +122,7 @@ round-trips an Arrow IPC stream. Failures identify `duckdb-load`, `duckdb-query`
 Windows matrix verifies native installation and execution.
 
 No DuckDB type appears in the public data-plane API, and importing the engine does not load the
-native module. The next slice records declaration, source, query, and result identities in a
-portable read-set manifest.
+native module. The next slice persists durable snapshots and exposes the first `veil-data` surface.
 
 ## What lands here, and when
 
@@ -115,7 +130,8 @@ portable read-set manifest.
 | --- | --- | --- |
 | Backend-neutral temporal guard | 2 | Structured plan → replaceable backend → Arrow IPC → mandatory C1 re-check |
 | Default file backend | 2 | CSV/Parquet implemented with metamorphic equivalence; DuckDB stays private |
-| Read-set snapshots | 2 | What an experiment actually read, content-addressed, for metric-level reproduction |
+| Read-set identity | 2 | v0 manifest and independent Arrow verification implemented |
+| Snapshot persistence | 2 | Durable storage/recovery and multi-file source manifests are next |
 | Verification engine | 2 | Re-executes an artifact window by window: rows with `available_time > t` do not exist |
 | Artifact management | 2 | `compute(data_view)` packaging, parameter locking, content-addressed identity |
 | Statistical gates | 4 | Trials-aware deflated Sharpe, parameter stability, null falsification, cost sensitivity |
@@ -125,8 +141,8 @@ portable read-set manifest.
 
 - **The Arrow boundary is the guarantee.** Future rows are absent before data reaches factor code.
 - **Pushdown is never trust.** It reduces work but cannot weaken or strengthen C1.
-- **Data stays put.** Backends may query in place or extract locally; Veil writes only read-set
-  snapshots and bench fixtures.
+- **Data stays put.** Backends may query in place or extract locally; durable writes are limited to
+  explicit read-set snapshots (the next slice) and bench fixtures.
 - **User factor code is a subprocess.** Artifacts run in the user's language over Arrow IPC.
 - **Exploration stays free.** The guard protects Veil reads and verification claims; it does not
   intercept arbitrary user code.

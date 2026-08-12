@@ -41,6 +41,13 @@ Contract v1.0 review rulings, applied to the specification:
 - **Database-neutral temporal protection** in `@veilquant/engine`: SQL-free read plans, replaceable
   capability-declared backends, opaque runtime source bindings, and one mandatory Arrow IPC guard
   that independently removes future rows even when a backend claims predicate pushdown.
+- **Read-set v0 identity and verification**: every guarded result separates declaration, physical
+  source, canonical query, canonical schema/result, and whole-manifest hashes. Result identity is
+  stable across CSV/Parquet, physical column order, input row order, binding roots, and Arrow IPC
+  layout, while a separate Arrow hash preserves the exact delivered bytes and order. Strict
+  verification recomputes stored Arrow evidence and rejects changed manifests, rows, layouts,
+  declarations, sources, or expected ids with `INVALID_READ_SET`; a disk round-trip cold probe runs
+  in the default check.
 - **Default CSV/Parquet point-in-time backend**: strict `adapter.yaml` loading, realpath-confined
   source bindings, read-only DuckDB projection/time pushdown, SHA-256 source identity checked before
   and after each query, preserved Arrow schemas for empty results, and fail-closed fallback when

@@ -121,7 +121,7 @@ describe("DuckDB CSV backend", () => {
     expect(tableFromIPC(late.arrowIpc).numRows).toBe(3);
   });
 
-  it("changes the source fingerprint when file bytes change", async () => {
+  it("separates changed source identity from an unchanged guarded result", async () => {
     const temporaryRoot = await mkdtemp(join(tmpdir(), "veil-csv-"));
     try {
       await copyFile(join(fixturesRoot, "temporal.csv"), join(temporaryRoot, "temporal.csv"));
@@ -136,11 +136,15 @@ describe("DuckDB CSV backend", () => {
       );
       const second = await guardedCsv().read(
         csvDeclaration(),
-        { asOf: "2026-08-14" },
+        { asOf: "2026-08-12" },
         binding(temporaryRoot),
       );
 
       expect(second.sourceFingerprint?.value).not.toBe(first.sourceFingerprint?.value);
+      expect(second.readSet.queryHash).toBe(first.readSet.queryHash);
+      expect(second.readSet.result.resultHash).toBe(first.readSet.result.resultHash);
+      expect(second.readSet.result.arrowHash).toBe(first.readSet.result.arrowHash);
+      expect(second.readSet.manifestHash).not.toBe(first.readSet.manifestHash);
     } finally {
       await rm(temporaryRoot, { recursive: true, force: true });
     }

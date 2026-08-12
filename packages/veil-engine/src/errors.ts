@@ -11,7 +11,8 @@ export type EngineConfigurationErrorCode =
   | "BINDING_BACKEND_MISMATCH"
   | "INVALID_BINDING"
   | "INVALID_QUERY"
-  | "INVALID_BACKEND_RESULT";
+  | "INVALID_BACKEND_RESULT"
+  | "INVALID_READ_SET";
 
 export class EngineConfigurationError extends Error {
   readonly code: EngineConfigurationErrorCode;

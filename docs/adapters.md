@@ -8,8 +8,8 @@ three fields the contract needs:
 ```
 
 Status: Stage 2A. Declaration validation, strict YAML loading, the backend-neutral temporal guard,
-and the default CSV/Parquet backend are implemented. Read-set manifests are next. No package is
-published yet.
+the default CSV/Parquet backend, and read-set v0 identities are implemented. Durable snapshots are
+next. No package is published yet.
 
 ## Smallest honest CSV declaration
 
@@ -111,8 +111,8 @@ reading; they are not returned with query results or placed in model context.
 The default file binding currently resolves one regular CSV or Parquet file and uses one option,
 `root`. It must be an absolute directory narrower than the filesystem root; `source.locator` is
 resolved beneath it using real paths, so `..` and escaping symlinks cannot cross the boundary. The
-source is hashed before and after every read. Multi-file manifests arrive with read-set snapshots;
-do not put a glob in the locator yet.
+source is hashed before and after every read. Multi-file manifests arrive in the Stage 2B snapshot
+slice; do not put a glob in the locator yet.
 
 ```ts
 import {
@@ -167,6 +167,11 @@ the guard column contains no null or unparseable values. Invalid data disables t
 reaches the common guard, which fails closed as C1. Pushdown can make a valid read faster; it cannot
 make bad time data disappear. The current canonical Arrow mapping accepts primitive scalar columns;
 unsupported nested Parquet types fail closed pending an explicit type adapter.
+
+Every guarded read also carries the five identities described in
+[`read-sets.md`](./read-sets.md). A backend without a stable source version may still return a safe
+point-in-time view, but its manifest preserves a `null` source fingerprint and cannot support a
+reproducible promotion claim.
 
 ## What validation returns
 

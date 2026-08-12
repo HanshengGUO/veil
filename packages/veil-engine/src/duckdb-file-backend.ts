@@ -128,6 +128,10 @@ export class DuckDbFileBackend implements TemporalBackend {
         value: sourceHash,
         scope: "source-version",
       },
+      runtime: {
+        name: "duckdb",
+        version: duckdb.default.version(),
+      },
       pushdown: {
         projectionApplied,
         temporalPredicateApplied,

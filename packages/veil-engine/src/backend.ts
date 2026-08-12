@@ -21,6 +21,12 @@ export interface SourceFingerprint {
   readonly scope: "source-version" | "read-snapshot";
 }
 
+export interface BackendRuntime {
+  /** Non-secret implementation identity recorded in read-set manifests. */
+  readonly name: string;
+  readonly version: string;
+}
+
 export interface BackendPushdownReport {
   readonly projectionApplied: boolean;
   readonly temporalPredicateApplied: boolean;
@@ -36,6 +42,7 @@ export interface BackendReadResult {
   /** Arrow IPC stream/file bytes are the only data-plane boundary exposed to the guard. */
   readonly arrowIpc: Uint8Array;
   readonly sourceFingerprint: SourceFingerprint | null;
+  readonly runtime: BackendRuntime | null;
   readonly pushdown: BackendPushdownReport;
 }
 
@@ -133,6 +140,7 @@ export async function readRegisteredBackend(
       arrowIpc: Uint8Array.from(result.arrowIpc),
       sourceFingerprint:
         result.sourceFingerprint === null ? null : Object.freeze({ ...result.sourceFingerprint }),
+      runtime: result.runtime === null ? null : Object.freeze({ ...result.runtime }),
       pushdown: Object.freeze({ ...result.pushdown }),
     },
   };
@@ -249,6 +257,17 @@ function validateBackendResult(result: BackendReadResult, backend: TemporalBacke
     if (backend.capabilities.sourceFingerprint === "none") {
       throw invalidResult(backendId, "returned an undeclared source fingerprint");
     }
+  }
+  const runtime = result.runtime;
+  if (
+    runtime !== null &&
+    (typeof runtime !== "object" ||
+      typeof runtime.name !== "string" ||
+      runtime.name.length === 0 ||
+      typeof runtime.version !== "string" ||
+      runtime.version.length === 0)
+  ) {
+    throw invalidResult(backendId, "returned invalid backend runtime identity");
   }
   if (
     typeof result.pushdown?.projectionApplied !== "boolean" ||

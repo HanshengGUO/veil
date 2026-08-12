@@ -46,6 +46,7 @@ function backendReturning(
           value: "a".repeat(64),
           scope: "source-version",
         },
+        runtime: { name: "memory", version: "test-v1" },
         pushdown: {
           projectionApplied: true,
           temporalPredicateApplied: true,
@@ -226,6 +227,7 @@ describe("database-neutral temporal guard", () => {
     );
 
     expect(result.sourceFingerprint).toBeNull();
+    expect(result.readSet.source.fingerprint).toBeNull();
     expect(result.audit.droppedFutureRows).toBe(0);
   });
 });
@@ -280,5 +282,29 @@ describe("backend registry", () => {
         createSourceBinding({ id: "wrong", backend: "another-backend" }),
       ),
     ).rejects.toMatchObject({ code: "BACKEND_NOT_FOUND" });
+  });
+
+  it("rejects an invalid backend runtime identity", async () => {
+    const base = backendReturning({
+      ticker: ["A"],
+      event_time: ["2026-08-11T00:00:00Z"],
+      available_time: ["2026-08-12T00:00:00Z"],
+    });
+    const registry = new BackendRegistry();
+    registry.register({
+      ...base,
+      read: async (request) => ({
+        ...(await base.read(request)),
+        runtime: { name: "", version: "" },
+      }),
+    });
+
+    await expect(
+      new TemporalGuard(registry).read(
+        adapterWithAvailability(),
+        { asOf: "2026-08-12" },
+        createSourceBinding({ id: "invalid-runtime", backend: base.id }),
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_BACKEND_RESULT" });
   });
 });

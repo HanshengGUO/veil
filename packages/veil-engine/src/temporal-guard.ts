@@ -12,6 +12,7 @@ import {
   type SourceFingerprint,
 } from "./backend.ts";
 import { EngineConfigurationError } from "./errors.ts";
+import { createReadSetManifest, type ReadSetManifest } from "./read-set.ts";
 import type { SourceBinding } from "./source-binding.ts";
 import {
   createTemporalReadPlan,
@@ -29,6 +30,7 @@ export interface TemporalGuardAudit {
 
 export interface GuardedReadResult {
   readonly arrowIpc: Uint8Array;
+  readonly readSet: ReadSetManifest;
   readonly plan: TemporalReadPlan;
   readonly semantics: DataSemantics;
   readonly backend: BackendDescriptor;
@@ -90,9 +92,19 @@ export class TemporalGuard {
       plan.requestedColumns === null ? guarded : guarded.select([...plan.requestedColumns]);
     const outputIpc = tableToIPC(projected, "stream");
     const droppedFutureRows = input.numRows - keptRows.length;
+    const readSet = createReadSetManifest({
+      declaration,
+      plan,
+      table: projected,
+      arrowIpc: outputIpc,
+      sourceFingerprint: backendRead.result.sourceFingerprint,
+      backend: backendRead.descriptor,
+      backendRuntime: backendRead.result.runtime,
+    });
 
     return Object.freeze({
       arrowIpc: outputIpc,
+      readSet,
       plan,
       semantics: plan.semantics,
       backend: backendRead.descriptor,
