@@ -1,4 +1,4 @@
-import { copyFile, mkdtemp, rm } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -65,6 +65,8 @@ beforeAll(async () => {
   const csvPath = join(generatedRoot, "metamorphic.csv");
   const parquetPath = join(generatedRoot, "metamorphic.parquet");
   const invalidTemporalPath = join(generatedRoot, "invalid-temporal.parquet");
+  const partsRoot = join(generatedRoot, "parts");
+  await mkdir(partsRoot);
   await copyFile(join(fixturesRoot, "metamorphic.csv"), csvPath);
 
   const duckdb = await import("@duckdb/node-api");
@@ -79,6 +81,12 @@ beforeAll(async () => {
     const invalidScan = `read_csv(${sqlString(join(fixturesRoot, "invalid-temporal.csv"))}, header = true, auto_detect = true, sample_size = -1, strict_mode = true, null_padding = false)`;
     await connection.run(
       `copy (select * from ${invalidScan}) to ${sqlString(invalidTemporalPath)} (format parquet)`,
+    );
+    await connection.run(
+      `copy (select * from ${csvScan} where ticker in ('PAST', 'FUTURE') order by ticker) to ${sqlString(join(partsRoot, "a.parquet"))} (format parquet)`,
+    );
+    await connection.run(
+      `copy (select * from ${csvScan} where ticker not in ('PAST', 'FUTURE') order by ticker) to ${sqlString(join(partsRoot, "b.parquet"))} (format parquet)`,
     );
   } finally {
     connection.closeSync();
@@ -187,5 +195,29 @@ describe("DuckDB file backend format equivalence", () => {
         binding(),
       ),
     ).rejects.toMatchObject({ invariant: "C1" });
+  });
+
+  it("reads a sorted multi-file Parquet source through the same manifest abstraction", async () => {
+    const sourceBinding = binding();
+    const [single, multiple] = await Promise.all([
+      guard().read(
+        declaration("parquet", "metamorphic.parquet"),
+        { asOf: "2026-08-12", columns: ["ticker", "value"] },
+        sourceBinding,
+      ),
+      guard().read(
+        declaration("parquet", "parts/*.parquet"),
+        { asOf: "2026-08-12", columns: ["ticker", "value"] },
+        sourceBinding,
+      ),
+    ]);
+
+    expect(multiple.sourceFingerprint?.manifest?.files.map((file) => file.logicalName)).toEqual([
+      "parts/a.parquet",
+      "parts/b.parquet",
+    ]);
+    expect(multiple.readSet.result.schemaHash).toBe(single.readSet.result.schemaHash);
+    expect(multiple.readSet.result.resultHash).toBe(single.readSet.result.resultHash);
+    expect(multiple.sourceFingerprint?.value).not.toBe(single.sourceFingerprint?.value);
   });
 });

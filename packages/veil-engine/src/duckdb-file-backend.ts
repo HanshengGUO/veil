@@ -1,7 +1,3 @@
-import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { realpath, stat } from "node:fs/promises";
-import { isAbsolute, parse, relative, resolve, sep } from "node:path";
 import type {
   DuckDBConnection,
   DuckDBResultReader,
@@ -39,6 +35,8 @@ import type {
   TemporalBackend,
 } from "./backend.ts";
 import { EngineConfigurationError } from "./errors.ts";
+import { withStableFileSource } from "./file-source.ts";
+import { sourceFingerprintFromManifest } from "./source-manifest.ts";
 
 export const DUCKDB_FILE_BACKEND_ID = "duckdb-file";
 
@@ -63,147 +61,114 @@ export class DuckDbFileBackend implements TemporalBackend {
   }
 
   async read(request: BackendReadRequest): Promise<BackendReadResult> {
-    const scan = sourceScan(request.source.type);
-    const sourcePath = await resolveBoundFile(request);
-    const sourceHash = await sha256File(sourcePath);
-    const duckdb = await import("@duckdb/node-api");
-    const instance = await duckdb.DuckDBInstance.create(":memory:");
-    let connection: DuckDBConnection | undefined;
-    let arrowIpc: Uint8Array;
-    let projectionApplied = false;
-    let temporalPredicateApplied = false;
+    const stable = await withStableFileSource(
+      request.binding.option("root"),
+      request.source.locator,
+      async (source) => {
+        const scan = sourceScan(request.source.type, source.paths.length);
+        const sourceValues = [...source.paths];
+        const duckdb = await import("@duckdb/node-api");
+        const instance = await duckdb.DuckDBInstance.create(":memory:");
+        let connection: DuckDBConnection | undefined;
+        let arrowIpc: Uint8Array | undefined;
+        let projectionApplied = false;
+        let temporalPredicateApplied = false;
 
-    try {
-      connection = await instance.connect();
-      await configureConnection(connection);
-      const schema = await connection.runAndReadAll(`select * from ${scan} limit 0`, [sourcePath]);
-      const sourceColumns = schema.columnNames();
-      const sourceColumnSet = new Set(sourceColumns);
-      const projection = request.plan.backendProjection;
-      const applicableProjection =
-        projection?.every((column) => sourceColumnSet.has(column)) === true ? projection : null;
-      projectionApplied = applicableProjection !== null;
-      const selectedColumns =
-        applicableProjection === null ? "*" : applicableProjection.map(quoteIdentifier).join(", ");
+        try {
+          connection = await instance.connect();
+          await configureConnection(connection);
+          const schema = await connection.runAndReadAll(
+            `select * from ${scan} limit 0`,
+            sourceValues,
+          );
+          const sourceColumns = schema.columnNames();
+          const sourceColumnSet = new Set(sourceColumns);
+          const projection = request.plan.backendProjection;
+          const applicableProjection =
+            projection?.every((column) => sourceColumnSet.has(column)) === true ? projection : null;
+          projectionApplied = applicableProjection !== null;
+          const selectedColumns =
+            applicableProjection === null
+              ? "*"
+              : applicableProjection.map(quoteIdentifier).join(", ");
 
-      const temporalColumn = request.plan.temporalPredicate.column;
-      if (sourceColumnSet.has(temporalColumn)) {
-        const temporalIdentifier = quoteIdentifier(temporalColumn);
-        const invalid = await invalidTemporalValueCount(
-          connection,
-          sourcePath,
-          scan,
-          temporalIdentifier,
-        );
-        temporalPredicateApplied = invalid === 0;
-      }
+          const temporalColumn = request.plan.temporalPredicate.column;
+          if (sourceColumnSet.has(temporalColumn)) {
+            const temporalIdentifier = quoteIdentifier(temporalColumn);
+            const invalid = await invalidTemporalValueCount(
+              connection,
+              sourceValues,
+              scan,
+              temporalIdentifier,
+            );
+            temporalPredicateApplied = invalid === 0;
+          }
 
-      const temporalClause = temporalPredicateApplied
-        ? ` where cast(${quoteIdentifier(request.plan.temporalPredicate.column)} as timestamptz) <= cast(? as timestamptz)`
-        : "";
-      const values = temporalPredicateApplied ? [sourcePath, request.plan.asOf] : [sourcePath];
-      const result = await connection.runAndReadAll(
-        `select ${selectedColumns} from ${scan}${temporalClause}`,
-        values,
-      );
-      arrowIpc = readerToArrowIpc(result, duckdb.DuckDBTypeId);
-    } finally {
-      connection?.closeSync();
-      instance.closeSync();
-    }
+          const temporalClause = temporalPredicateApplied
+            ? ` where cast(${quoteIdentifier(request.plan.temporalPredicate.column)} as timestamptz) <= cast(? as timestamptz)`
+            : "";
+          const values = temporalPredicateApplied
+            ? [...sourceValues, request.plan.asOf]
+            : sourceValues;
+          const result = await connection.runAndReadAll(
+            `select ${selectedColumns} from ${scan}${temporalClause}`,
+            values,
+          );
+          arrowIpc = readerToArrowIpc(result, duckdb.DuckDBTypeId);
+        } finally {
+          connection?.closeSync();
+          instance.closeSync();
+        }
 
-    const sourceHashAfterRead = await sha256File(sourcePath);
-    if (sourceHashAfterRead !== sourceHash) {
-      throw new EngineConfigurationError(
-        "SOURCE_CHANGED",
-        "file source changed while a point-in-time view was being built",
-        "Retry against a stable source version or snapshot the source before reading.",
-      );
-    }
+        if (arrowIpc === undefined) {
+          throw invalidSource(
+            "DuckDB returned no result for a stable file source",
+            "Retry the read and inspect the source schema if it fails again.",
+          );
+        }
+        return {
+          arrowIpc,
+          runtimeVersion: duckdb.default.version(),
+          projectionApplied,
+          temporalPredicateApplied,
+        };
+      },
+    );
 
     return {
-      arrowIpc,
-      sourceFingerprint: {
-        algorithm: "sha256",
-        value: sourceHash,
-        scope: "source-version",
-      },
+      arrowIpc: stable.value.arrowIpc,
+      sourceFingerprint: sourceFingerprintFromManifest(stable.source.manifest),
       runtime: {
         name: "duckdb",
-        version: duckdb.default.version(),
+        version: stable.value.runtimeVersion,
       },
       pushdown: {
-        projectionApplied,
-        temporalPredicateApplied,
+        projectionApplied: stable.value.projectionApplied,
+        temporalPredicateApplied: stable.value.temporalPredicateApplied,
       },
     };
   }
 }
 
-function sourceScan(sourceType: BackendReadRequest["source"]["type"]): string {
+function sourceScan(sourceType: BackendReadRequest["source"]["type"], fileCount: number): string {
+  if (!Number.isSafeInteger(fileCount) || fileCount < 1) {
+    throw invalidSource(
+      "file source contains no readable members",
+      "Use a locator that resolves to at least one regular file.",
+    );
+  }
+  const sourceArgument =
+    fileCount === 1 ? "?" : `[${Array.from({ length: fileCount }, () => "?").join(", ")}]`;
   if (sourceType === "csv") {
-    return CSV_SCAN;
+    return CSV_SCAN.replace("?", sourceArgument);
   }
   if (sourceType === "parquet") {
-    return PARQUET_SCAN;
+    return PARQUET_SCAN.replace("?", sourceArgument);
   }
   throw invalidSource(
     `DuckDB file backend does not support source type ${sourceType}`,
     "Declare a CSV or Parquet source, or choose a compatible backend.",
   );
-}
-
-async function resolveBoundFile(request: BackendReadRequest): Promise<string> {
-  const root = request.binding.option("root");
-  if (root === undefined || !isAbsolute(root)) {
-    throw invalidSource(
-      "DuckDB file bindings require an absolute root option",
-      "Create the SourceBinding with options: { root: '/absolute/data/root' }.",
-    );
-  }
-  if (resolve(root) === parse(resolve(root)).root) {
-    throw invalidSource(
-      "DuckDB file binding root cannot be a filesystem root",
-      "Bind the narrowest directory that contains the declared source.",
-    );
-  }
-  if (isAbsolute(request.source.locator)) {
-    throw invalidSource(
-      "portable file locators must be relative to the binding root",
-      "Move the absolute path into SourceBinding.root and keep a relative source locator.",
-    );
-  }
-
-  let canonicalRoot: string;
-  let canonicalSource: string;
-  try {
-    canonicalRoot = await realpath(root);
-    canonicalSource = await realpath(resolve(canonicalRoot, request.source.locator));
-  } catch {
-    throw invalidSource(
-      "file binding root or declared source does not exist",
-      "Correct the binding root or the declaration's relative source locator.",
-    );
-  }
-
-  const relation = relative(canonicalRoot, canonicalSource);
-  if (relation === ".." || relation.startsWith(`..${sep}`) || isAbsolute(relation)) {
-    throw invalidSource(
-      "file source resolves outside its binding root",
-      "Keep the source inside the bound root and avoid escaping symlinks or parent segments.",
-    );
-  }
-  const [rootStatus, sourceStatus] = await Promise.all([
-    stat(canonicalRoot),
-    stat(canonicalSource),
-  ]);
-  if (!rootStatus.isDirectory() || !sourceStatus.isFile()) {
-    throw invalidSource(
-      "file binding must resolve from a directory root to one regular file",
-      "Bind a directory and point the declaration at a regular file beneath it.",
-    );
-  }
-  return canonicalSource;
 }
 
 async function configureConnection(connection: DuckDBConnection): Promise<void> {
@@ -214,13 +179,13 @@ async function configureConnection(connection: DuckDBConnection): Promise<void> 
 
 async function invalidTemporalValueCount(
   connection: DuckDBConnection,
-  sourcePath: string,
+  sourceValues: readonly string[],
   scan: string,
   temporalIdentifier: string,
 ): Promise<number> {
   const result = await connection.runAndReadAll(
     `select count(*) as invalid_count from ${scan} where ${temporalIdentifier} is null or try_cast(${temporalIdentifier} as timestamptz) is null`,
-    [sourcePath],
+    [...sourceValues],
   );
   const value = result.getColumnsJS()[0]?.[0];
   if (typeof value === "bigint") {
@@ -331,14 +296,6 @@ function arrowType(
 
 function quoteIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`;
-}
-
-async function sha256File(path: string): Promise<string> {
-  const hash = createHash("sha256");
-  for await (const chunk of createReadStream(path)) {
-    hash.update(chunk);
-  }
-  return hash.digest("hex");
 }
 
 function invalidSource(message: string, remedy: string): EngineConfigurationError {

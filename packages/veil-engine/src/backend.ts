@@ -5,7 +5,14 @@ import {
   resolveSourceBinding,
   type SourceBinding,
 } from "./source-binding.ts";
+import {
+  type SourceFingerprint,
+  sourceFingerprintMatchesManifest,
+  verifySourceManifest,
+} from "./source-manifest.ts";
 import type { TemporalReadPlan } from "./temporal-plan.ts";
+
+export type { SourceFingerprint } from "./source-manifest.ts";
 
 export interface BackendCapabilities {
   /** Performance hints only. The guard never turns these into trust. */
@@ -13,12 +20,6 @@ export interface BackendCapabilities {
   readonly temporalPredicatePushdown: boolean;
   readonly sourceFingerprint: "content-hash" | "version-token" | "none";
   readonly readOnly: boolean;
-}
-
-export interface SourceFingerprint {
-  readonly algorithm: string;
-  readonly value: string;
-  readonly scope: "source-version" | "read-snapshot";
 }
 
 export interface BackendRuntime {
@@ -139,7 +140,7 @@ export async function readRegisteredBackend(
     result: {
       arrowIpc: Uint8Array.from(result.arrowIpc),
       sourceFingerprint:
-        result.sourceFingerprint === null ? null : Object.freeze({ ...result.sourceFingerprint }),
+        result.sourceFingerprint === null ? null : cloneFingerprint(result.sourceFingerprint),
       runtime: result.runtime === null ? null : Object.freeze({ ...result.runtime }),
       pushdown: Object.freeze({ ...result.pushdown }),
     },
@@ -244,8 +245,15 @@ function validateBackendResult(result: BackendReadResult, backend: TemporalBacke
       throw invalidResult(backendId, "promised a source fingerprint but returned none");
     }
   } else {
+    if (typeof fingerprint !== "object") {
+      throw invalidResult(backendId, "returned an invalid source fingerprint");
+    }
+    const hasManifest = Object.hasOwn(fingerprint, "manifest");
+    const actualKeys = Object.keys(fingerprint).sort(compareText);
+    const expectedKeys = ["algorithm", "value", "scope", ...(hasManifest ? ["manifest"] : [])].sort(
+      compareText,
+    );
     if (
-      typeof fingerprint !== "object" ||
       typeof fingerprint.algorithm !== "string" ||
       fingerprint.algorithm.length === 0 ||
       typeof fingerprint.value !== "string" ||
@@ -254,8 +262,24 @@ function validateBackendResult(result: BackendReadResult, backend: TemporalBacke
     ) {
       throw invalidResult(backendId, "returned an invalid source fingerprint");
     }
+    if (
+      actualKeys.length !== expectedKeys.length ||
+      actualKeys.some((key, index) => key !== expectedKeys[index])
+    ) {
+      throw invalidResult(backendId, "returned a source fingerprint with unknown fields");
+    }
     if (backend.capabilities.sourceFingerprint === "none") {
       throw invalidResult(backendId, "returned an undeclared source fingerprint");
+    }
+    if (hasManifest) {
+      try {
+        const manifest = verifySourceManifest(fingerprint.manifest);
+        if (!sourceFingerprintMatchesManifest(fingerprint, manifest)) {
+          throw new Error("fingerprint mismatch");
+        }
+      } catch {
+        throw invalidResult(backendId, "returned an invalid or mismatched source manifest");
+      }
     }
   }
   const runtime = result.runtime;
@@ -281,6 +305,26 @@ function validateBackendResult(result: BackendReadResult, backend: TemporalBacke
   ) {
     throw invalidResult(backendId, "reported pushdown that its capabilities do not declare");
   }
+}
+
+function cloneFingerprint(fingerprint: SourceFingerprint): SourceFingerprint {
+  if (fingerprint.manifest === undefined) {
+    return Object.freeze({
+      algorithm: fingerprint.algorithm,
+      value: fingerprint.value,
+      scope: fingerprint.scope,
+    });
+  }
+  return Object.freeze({
+    algorithm: fingerprint.algorithm,
+    value: fingerprint.value,
+    scope: fingerprint.scope,
+    manifest: verifySourceManifest(fingerprint.manifest),
+  });
+}
+
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function invalidResult(backendId: string, message: string): EngineConfigurationError {

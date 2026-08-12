@@ -7,9 +7,10 @@ three fields the contract needs:
 (entity, event_time, available_time, payload)
 ```
 
-Status: Stage 2A. Declaration validation, strict YAML loading, the backend-neutral temporal guard,
-the default CSV/Parquet backend, and read-set v0 identities are implemented. Durable snapshots are
-next. No package is published yet.
+Status: Stage 2B-2. Declaration validation, strict YAML loading, the backend-neutral temporal guard,
+the default single/multi-file CSV/Parquet backend, read-set v0 identities, source manifests, and
+durable snapshots are implemented. The first `veil-data` surface is next. No package is published
+yet.
 
 ## Smallest honest CSV declaration
 
@@ -108,11 +109,26 @@ same declaration usable on another machine without putting credentials in an art
 and option/secret **names**, never their values. The selected trusted backend can resolve values while
 reading; they are not returned with query results or placed in model context.
 
-The default file binding currently resolves one regular CSV or Parquet file and uses one option,
-`root`. It must be an absolute directory narrower than the filesystem root; `source.locator` is
-resolved beneath it using real paths, so `..` and escaping symlinks cannot cross the boundary. The
-source is hashed before and after every read. Multi-file manifests arrive in the Stage 2B snapshot
-slice; do not put a glob in the locator yet.
+The default file binding resolves either one regular CSV/Parquet file or a portable glob and uses one
+option, `root`. It must be an absolute directory narrower than the filesystem root;
+`source.locator` is resolved beneath it using real paths, so `..` and escaping symlinks cannot cross
+the boundary. Globs support `*` and `?` within one path segment and `**` as a complete recursive
+segment. Bracket/brace expansion and backslash separators are deliberately unsupported. Recursive
+discovery refuses symbolic-link directories encountered beneath its resolved literal base; every
+matched member must resolve to a regular file beneath the root.
+
+```yaml
+source:
+  type: parquet
+  locator: fundamentals/year=*/part-*.parquet
+```
+
+The engine enumerates matches itself and passes DuckDB an exact, sorted path list rather than
+delegating discovery to a database-specific glob. Before the query it records a
+`veil.source-manifest.v0` containing each root-relative logical name, byte length, and SHA-256. After
+the query it enumerates and hashes the full set again. A matching member being added, removed,
+renamed, or modified raises `SOURCE_CHANGED`; Veil never returns a mixed-version view. Absolute
+roots, binding ids, discovery order, mtimes, hostnames, and credentials do not enter the manifest.
 
 ```ts
 import {
@@ -140,10 +156,12 @@ const view = await new TemporalGuard(registry).read(
 ```
 
 Run the committed future-sentinel examples with `npm run csv-pit:verify` and
-`npm run parquet-pit:verify`; their entrypoints are under
+`npm run parquet-pit:verify`. Run the two-member source example with
+`npm run multi-file-pit:verify`; their entrypoints are under
 [`examples/csv-pit`](../examples/csv-pit/) and
-[`examples/parquet-pit`](../examples/parquet-pit/). The latter generates a temporary Parquet source
-from the committed CSV data, so no opaque binary fixture is stored in the repository.
+[`examples/parquet-pit`](../examples/parquet-pit/), plus
+[`examples/multi-file-pit`](../examples/multi-file-pit/). The Parquet example generates a temporary
+source from committed CSV data, so no opaque binary fixture is stored in the repository.
 
 ## Backends are replaceable
 

@@ -7,7 +7,6 @@ export {
   type BackendReadResult,
   BackendRegistry,
   type BackendRuntime,
-  type SourceFingerprint,
   type TemporalBackend,
 } from "./backend.ts";
 export { DUCKDB_FILE_BACKEND_ID, DuckDbFileBackend } from "./duckdb-file-backend.ts";
@@ -43,5 +42,14 @@ export {
   type SourceBindingInput,
   type SourceBindingSummary,
 } from "./source-binding.ts";
+export {
+  createSourceManifest,
+  SOURCE_MANIFEST_FORMAT,
+  type SourceFingerprint,
+  type SourceManifest,
+  type SourceManifestFile,
+  sourceFingerprintFromManifest,
+  verifySourceManifest,
+} from "./source-manifest.ts";
 export * from "./temporal-guard.ts";
 export * from "./temporal-plan.ts";

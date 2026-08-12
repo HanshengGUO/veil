@@ -10,6 +10,7 @@ import {
 import { type Table, tableFromIPC } from "apache-arrow";
 import type { BackendDescriptor, BackendRuntime, SourceFingerprint } from "./backend.ts";
 import { EngineConfigurationError } from "./errors.ts";
+import { sourceFingerprintMatchesManifest, verifySourceManifest } from "./source-manifest.ts";
 import {
   createTemporalReadPlan,
   type TemporalReadPlan,
@@ -382,16 +383,36 @@ function normalizeFingerprint(input: unknown, field: string): SourceFingerprint 
   if (input === null) {
     return null;
   }
-  const fingerprint = exactRecord(input, ["algorithm", "value", "scope"], field);
+  if (typeof input !== "object" || Array.isArray(input)) {
+    throw invalidReadSet(`${field} must be an object`);
+  }
+  const hasManifest = Object.hasOwn(input, "manifest");
+  const fingerprint = exactRecord(
+    input,
+    ["algorithm", "value", "scope", ...(hasManifest ? ["manifest"] : [])],
+    field,
+  );
   const scope = nonemptyString(fingerprint.scope, `${field} scope`);
   if (scope !== "source-version" && scope !== "read-snapshot") {
     throw invalidReadSet(`${field} scope is unsupported`);
   }
-  return {
+  const normalized: SourceFingerprint = {
     algorithm: nonemptyString(fingerprint.algorithm, `${field} algorithm`),
     value: nonemptyString(fingerprint.value, `${field} value`),
     scope,
   };
+  if (!hasManifest) {
+    return normalized;
+  }
+  try {
+    const manifest = verifySourceManifest(fingerprint.manifest);
+    if (!sourceFingerprintMatchesManifest(normalized, manifest)) {
+      throw new Error("fingerprint mismatch");
+    }
+    return { ...normalized, manifest };
+  } catch {
+    throw invalidReadSet(`${field} contains an invalid or mismatched source manifest`);
+  }
 }
 
 function normalizeQuery(input: unknown): ReadSetQueryEnvelope {

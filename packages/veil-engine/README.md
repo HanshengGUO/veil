@@ -2,10 +2,10 @@
 
 The verification surface. Everything that makes a claim expensive lives here.
 
-Status: Stage 2B-1 — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
-guard, strict adapter YAML loader, default DuckDB CSV/Parquet backend, read-set v0 identity, and
-durable content-addressed snapshots are implemented. The package remains private while the
-multi-file source manifest, `veil-data` surface, and remaining verification API are completed.
+Status: Stage 2B-2 — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
+guard, strict adapter YAML loader, default single/multi-file DuckDB CSV/Parquet backend, source and
+read-set v0 identities, and durable content-addressed snapshots are implemented. The package remains
+private while the `veil-data` surface and remaining verification API are completed.
 
 ## The database is replaceable; the guard is not
 
@@ -39,6 +39,11 @@ the data lives. Backend-specific SQL, connections, and credentials stay behind t
 - return Arrow IPC plus an optional source fingerprint;
 - report its runtime name/version, or explicitly return `null`;
 - report which projection/predicate optimizations it attempted.
+
+`SourceFingerprint.manifest` is deliberately optional. Enumerable file backends can attach a strict
+`veil.source-manifest.v0`; a database backend can instead return its transaction/version token, and
+an unversioned source returns `null`. The common guard and read-set verifier preserve these cases
+without requiring a database to pretend it is a directory of files.
 
 `BackendRegistry` accepts custom implementations but exposes no raw read method. Reads leave the
 registry only through the engine's internal bridge into `TemporalGuard`. The contract test uses an
@@ -81,8 +86,16 @@ const result = await new TemporalGuard(registry).read(
 
 The declaration keeps a relative, portable locator. The binding root must be absolute and cannot be
 a filesystem root; realpath containment rejects parent traversal and symlinks escaping that root.
-The backend executes only in-memory read queries, hashes the source bytes before and after the query,
-and returns the SHA-256 as its source fingerprint.
+A locator may be one file or a portable `*`, `?`, or whole-segment `**` glob. The engine resolves and
+sorts matches itself, then gives DuckDB the exact list—it does not delegate membership to
+database-specific glob behavior.
+
+Before and after each query, the backend enumerates all matching members and hashes their bytes. A
+`veil.source-manifest.v0` records sorted root-relative logical names, byte lengths, and content
+hashes. Addition, deletion, rename, replacement, or truncation during a read raises `SOURCE_CHANGED`.
+Absolute roots, discovery order, mtimes, binding ids, hostnames, and credentials are excluded, so an
+identical file set under another root has the same source identity. Single-file reads use this same
+abstraction and preserve their existing guarded-query behavior.
 
 DuckDB validates the temporal column before applying pushdown. If any value is null or unparseable,
 the backend deliberately skips temporal pushdown so the common guard sees the bad row and raises C1
@@ -90,7 +103,8 @@ instead of silently filtering it away. CSV and Parquet use the same backend, bin
 semantics, and guard. The metamorphic suite verifies equal rows and schemas across formats while
 their physical source hashes remain different. See the runnable
 [`examples/csv-pit`](../../examples/csv-pit/) and
-[`examples/parquet-pit`](../../examples/parquet-pit/).
+[`examples/parquet-pit`](../../examples/parquet-pit/), plus the manifest-focused
+[`examples/multi-file-pit`](../../examples/multi-file-pit/).
 
 The current canonical Arrow mapping covers primitive scalar columns. Unsupported nested Parquet
 types fail closed until an explicit canonical type adapter is provided.
@@ -150,16 +164,16 @@ round-trips an Arrow IPC stream. Failures identify `duckdb-load`, `duckdb-query`
 Windows matrix verifies native installation and execution.
 
 No DuckDB type appears in the public data-plane API, and importing the engine does not load the
-native module. The next slices add multi-file source manifests and the first `veil-data` surface.
+native module. The next slice adds the first `veil-data` surface.
 
 ## What lands here, and when
 
 | Component | Stage | Notes |
 | --- | --- | --- |
 | Backend-neutral temporal guard | 2 | Structured plan → replaceable backend → Arrow IPC → mandatory C1 re-check |
-| Default file backend | 2 | CSV/Parquet implemented with metamorphic equivalence; DuckDB stays private |
+| Default file backend | 2 | Single/multi-file CSV/Parquet with stable source manifests; DuckDB stays private |
 | Read-set identity | 2 | v0 manifest and independent Arrow verification implemented |
-| Snapshot persistence | 2 | Durable local content-addressed storage implemented; multi-file source manifests and operator recovery tooling remain |
+| Snapshot persistence | 2 | Durable local content-addressed storage implemented; operator recovery tooling remains |
 | Verification engine | 2 | Re-executes an artifact window by window: rows with `available_time > t` do not exist |
 | Artifact management | 2 | `compute(data_view)` packaging, parameter locking, content-addressed identity |
 | Statistical gates | 4 | Trials-aware deflated Sharpe, parameter stability, null falsification, cost sensitivity |

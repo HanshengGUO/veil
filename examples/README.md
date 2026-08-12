@@ -4,6 +4,7 @@
 | --- | --- |
 | [`csv-pit/`](./csv-pit) | The smallest adapter → guarded CSV point-in-time read. |
 | [`parquet-pit/`](./parquet-pit) | The same guarded contract over generated Parquet. |
+| [`multi-file-pit/`](./multi-file-pit) | Two CSV members → one stable, path-free source manifest and guarded view. |
 | [`read-set/`](./read-set) | Atomic content-addressed snapshot publication and independent-process replay. |
 | [`golden-path/`](./golden-path) | The reference research run, written by hand. One factor evaluated under an honest protocol and under seven variations, each leaking in exactly one way. |
 

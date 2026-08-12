@@ -64,11 +64,20 @@ describe("DuckDB CSV backend", () => {
     expect(result.audit.backendClaimedProjectionPushdown).toBe(true);
     expect(result.audit.backendClaimedTemporalPushdown).toBe(true);
     expect(result.audit.droppedFutureRows).toBe(0);
-    expect(result.sourceFingerprint).toEqual({
+    expect(result.sourceFingerprint).toMatchObject({
       algorithm: "sha256",
-      value: expectedHash,
       scope: "source-version",
     });
+    expect(result.sourceFingerprint?.manifest?.files).toEqual([
+      {
+        logicalName: "temporal.csv",
+        byteLength: sourceBytes.byteLength,
+        contentHash: `sha256:${expectedHash}`,
+      },
+    ]);
+    expect(result.sourceFingerprint?.value).toBe(
+      result.sourceFingerprint?.manifest?.manifestHash.slice("sha256:".length),
+    );
     expect(await readFile(sourcePath)).toEqual(sourceBytes);
   });
 

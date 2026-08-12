@@ -6,7 +6,7 @@ rows were actually delivered. The manifest separates five identities that must n
 | Identity | Meaning |
 | --- | --- |
 | `declarationHash` | Normalized adapter semantics, including its portable source declaration |
-| `source.fingerprint` | Physical input version reported by the backend; `null` means non-reproducible |
+| `source.fingerprint` | Physical input version reported by the backend, optionally with its exact source manifest; `null` means non-reproducible |
 | `queryHash` | Dataset, adapter version, normalized `as_of`, projection, predicate, and filter version |
 | `result.resultHash` | Canonical schema plus the multiset of guarded Arrow rows |
 | `result.arrowHash` | Exact guarded Arrow IPC bytes delivered by this read |
@@ -52,6 +52,33 @@ addresses, not signatures: a self-consistent replacement manifest is detectable 
 with the id already recorded by the experiment. A `null` source fingerprint is valid for exploration
 but cannot support a reproducible promotion claim.
 
+## Multi-file source identity
+
+The default file backend embeds a `veil.source-manifest.v0` in its source fingerprint. Each entry has
+only stable physical evidence:
+
+```json
+{
+  "logicalName": "prices/year=2026/part-00.parquet",
+  "byteLength": 12345,
+  "contentHash": "sha256:..."
+}
+```
+
+Logical names are relative to the opaque binding root and use forward slashes. Entries are unique
+and sorted before the manifest is hashed; the fingerprint's SHA-256 value identifies the complete
+manifest. The verifier independently checks entry shape/order, every hash encoding, the manifest
+hash, and the fingerprint-to-manifest link. Legacy or custom backend fingerprints without an
+embedded file manifest remain valid—the generic backend interface is not tied to files or a
+particular database.
+
+The default backend captures the complete matching set before and after every query, hashes file
+contents both times, and gives DuckDB the first capture's exact sorted path list. Adding, deleting,
+renaming, or replacing one matching member therefore changes source identity and, if it occurs during
+the read, fails with `SOURCE_CHANGED`. Copying identical logical members to another absolute root,
+changing mtimes, or creating them in another discovery order leaves source and read-set identity
+unchanged.
+
 ## Durable snapshots
 
 `ReadSetSnapshotStore` persists an already-guarded manifest and its exact Arrow IPC as one
@@ -92,11 +119,12 @@ workflow.
 ## Current limits
 
 Absolute binding roots, binding ids, mtimes, hostnames, credentials, and secret references do not
-enter read-set identity. The current default file backend fingerprints one regular CSV or Parquet
-file. Like the current guard, v0 materializes the table and sorts row hashes in memory; streaming or
-external canonicalization is not claimed yet. The local snapshot store does not yet provide remote
-transport, garbage collection, or an automatic recovery policy. Multi-file source manifests and the
-`veil-data` point/panel export surface are the next Stage 2B slices.
+enter read-set identity. The default file backend supports one file or an explicitly matched
+CSV/Parquet set; it does not infer partition semantics beyond the declared locator. Like the current
+guard, v0 materializes the table and sorts row hashes in memory; streaming or external
+canonicalization is not claimed yet. The local snapshot store does not yet provide remote transport,
+garbage collection, or an automatic recovery policy. The `veil-data` point/panel export surface is
+the next Stage 2B slice.
 
 Run the independent-process snapshot replay with `npm run read-set:verify`; its source is under
 [`examples/read-set`](../examples/read-set/).

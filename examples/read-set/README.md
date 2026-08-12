@@ -22,5 +22,5 @@ to reproduce the same identity from the snapshot alone. The temporary store is r
 The manifest and public store handle deliberately exclude absolute roots, binding ids, mtimes,
 hostnames, and secrets. Publication uses same-directory temporary files, file sync, directory sync
 where supported, and atomic rename. Missing, truncated, tampered, or unexpected files fail loudly;
-the store never queries the current source as a substitute. Multi-file source manifests are the next
-Stage 2B slice.
+the store never queries the current source as a substitute. File-backed read sets may now embed the
+exact sorted multi-file source manifest verified before the snapshot is written.

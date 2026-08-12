@@ -1,0 +1,13 @@
+dataset: multi_file_prices
+version: "1"
+entity_key: ticker
+event_time: event_time
+available_time: available_time
+availability_basis: observed
+guarantees:
+  point_in_time: true
+payload_schema:
+  value: float64
+source:
+  type: csv
+  locator: data/*.csv

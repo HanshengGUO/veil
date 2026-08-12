@@ -6,7 +6,9 @@ import {
   type BackendReadRequest,
   BackendRegistry,
   createSourceBinding,
+  createSourceManifest,
   EngineConfigurationError,
+  sourceFingerprintFromManifest,
   type TemporalBackend,
   TemporalGuard,
 } from "../src/index.ts";
@@ -304,6 +306,40 @@ describe("backend registry", () => {
         adapterWithAvailability(),
         { asOf: "2026-08-12" },
         createSourceBinding({ id: "invalid-runtime", backend: base.id }),
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_BACKEND_RESULT" });
+  });
+
+  it("rejects a source fingerprint that does not match its embedded manifest", async () => {
+    const base = backendReturning({
+      ticker: ["A"],
+      event_time: ["2026-08-11T00:00:00Z"],
+      available_time: ["2026-08-12T00:00:00Z"],
+    });
+    const manifest = createSourceManifest([
+      {
+        logicalName: "part.csv",
+        byteLength: 1,
+        contentHash: `sha256:${"a".repeat(64)}`,
+      },
+    ]);
+    const registry = new BackendRegistry();
+    registry.register({
+      ...base,
+      read: async (request) => ({
+        ...(await base.read(request)),
+        sourceFingerprint: {
+          ...sourceFingerprintFromManifest(manifest),
+          value: "0".repeat(64),
+        },
+      }),
+    });
+
+    await expect(
+      new TemporalGuard(registry).read(
+        adapterWithAvailability(),
+        { asOf: "2026-08-12" },
+        createSourceBinding({ id: "invalid-manifest", backend: base.id }),
       ),
     ).rejects.toMatchObject({ code: "INVALID_BACKEND_RESULT" });
   });
