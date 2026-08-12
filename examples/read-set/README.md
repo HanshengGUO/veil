@@ -24,3 +24,7 @@ hostnames, and secrets. Publication uses same-directory temporary files, file sy
 where supported, and atomic rename. Missing, truncated, tampered, or unexpected files fail loudly;
 the store never queries the current source as a substitute. File-backed read sets may now embed the
 exact sorted multi-file source manifest verified before the snapshot is written.
+
+For the separate operator path that inspects, quarantines, audits, and explicitly republishes a
+corrupt object, run `npm run snapshot-recovery:verify` and see
+[`examples/snapshot-recovery`](../snapshot-recovery/).

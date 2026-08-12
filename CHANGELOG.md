@@ -46,7 +46,9 @@ Contract v1.0 review rulings, applied to the specification:
 - **Durable read-set snapshots**: guarded Arrow and its manifest publish atomically into a local
   content-addressed namespace, converge under concurrent writers, revalidate on every read, and fail
   closed for missing or corrupt evidence without silently querying a current source or overwriting a
-  damaged object.
+  damaged object. Read-only inspection now classifies valid/missing/invalid objects; a separate
+  operator capability can quarantine only intrinsically corrupt evidence with durable intent/result
+  hashes, per-id recovery locking, retained forensic bytes, and explicit trusted republication.
 - **Stable multi-file source manifests**: file adapters accept confined portable globs and hash the
   exact sorted set of root-relative members before and after each read. Added, removed, renamed,
   replaced, or truncated members change source identity or raise `SOURCE_CHANGED`; paths, mtimes,

@@ -90,7 +90,9 @@ console.log(written.snapshot); // portable content-addressed reference
 ```
 
 Putting `snapshotStore` into a read request is rejected as an unknown field. A configured CLI store
-also remains untouched when Arrow output is selected.
+also remains untouched when Arrow output is selected. Corrupt snapshots are never healed by a new
+query; inspection and explicit operator quarantine are documented in
+[`read-sets.md`](./read-sets.md#inspect-and-recover-without-erasing-evidence).
 
 ## CLI core
 

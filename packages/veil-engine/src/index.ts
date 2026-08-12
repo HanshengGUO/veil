@@ -26,10 +26,18 @@ export {
 } from "./read-set.ts";
 export * from "./runtime-smoke.ts";
 export {
+  openReadSetSnapshotRecovery,
   openReadSetSnapshotStore,
   READ_SET_SNAPSHOT_FORMAT,
+  READ_SET_SNAPSHOT_INSPECTION_FORMAT,
+  READ_SET_SNAPSHOT_RECOVERY_FORMAT,
   type ReadSetSnapshot,
   type ReadSetSnapshotEvidence,
+  type ReadSetSnapshotInspection,
+  type ReadSetSnapshotInspectionStatus,
+  type ReadSetSnapshotQuarantineInput,
+  ReadSetSnapshotRecovery,
+  type ReadSetSnapshotRecoveryRecord,
   type ReadSetSnapshotReference,
   ReadSetSnapshotStore,
   type ReadSetSnapshotStoreInput,

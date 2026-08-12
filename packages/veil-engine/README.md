@@ -2,10 +2,11 @@
 
 The verification surface. Everything that makes a claim expensive lives here.
 
-Status: Stage 2B-3 — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
+Status: Stage 2B-4 — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
 guard, strict adapter YAML loader, default single/multi-file DuckDB CSV/Parquet backend, source and
 read-set v0 identities, durable content-addressed snapshots, and the minimum `veil-data` point/panel
-surface are implemented. The package remains private while the verification API is completed.
+surface are implemented and hardened with operator-controlled snapshot quarantine. The package
+remains private while the verification API is completed.
 
 ## The database is replaceable; the guard is not
 
@@ -182,6 +183,15 @@ the public object's JSON representation, so the same snapshot namespace can be c
 machines without changing ids. The cold example performs the replay in a second process without a
 backend or source binding.
 
+`store.inspect(id, evidence)` returns `valid`, `missing`, or `invalid` without mutation. A separate
+`ReadSetSnapshotRecovery` capability can quarantine only an intrinsically corrupt object after an
+operator supplies an actor and reason. It persists a hash-addressed intent, atomically moves the
+object out of the readable namespace, retains its bytes, and persists a hash-verified result audit.
+It refuses valid/missing objects and never interprets mismatched caller evidence as corruption.
+Restoration requires a later explicit `put()` of the exact trusted manifest and Arrow bytes. See the
+operator contract in [`docs/read-sets.md`](../../docs/read-sets.md) and the cold
+[`examples/snapshot-recovery`](../../examples/snapshot-recovery/).
+
 ## Native runtime gate
 
 The engine pins:
@@ -195,8 +205,8 @@ round-trips an Arrow IPC stream. Failures identify `duckdb-load`, `duckdb-query`
 Windows matrix verifies native installation and execution.
 
 No DuckDB type appears in the public data-plane API, and importing the engine does not load the
-native module. The next slice hardens operator-controlled snapshot recovery and completes the Stage
-2B documentation/acceptance pass.
+native module. The next slice starts the artifact subprocess and walk-forward verification core;
+its public boundary is sketched in [`docs/artifacts.md`](../../docs/artifacts.md).
 
 ## What lands here, and when
 
@@ -205,7 +215,7 @@ native module. The next slice hardens operator-controlled snapshot recovery and 
 | Backend-neutral temporal guard | 2 | Structured plan → replaceable backend → Arrow IPC → mandatory C1 re-check |
 | Default file backend | 2 | Single/multi-file CSV/Parquet with stable source manifests; DuckDB stays private |
 | Read-set identity | 2 | v0 manifest and independent Arrow verification implemented |
-| Snapshot persistence | 2 | Durable local content-addressed storage implemented; operator recovery tooling remains |
+| Snapshot persistence | 2 | Durable local content-addressed storage plus explicit inspect/quarantine/audit recovery |
 | Verification engine | 2 | Re-executes an artifact window by window: rows with `available_time > t` do not exist |
 | Artifact management | 2 | `compute(data_view)` packaging, parameter locking, content-addressed identity |
 | Statistical gates | 4 | Trials-aware deflated Sharpe, parameter stability, null falsification, cost sensitivity |
