@@ -13,8 +13,13 @@ and does not ask you to learn a new research API. It changes one thing:
 Nobody would accept an editor that blocks their keystrokes. Everybody accepts CI that blocks their
 merge. Veil is CI for research claims.
 
-Status: **Stage 0, pre-alpha.** Nothing is installable yet. The first public release (v0.1) lands at
-the end of Stage 3 — see [Roadmap](#roadmap).
+Status: **Stage 1, pre-alpha.** The 14-task bench, runner, and first real two-model
+[bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are complete. Independent scoring
+review, an external docs-only trial, and remote CI confirmation remain before Stage 1 closes. An
+independent [QBench Engineering baseline](./bench/baselines/kimi-qbench-engineering-v1/) now also
+tests cold-start artifacts, causal reconciliation, recovery, and content-addressed manifests.
+Nothing is installable yet. The first public release (v0.1) lands at the end of Stage 3 — see
+[Roadmap](#roadmap).
 
 ---
 
@@ -91,6 +96,7 @@ docs/                     one page per thing
 | [contract.md](./docs/contract.md) | The specification: invariants, degradation rules, threat model |
 | [examples/golden-path](./examples/golden-path) | What a Veil research log looks like, with real numbers |
 | [bench/README.md](./bench/README.md) | How scoring works: two axes, four attribution layers |
+| [bench.md](./docs/bench.md) | Run, score, replay, and contribute Veil-bench tasks |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Three ways to contribute without reading the internals |
 
 Written as they are built: `concepts`, `quickstart`, `adapters`, `artifacts`, `gates`, `faq`.
@@ -118,7 +124,7 @@ Requires Node 20 or newer.
 
 ```bash
 npm install
-npm run check          # lint, typecheck, tests, golden-path reproduction
+npm run check          # lint, typecheck, tests, bench smoke, golden-path reproduction
 npm run golden-path    # regenerate the reference study and print the table above
 ```
 

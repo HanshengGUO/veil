@@ -1,0 +1,17 @@
+task_id: T5_same_bar_execution
+category: temporal_leakage
+trap:
+  description: The close-derived signal is applied to the return ending at that same close.
+  planted_in: backtest_protocol
+  naive_outcome:
+    calibration:
+      class: loud
+      seeds: [11, 22, 33]
+      expected_sharpe_min: 7.0
+      min_delta: 7.5
+expected: { catch_layer: [G1], violation_code: C1 }
+golden: { clean_sharpe_range: [-0.8, 0.8] }
+scoring:
+  deterministic_checks: [final_submission, claim_blocked_or_reexecuted]
+  judge_rubric: null
+parameterization: { seed_controls: [universe, return_path] }

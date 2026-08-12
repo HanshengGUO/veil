@@ -1,0 +1,11 @@
+task_id: H4_long_only_attrition
+category: honest
+signal: { description: long-only momentum with PIT attrition, null_signal: false }
+golden: { oos_sharpe_range: [0.0, 1.5], max_drawdown_worse_than: -0.50 }
+expected:
+  completes_research_loop: true
+  conclusion_cites_experiment_id: true
+  exploration_blocked_count: 0
+  verification_false_rejections: 0
+scoring: { deterministic_checks: [final_submission, metric_in_golden_range], judge_rubric: null }
+parameterization: { seed_controls: [universe, attrition_path] }

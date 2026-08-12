@@ -36,6 +36,10 @@ bench/
 └── baselines/   # bare agent, no contract — the control group
 ```
 
+Run the four-task, model-free CI subset with `npm run bench:smoke`, or validate all generators with
+`npm run bench:tasks:verify`. The complete runner and scoring guide is
+[`docs/bench.md`](../docs/bench.md).
+
 ## Contributing a task
 
 A task is a directory, not code. Copy [`tasks/_TEMPLATE`](./tasks/_TEMPLATE) and fill it in — see

@@ -29,6 +29,12 @@ export interface MarketSpec {
    */
   momentumKappa: number;
   momentumWindow?: number;
+  /**
+   * Strength of a quarterly fundamental signal. The value for a quarter starts affecting returns at
+   * period end, while the honest feed reveals it only after the reporting lag. A final-value vendor
+   * dump with no availability timestamp therefore exposes the signal too early.
+   */
+  fundamentalKappa?: number;
   /** Daily drift of instruments on their way out. More negative makes survivorship bias bite harder. */
   delistDriftPerDay?: number;
   haltProbability?: number;
@@ -49,8 +55,9 @@ export interface MarketSpec {
    *   restatements as separate rows. The honest case.
    * - `restated-only`: final restated values with **no availability column at all**, which is how a
    *   great many vendor dumps actually arrive.
+   * - `both`: write both forms under distinct filenames for paired calibration.
    */
-  fundamentals?: "none" | "with-availability" | "restated-only";
+  fundamentals?: "none" | "with-availability" | "restated-only" | "both";
 }
 
 export interface MarketOutput {
@@ -59,6 +66,7 @@ export interface MarketOutput {
   priceRows: number;
   universeRows: number;
   fundamentalRows: number;
+  sentinelRows: number;
   files: string[];
 }
 
@@ -118,6 +126,18 @@ interface Instrument {
   haltDaysLeft: number;
   /** Offset into the regime schedule, so instruments can be calm while others are turbulent. */
   regimePhase: number;
+  fundamentalIndex: number;
+  fundamentals: FundamentalQuarter[];
+}
+
+interface FundamentalQuarter {
+  periodEnd: string;
+  firstAvailable: string;
+  restatedAvailable: string;
+  firstValue: number;
+  finalValue: number;
+  latentScore: number;
+  restated: boolean;
 }
 
 export function generateMarket(spec: MarketSpec, outDir: string): MarketOutput {
@@ -126,6 +146,10 @@ export function generateMarket(spec: MarketSpec, outDir: string): MarketOutput {
   const haltProbability = spec.haltProbability ?? 0.0015;
   const regimes = spec.volatilityRegimes ?? false;
   const fundamentalsMode = spec.fundamentals ?? "none";
+  const fundamentalKappa = spec.fundamentalKappa ?? 0;
+  if (fundamentalKappa !== 0 && fundamentalsMode === "none") {
+    throw new Error("fundamentalKappa requires a fundamentals fixture");
+  }
 
   const rng = createRng(spec.seed);
   const dates = businessDays(spec.startDate, spec.endDate);
@@ -144,7 +168,44 @@ export function generateMarket(spec: MarketSpec, outDir: string): MarketOutput {
       trailing: [],
       haltDaysLeft: 0,
       regimePhase: spec.perInstrumentRegimes ? Math.floor(4 * rng()) : 0,
+      fundamentalIndex: -1,
+      fundamentals: [],
     });
+  }
+
+  if (fundamentalsMode !== "none") {
+    const quarterEnds = ["03-31", "06-30", "09-30", "12-31"];
+    const firstYear = Number(spec.startDate.slice(0, 4)) - 1;
+    const lastYear = Number(spec.endDate.slice(0, 4));
+
+    for (const instrument of instruments) {
+      const base = 0.045 + 0.01 * rng();
+      for (let year = firstYear; year <= lastYear; year++) {
+        for (const quarterEnd of quarterEnds) {
+          const periodEnd = `${year}-${quarterEnd}`;
+          if (periodEnd > spec.endDate) continue;
+
+          const latentScore = normal(rng);
+          const firstSignal = latentScore + 0.75 * normal(rng);
+          const finalSignal = latentScore + 0.15 * normal(rng);
+          const lag = 45 + Math.floor(46 * rng());
+          const restated = rng() < 0.3;
+          // Draw this for every quarter, including those not restated, so all output modes consume
+          // exactly the same random stream and can be compared byte-for-byte on prices.
+          const restatementLag = lag + 30 + Math.floor(60 * rng());
+
+          instrument.fundamentals.push({
+            periodEnd,
+            firstAvailable: addDays(periodEnd, lag),
+            restatedAvailable: addDays(periodEnd, restatementLag),
+            firstValue: base + 0.012 * firstSignal,
+            finalValue: base + 0.012 * (restated ? finalSignal : firstSignal),
+            latentScore,
+            restated,
+          });
+        }
+      }
+    }
   }
 
   const priceLines: string[] = ["date,ticker,close,volume,tradable"];
@@ -180,7 +241,20 @@ export function generateMarket(spec: MarketSpec, outDir: string): MarketOutput {
       // compound predictability over the sample, which is a bug the golden path already paid for.
       const idioScale = regimeFactor(d, regimes, instrument.regimePhase);
       const noise = instrument.idioVol * idioScale * normal(rng);
-      const idio = noise + spec.momentumKappa * signal * instrument.idioVol;
+      while (
+        instrument.fundamentalIndex + 1 < instrument.fundamentals.length &&
+        instrument.fundamentals[instrument.fundamentalIndex + 1].periodEnd <= date
+      ) {
+        instrument.fundamentalIndex += 1;
+      }
+      const fundamentalSignal =
+        instrument.fundamentalIndex >= 0
+          ? instrument.fundamentals[instrument.fundamentalIndex].latentScore
+          : 0;
+      const idio =
+        noise +
+        spec.momentumKappa * signal * instrument.idioVol +
+        fundamentalKappa * fundamentalSignal * instrument.idioVol;
       const ret = instrument.beta * marketReturn + idio + instrument.drift;
 
       trailing.push(noise);
@@ -200,56 +274,54 @@ export function generateMarket(spec: MarketSpec, outDir: string): MarketOutput {
   }
 
   mkdirSync(outDir, { recursive: true });
-  const files = ["prices.csv", "universe_history.csv", "universe_current.csv"];
+  const files = ["prices.csv", "universe_history.csv", "universe_current.csv", "sentinel.csv"];
   writeFileSync(join(outDir, "prices.csv"), `${priceLines.join("\n")}\n`);
   writeFileSync(join(outDir, "universe_history.csv"), `${universeLines.join("\n")}\n`);
   writeFileSync(join(outDir, "universe_current.csv"), `${survivorLines.join("\n")}\n`);
+  // This row is deliberately separate from the research tables. Stage 2 adapter registration will
+  // inject it into a view and assert that decision-time filtering hides it. Keeping the probe in
+  // every task snapshot makes loss of the sentinel itself a CI-visible fixture regression.
+  writeFileSync(
+    join(outDir, "sentinel.csv"),
+    `dataset,ticker,event_time,available_time,value,expected_visible\nsynthetic_prices,VEIL_FUTURE_SENTINEL,${spec.startDate},2099-12-31,999999,false\n`,
+  );
 
   let fundamentalRows = 0;
   if (fundamentalsMode !== "none") {
-    const withAvailability = fundamentalsMode === "with-availability";
-    const header = withAvailability
-      ? "ticker,period_end,available_time,earnings_yield"
-      : "ticker,period_end,earnings_yield";
-    const lines: string[] = [header];
-    const quarterEnds = ["03-31", "06-30", "09-30", "12-31"];
-    const firstYear = Number(spec.startDate.slice(0, 4)) - 1;
-    const lastYear = Number(spec.endDate.slice(0, 4));
-
+    const pointInTimeLines = ["ticker,period_end,available_time,earnings_yield"];
+    const restatedLines = ["ticker,period_end,earnings_yield"];
     for (const instrument of instruments) {
-      const base = 0.02 + 0.06 * rng();
-      for (let year = firstYear; year <= lastYear; year++) {
-        for (const quarterEnd of quarterEnds) {
-          const periodEnd = `${year}-${quarterEnd}`;
-          if (periodEnd > spec.endDate) continue;
-          const asFirstReported = base + 0.01 * normal(rng);
-          const lag = 45 + Math.floor(46 * rng());
-          const restated = rng() < 0.12;
-          const restatedValue = asFirstReported + 0.004 * normal(rng);
-
-          if (withAvailability) {
-            lines.push(
-              `${instrument.ticker},${periodEnd},${addDays(periodEnd, lag)},${asFirstReported.toFixed(6)}`,
-            );
-            if (restated) {
-              const restatementLag = lag + 30 + Math.floor(60 * rng());
-              lines.push(
-                `${instrument.ticker},${periodEnd},${addDays(periodEnd, restatementLag)},${restatedValue.toFixed(6)}`,
-              );
-            }
-          } else {
-            // One row per period, carrying the *final* value. Whoever consumes this cannot tell that
-            // the number was not knowable until months later, or that it changed.
-            const value = restated ? restatedValue : asFirstReported;
-            lines.push(`${instrument.ticker},${periodEnd},${value.toFixed(6)}`);
-          }
+      for (const quarter of instrument.fundamentals) {
+        pointInTimeLines.push(
+          `${instrument.ticker},${quarter.periodEnd},${quarter.firstAvailable},${quarter.firstValue.toFixed(6)}`,
+        );
+        if (quarter.restated) {
+          pointInTimeLines.push(
+            `${instrument.ticker},${quarter.periodEnd},${quarter.restatedAvailable},${quarter.finalValue.toFixed(6)}`,
+          );
         }
+        // One row per period, carrying the final value. Whoever consumes this cannot tell that the
+        // number was unavailable at period end, or that it was later revised.
+        restatedLines.push(
+          `${instrument.ticker},${quarter.periodEnd},${quarter.finalValue.toFixed(6)}`,
+        );
       }
     }
 
-    writeFileSync(join(outDir, "fundamentals.csv"), `${lines.join("\n")}\n`);
-    files.push("fundamentals.csv");
-    fundamentalRows = lines.length - 1;
+    const writeFundamentals = (filename: string, lines: string[]) => {
+      writeFileSync(join(outDir, filename), `${lines.join("\n")}\n`);
+      files.push(filename);
+      fundamentalRows += lines.length - 1;
+    };
+
+    if (fundamentalsMode === "with-availability") {
+      writeFundamentals("fundamentals.csv", pointInTimeLines);
+    } else if (fundamentalsMode === "restated-only") {
+      writeFundamentals("fundamentals.csv", restatedLines);
+    } else {
+      writeFundamentals("fundamentals_pit.csv", pointInTimeLines);
+      writeFundamentals("fundamentals_restated.csv", restatedLines);
+    }
   }
 
   return {
@@ -258,6 +330,7 @@ export function generateMarket(spec: MarketSpec, outDir: string): MarketOutput {
     priceRows: priceLines.length - 1,
     universeRows: universeLines.length - 1,
     fundamentalRows,
+    sentinelRows: 1,
     files,
   };
 }

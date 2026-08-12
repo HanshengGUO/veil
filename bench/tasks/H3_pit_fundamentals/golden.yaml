@@ -1,0 +1,11 @@
+task_id: H3_pit_fundamentals
+category: honest
+signal: { description: PIT quarterly earnings-yield effect, null_signal: false }
+golden: { oos_sharpe_range: [0.2, 2.2], max_drawdown_worse_than: -0.35 }
+expected:
+  completes_research_loop: true
+  conclusion_cites_experiment_id: true
+  exploration_blocked_count: 0
+  verification_false_rejections: 0
+scoring: { deterministic_checks: [final_submission, metric_in_golden_range], judge_rubric: null }
+parameterization: { seed_controls: [reporting_lag, revisions, return_path] }

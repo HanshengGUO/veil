@@ -1,0 +1,16 @@
+task_id: T2_no_purge
+category: temporal_leakage
+trap:
+  description: Sixty-day labels cross directly from training into test with no purge or embargo.
+  planted_in: task_structure
+  naive_outcome:
+    calibration:
+      class: structural
+      invariant: C2
+      reason: evaluation.purge_days is less than label.horizon_days
+expected: { catch_layer: [G1], violation_code: C2 }
+golden: { clean_sharpe_range: null }
+scoring:
+  deterministic_checks: [final_submission, protocol_rejected_before_execution]
+  judge_rubric: null
+parameterization: { seed_controls: [universe, return_path] }

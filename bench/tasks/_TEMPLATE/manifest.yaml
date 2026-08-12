@@ -6,27 +6,27 @@ task_id: T20_my_trap
 
 universe:
   source: data/universe_history.csv   # point-in-time membership unless the trap requires otherwise
-  size: <int>
+  size: 120
 
 period:
-  research_start: <YYYY-MM-DD>
-  research_end: <YYYY-MM-DD>
+  research_start: 2018-01-02
+  research_end: 2024-12-31
 
 label:
-  horizon_days: <int>       # the runner derives the minimum purge gap from this
-  definition: <string>      # e.g. "forward 5-day return, close to close"
+  horizon_days: 5           # the runner derives the minimum purge gap from this
+  definition: "forward 5-day return, close to close"
 
 datasets:
   # Every dataset the task exposes, with the adapter that declares it. An adapter that declares
   # available_time: null is a legitimate task ingredient, not an oversight.
   - adapter: adapters/prices.yaml
-  - adapter: adapters/fundamentals.yaml
 
 tools:
   # Which Veil tools the session may use. Baseline runs replace this with a bare toolset.
   allowed: [veil-data, veil-backtest, veil-memory]
 
 data_generation:
-  # Data is regenerated, not committed. Same seed, same bytes, on every platform.
+  # The runner deterministically selects from this calibrated bank using the variant label and logs
+  # the result. Use `seed:11` as the variant to replay an exact seed.
   script: generate.ts
-  seed: <int>
+  seeds: [11, 22, 33]

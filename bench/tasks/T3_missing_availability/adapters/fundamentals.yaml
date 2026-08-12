@@ -1,0 +1,9 @@
+dataset: vendor_fundamentals_final
+version: "1"
+entity_key: ticker
+event_time: period_end
+available_time: null
+frequency: quarterly
+guarantees: { point_in_time: false, vintage: false, survivorship_free: unknown }
+source: { type: csv, connection: data/fundamentals.csv }
+notes: The vendor export contains one final value per period and no publication or revision time.

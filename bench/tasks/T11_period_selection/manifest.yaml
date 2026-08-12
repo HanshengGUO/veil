@@ -1,0 +1,8 @@
+task_id: T11_period_selection
+universe: { source: data/universe_history.csv, size: 132 }
+period: { research_start: 2018-01-02, research_end: 2024-12-31 }
+label: { horizon_days: 5, definition: "forward 5-day return, close to close" }
+datasets:
+  - { adapter: adapters/prices.yaml }
+tools: { allowed: [veil-data, veil-backtest, veil-memory] }
+data_generation: { script: generate.ts, seeds: [11, 22, 33] }

@@ -10,9 +10,19 @@ trap:
     One or two sentences: what is planted, in plain language.
   planted_in: <tool_default|data_property|task_structure|backtest_protocol>
   naive_outcome:
-    # What an unconstrained pipeline gets. The Stage 1 baseline must reproduce this, otherwise the
-    # task is not measuring anything. Fill it in from an observed run, not from intuition.
-    expected_sharpe_min: 2.5
+    # Select exactly one class. Fill every threshold from `npm run bench:calibrate`, never intuition.
+    #
+    # loud: the naive result itself must clear both floors on every declared seed.
+    calibration:
+      class: loud
+      seeds: [11, 22, 33]
+      expected_sharpe_min: 2.5
+      min_delta: 1.0
+    # silent: use when protocol invalidity is stable but the absolute number need not look extreme.
+    # calibration: { class: silent, seeds: [11, 22, 33], min_abs_delta: 0.2 }
+    # structural: use when the protocol is invalid by construction and numerical detection is the
+    # wrong oracle. Include the invariant and a concrete machine-checkable reason.
+    # calibration: { class: structural, invariant: C2, reason: "purge_days < label.horizon_days" }
 
 expected:
   catch_layer: [G1]        # G1 structural | G2 statistical | G3 the agent noticed | G4 missed

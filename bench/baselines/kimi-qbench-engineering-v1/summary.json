@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "QBench v2 Engineering Track",
+  "profile": {
+    "scoreAt": 1,
+    "thinking": "high",
+    "taskCount": 5,
+    "independentTaskSessions": true
+  },
+  "data": {
+    "release": "2026-07-30",
+    "archiveSha256": "2dfa8be5c38513e67cc18d1208b535660be6bf1612e0f3d19638518e107b5761",
+    "qlibCommit": "b87a2c294d364a33fb739359886acffe8ec907d1"
+  },
+  "models": [
+    {
+      "name": "Kimi K3",
+      "official": {
+        "status": "complete",
+        "score": 41.5,
+        "maxScore": 100,
+        "tasks": {
+          "q01_ml_pipeline_repair": { "score": 14.5, "maxScore": 18 },
+          "q02_backtest_repair": { "score": 8, "maxScore": 22 },
+          "q03_portfolio_risk": { "score": 9, "maxScore": 18 },
+          "q04_performance_resume": { "score": 3.25, "maxScore": 18 },
+          "q05_research_mission": { "score": 6.75, "maxScore": 24 }
+        }
+      },
+      "compatibilityDiagnostic": {
+        "status": "non_official",
+        "score": 68,
+        "maxScore": 100,
+        "tasks": {
+          "q01_ml_pipeline_repair": { "score": 14.5, "maxScore": 18 },
+          "q02_backtest_repair": { "score": 16.5, "maxScore": 22 },
+          "q03_portfolio_risk": { "score": 9, "maxScore": 18 },
+          "q04_performance_resume": { "score": 6.75, "maxScore": 18 },
+          "q05_research_mission": { "score": 21.25, "maxScore": 24 }
+        }
+      }
+    },
+    {
+      "name": "Kimi K2.7 Code",
+      "official": {
+        "status": "incomplete_evaluator_error",
+        "score": null,
+        "maxScore": 100,
+        "scoredSubtotal": 37.75,
+        "scoredMaximum": 78,
+        "tasks": {
+          "q01_ml_pipeline_repair": { "score": 18, "maxScore": 18 },
+          "q02_backtest_repair": {
+            "score": null,
+            "maxScore": 22,
+            "error": "official evaluator exited after a KeyError while normalizing optional fill columns"
+          },
+          "q03_portfolio_risk": { "score": 5.75, "maxScore": 18 },
+          "q04_performance_resume": { "score": 3.25, "maxScore": 18 },
+          "q05_research_mission": { "score": 10.75, "maxScore": 24 }
+        }
+      },
+      "compatibilityDiagnostic": {
+        "status": "non_official",
+        "score": 73.25,
+        "maxScore": 100,
+        "tasks": {
+          "q01_ml_pipeline_repair": { "score": 18, "maxScore": 18 },
+          "q02_backtest_repair": { "score": 19.25, "maxScore": 22 },
+          "q03_portfolio_risk": { "score": 5.75, "maxScore": 18 },
+          "q04_performance_resume": { "score": 14, "maxScore": 18 },
+          "q05_research_mission": { "score": 16.25, "maxScore": 24 }
+        }
+      }
+    }
+  ],
+  "diagnosticPolicy": {
+    "officialReportsModified": false,
+    "candidateArtifactsModified": false,
+    "scope": [
+      "guard evaluator crashes on absent optional columns",
+      "normalize semantically equivalent table columns and log names",
+      "normalize partition manifest aliases and nested fingerprints",
+      "discover content-addressed semantic registries",
+      "normalize plan seals, validation aggregates, and CSV chart source data"
+    ],
+    "unchangedChecks": [
+      "numerical reconciliation",
+      "causal clocks",
+      "portfolio constraints and risk reconstruction",
+      "Provider samples and fingerprints",
+      "content hashes"
+    ]
+  }
+}

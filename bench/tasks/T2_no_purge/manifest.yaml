@@ -1,0 +1,9 @@
+task_id: T2_no_purge
+universe: { source: data/universe_history.csv, size: 110 }
+period: { research_start: 2018-01-02, research_end: 2024-12-31 }
+label: { horizon_days: 60, definition: "forward 60-day return, close to close" }
+evaluation: { purge_days: 0, embargo_days: 0, rebalance_every_days: 1 }
+datasets:
+  - { adapter: adapters/prices.yaml }
+tools: { allowed: [veil-data, veil-backtest, veil-memory] }
+data_generation: { script: generate.ts, seeds: [11, 22, 33] }

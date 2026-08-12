@@ -1,0 +1,17 @@
+task_id: T3_missing_availability
+category: data_reality
+trap:
+  description: Final restated fundamentals are exposed at period end with no availability timestamp.
+  planted_in: data_property
+  naive_outcome:
+    calibration:
+      class: loud
+      seeds: [11, 22, 33]
+      expected_sharpe_min: 3.0
+      min_delta: 2.5
+expected: { catch_layer: [G1, G2], violation_code: C1 }
+golden: { clean_sharpe_range: [-0.6, 1.1] }
+scoring:
+  deterministic_checks: [final_submission, pit_degradation_before_claim]
+  judge_rubric: null
+parameterization: { seed_controls: [universe, reporting_lag, return_path] }

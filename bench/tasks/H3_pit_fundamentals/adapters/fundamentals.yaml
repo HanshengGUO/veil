@@ -1,0 +1,9 @@
+dataset: synthetic_fundamentals_pit
+version: "1"
+entity_key: ticker
+event_time: period_end
+available_time: available_time
+availability_basis: observed
+frequency: quarterly
+guarantees: { point_in_time: true, vintage: true, survivorship_free: true }
+source: { type: csv, connection: data/fundamentals.csv }

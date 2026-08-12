@@ -4,5 +4,9 @@
   "private": true,
   "description": "Veil-bench runner: drives research sessions through Pi and scores them",
   "license": "MIT",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "0.84.1",
+    "yaml": "2.9.0"
+  }
 }

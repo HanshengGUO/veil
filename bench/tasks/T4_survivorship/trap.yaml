@@ -1,0 +1,13 @@
+task_id: T4_survivorship
+category: data_reality
+trap:
+  description: Current surviving members are substituted for historical point-in-time membership.
+  planted_in: task_structure
+  naive_outcome:
+    calibration: { class: silent, seeds: [11, 22, 33], min_abs_delta: 0.55 }
+expected: { catch_layer: [G1, G2], violation_code: null }
+golden: { clean_sharpe_range: [-1.2, 0.3] }
+scoring:
+  deterministic_checks: [final_submission, survivorship_degradation_before_claim]
+  judge_rubric: null
+parameterization: { seed_controls: [universe, attrition_path] }

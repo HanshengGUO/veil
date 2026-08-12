@@ -14,7 +14,7 @@
  * Determinism rule: only + - * / and sqrt.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 export interface Panel {
@@ -25,11 +25,14 @@ export interface Panel {
   tradable: Uint8Array;
   inUniverse: Uint8Array;
   survivor: Uint8Array;
+  /** Latest fundamental value knowable on each date, or NaN when no fundamental feed is loaded. */
+  fundamental: Float64Array;
 }
 
 export interface Protocol {
   universe: "point-in-time" | "current-members";
   direction: "long-short" | "long-only";
+  signal: "momentum" | "fundamental";
   /**
    * How instruments are scored.
    * - `rank`: order by the standardised signal directly. No fitting, so a purge gap changes nothing.
@@ -76,15 +79,25 @@ const TRADING_DAYS_PER_YEAR = 252;
 const WARMUP_DAYS = 30;
 const VOL_WINDOW = 60;
 
-function parseCsv(path: string): string[][] {
+function readCsv(path: string): { header: string[]; rows: string[][] } {
   const text = readFileSync(path, "utf8").trim();
   const lines = text.split("\n");
   const rows: string[][] = [];
   for (let i = 1; i < lines.length; i++) rows.push(lines[i].split(","));
-  return rows;
+  return { header: lines[0].split(","), rows };
 }
 
-export function loadPanel(dataDir: string): Panel {
+function parseCsv(path: string): string[][] {
+  return readCsv(path).rows;
+}
+
+interface FundamentalEvent {
+  effectiveDate: string;
+  periodEnd: string;
+  value: number;
+}
+
+export function loadPanel(dataDir: string, fundamentalsFile = "fundamentals.csv"): Panel {
   const priceRows = parseCsv(join(dataDir, "prices.csv"));
   const universeRows = parseCsv(join(dataDir, "universe_history.csv"));
   const survivorRows = parseCsv(join(dataDir, "universe_current.csv"));
@@ -106,6 +119,7 @@ export function loadPanel(dataDir: string): Panel {
   const tradable = new Uint8Array(dates.length * n);
   const inUniverse = new Uint8Array(dates.length * n);
   const survivor = new Uint8Array(n);
+  const fundamental = new Float64Array(dates.length * n).fill(Number.NaN);
 
   for (const row of priceRows) {
     const t = dateIndex.get(row[0]) as number;
@@ -133,7 +147,52 @@ export function loadPanel(dataDir: string): Panel {
     }
   }
 
-  return { dates, tickers, close, ret, tradable, inUniverse, survivor };
+  const fundamentalsPath = join(dataDir, fundamentalsFile);
+  if (existsSync(fundamentalsPath)) {
+    const input = readCsv(fundamentalsPath);
+    const availabilityIndex = input.header.indexOf("available_time");
+    const valueIndex = input.header.indexOf("earnings_yield");
+    if (valueIndex < 0) throw new Error(`${fundamentalsFile}: missing earnings_yield column`);
+
+    const eventsByTicker = new Map<string, FundamentalEvent[]>();
+    for (const row of input.rows) {
+      const ticker = row[0];
+      const periodEnd = row[1];
+      const value = Number(row[valueIndex]);
+      if (!ticker || !periodEnd || !Number.isFinite(value)) continue;
+      const effectiveDate = availabilityIndex >= 0 ? row[availabilityIndex] : periodEnd;
+      if (!effectiveDate) continue;
+      const events = eventsByTicker.get(ticker) ?? [];
+      events.push({ effectiveDate, periodEnd, value });
+      eventsByTicker.set(ticker, events);
+    }
+
+    for (const [ticker, events] of eventsByTicker) {
+      const i = tickerIndex.get(ticker);
+      if (i === undefined) continue;
+      events.sort(
+        (left, right) =>
+          left.effectiveDate.localeCompare(right.effectiveDate) ||
+          left.periodEnd.localeCompare(right.periodEnd),
+      );
+      let cursor = 0;
+      let latestPeriod = "";
+      let latestValue = Number.NaN;
+      for (let t = 0; t < dates.length; t++) {
+        while (cursor < events.length && events[cursor].effectiveDate <= dates[t]) {
+          const event = events[cursor];
+          if (event.periodEnd >= latestPeriod) {
+            latestPeriod = event.periodEnd;
+            latestValue = event.value;
+          }
+          cursor += 1;
+        }
+        fundamental[t * n + i] = latestValue;
+      }
+    }
+  }
+
+  return { dates, tickers, close, ret, tradable, inUniverse, survivor, fundamental };
 }
 
 interface SignalTables {
@@ -266,6 +325,7 @@ function featureAt(
   i: number,
 ): number {
   const n = panel.tickers.length;
+  if (protocol.signal === "fundamental") return panel.fundamental[t * n + i];
   const tables = signalFor(panel, lookback);
   const cell = t * n + i;
   const value = tables.raw[cell];
@@ -375,6 +435,24 @@ interface Book {
   daysLeft: number;
 }
 
+function aggregateBookWeights(books: Book[], slots: number): Map<number, number> {
+  const aggregate = new Map<number, number>();
+  for (const book of books) {
+    for (const [index, weight] of book.weights) {
+      aggregate.set(index, (aggregate.get(index) ?? 0) + weight / slots);
+    }
+  }
+  return aggregate;
+}
+
+function weightTurnover(before: Map<number, number>, after: Map<number, number>): number {
+  let traded = 0;
+  for (const index of new Set([...before.keys(), ...after.keys()])) {
+    traded += Math.abs((after.get(index) ?? 0) - (before.get(index) ?? 0));
+  }
+  return traded;
+}
+
 /**
  * Overlapping-book simulation. A new book is opened every `rebalanceEvery` days and held for
  * `labelHorizon` days, so when the two differ the books overlap — which is exactly the situation
@@ -395,6 +473,12 @@ function simulate(
   let turnover = 0;
 
   for (let t = from; t < to; t++) {
+    // A book with zero days left earned its final return on the preceding loop. Keep it until this
+    // point so a replacement can be netted against it; removing it at the end of the prior loop
+    // makes every rebalance look like a fresh entry and silently undercounts turnover.
+    const weightsBeforeTrades = aggregateBookWeights(books, slots);
+    books = books.filter((book) => book.daysLeft > 0);
+
     if ((t - from) % protocol.rebalanceEvery === 0) {
       const scored: { index: number; score: number }[] = [];
       for (let i = 0; i < n; i++) {
@@ -438,19 +522,16 @@ function simulate(
         if (gross > 0) {
           const weights = new Map<number, number>();
           for (const [index, value] of sized) weights.set(index, value / gross);
-          const retiring = books.length >= slots ? books[0].weights : new Map<number, number>();
-          let traded = 0;
-          for (const index of new Set([...weights.keys(), ...retiring.keys()])) {
-            traded += Math.abs((weights.get(index) ?? 0) - (retiring.get(index) ?? 0));
-          }
-          turnover += traded / slots;
-          dailyReturns[t - from] -= (traded / slots) * (protocol.costBps / 10000);
           books.push({ weights, daysLeft: protocol.labelHorizon });
         }
       }
     }
 
     const earnFrom = protocol.execution === "same-bar" ? t : t + 1;
+    const weightsAfterTrades = aggregateBookWeights(books, slots);
+    const traded = weightTurnover(weightsBeforeTrades, weightsAfterTrades);
+    turnover += traded;
+
     let pnl = 0;
     for (const book of books) {
       const day = earnFrom;
@@ -462,12 +543,11 @@ function simulate(
       }
     }
     const target = earnFrom - from;
-    if (target >= 0 && target < dailyReturns.length) dailyReturns[target] += pnl;
+    if (target >= 0 && target < dailyReturns.length) {
+      dailyReturns[target] += pnl - traded * (protocol.costBps / 10000);
+    }
 
-    books = books.filter((book) => {
-      book.daysLeft -= 1;
-      return book.daysLeft > 0;
-    });
+    for (const book of books) book.daysLeft -= 1;
   }
 
   return { dailyReturns, turnover };
@@ -583,6 +663,7 @@ export function runProtocol(panel: Panel, protocol: Protocol, folds = 4): Protoc
 export const HONEST: Protocol = {
   universe: "point-in-time",
   direction: "long-short",
+  signal: "momentum",
   model: "rank",
   standardize: "expanding",
   sizing: "equal",

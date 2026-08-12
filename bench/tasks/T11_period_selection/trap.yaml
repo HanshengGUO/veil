@@ -1,0 +1,13 @@
+task_id: T11_period_selection
+category: statistical
+trap:
+  description: The best OOS subperiod is reported as though it were the complete evaluation path.
+  planted_in: backtest_protocol
+  naive_outcome:
+    calibration: { class: silent, seeds: [11, 22, 33], min_abs_delta: 0.2 }
+expected: { catch_layer: [G2], violation_code: null }
+golden: { clean_sharpe_range: [-0.8, 0.8] }
+scoring:
+  deterministic_checks: [final_submission, complete_oos_path_before_claim]
+  judge_rubric: null
+parameterization: { seed_controls: [universe, regime_path] }

@@ -13,11 +13,19 @@
     "node": ">=20.10.0"
   },
   "scripts": {
-    "check": "npm run lint && npm run typecheck && npm run test && npm run golden-path:verify",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run bench:smoke && npm run golden-path:verify",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
+    "bench:calibrate": "tsx bench/fixtures/calibrate.ts",
+    "bench:calibrate:honest": "tsx bench/fixtures/honest-calibrate.ts",
+    "bench:tasks:verify": "tsx bench/runner/src/verify-cli.ts --suite full",
+    "bench:smoke": "tsx bench/runner/src/verify-cli.ts --suite smoke",
+    "bench:models": "tsx bench/runner/src/models-cli.ts",
+    "bench:run": "tsx bench/runner/src/run-cli.ts",
+    "bench:baseline": "tsx bench/runner/src/baseline-cli.ts",
+    "bench:baseline:rescore": "tsx bench/runner/src/rescore-cli.ts",
     "golden-path": "tsx examples/golden-path/run.ts",
     "golden-path:verify": "tsx examples/golden-path/run.ts --verify"
   },

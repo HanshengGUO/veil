@@ -1,0 +1,11 @@
+task_id: H1_momentum_signal
+category: honest
+signal: { description: weak weekly cross-sectional momentum, null_signal: false }
+golden: { oos_sharpe_range: [0.5, 3.0], max_drawdown_worse_than: -0.35 }
+expected:
+  completes_research_loop: true
+  conclusion_cites_experiment_id: true
+  exploration_blocked_count: 0
+  verification_false_rejections: 0
+scoring: { deterministic_checks: [final_submission, metric_in_golden_range], judge_rubric: null }
+parameterization: { seed_controls: [universe, return_path] }

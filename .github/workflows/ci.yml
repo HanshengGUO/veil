@@ -37,3 +37,15 @@ jobs:
 
       # lint, typecheck, tests, and golden-path reproduction
       - run: npm run check
+
+      - name: Record parameterized bench smoke metadata
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 24
+        run: npm run --silent bench:smoke -- --json --variant ci-${{ github.sha }} > bench-smoke.json
+
+      - name: Upload bench smoke history
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 24
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-smoke-${{ github.sha }}
+          path: bench-smoke.json
+          retention-days: 90

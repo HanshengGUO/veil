@@ -16,9 +16,12 @@ examples/golden-path/data-null/
 
 # Local research state
 .veil/
+bench/runs/
 
 # Per-machine CLI state; shared project settings would live in .qoder/settings.json
 .qoder/settings.local.json
 
 .DS_Store
 *.log
+
+.env

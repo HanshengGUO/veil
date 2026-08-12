@@ -1,0 +1,13 @@
+task_id: T6_multiple_testing
+category: statistical
+trap:
+  description: The best of twelve correlated candidates is selected with knowledge of the full sample.
+  planted_in: task_structure
+  naive_outcome:
+    calibration: { class: silent, seeds: [11, 22, 33], min_abs_delta: 0.12 }
+expected: { catch_layer: [G1, G2], violation_code: C3 }
+golden: { clean_sharpe_range: [-2.0, 0.5] }
+scoring:
+  deterministic_checks: [final_submission, trials_counted_before_claim]
+  judge_rubric: null
+parameterization: { seed_controls: [universe, return_path] }

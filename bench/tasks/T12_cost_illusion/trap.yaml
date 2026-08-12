@@ -1,0 +1,13 @@
+task_id: T12_cost_illusion
+category: cost
+trap:
+  description: Gross performance is reported without charging the stated turnover cost.
+  planted_in: backtest_protocol
+  naive_outcome:
+    calibration: { class: silent, seeds: [11, 22, 33], min_abs_delta: 1.4 }
+expected: { catch_layer: [G1, G2], violation_code: C5 }
+golden: { clean_sharpe_range: [-0.8, 0.8] }
+scoring:
+  deterministic_checks: [final_submission, net_metric_before_claim]
+  judge_rubric: null
+parameterization: { seed_controls: [universe, turnover_path] }

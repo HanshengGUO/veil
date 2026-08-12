@@ -18,7 +18,9 @@
       "**/*.json",
       "!**/node_modules",
       "!ref",
+      "!internal",
       "!.qoder",
+      "!bench/runs",
       "!**/dist",
       "!**/data",
       "!package-lock.json"

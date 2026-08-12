@@ -1,0 +1,11 @@
+task_id: H5_volatility_regimes
+category: honest
+signal: { description: momentum under asynchronous volatility regimes, null_signal: false }
+golden: { oos_sharpe_range: [1.0, 3.0], max_drawdown_worse_than: -0.40 }
+expected:
+  completes_research_loop: true
+  conclusion_cites_experiment_id: true
+  exploration_blocked_count: 0
+  verification_false_rejections: 0
+scoring: { deterministic_checks: [final_submission, metric_in_golden_range], judge_rubric: null }
+parameterization: { seed_controls: [volatility_phase, return_path] }

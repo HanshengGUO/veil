@@ -38,6 +38,20 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Added
 
+- **Veil-bench v1 task set and runner**: 14 deterministic, parameterized tasks (seven calibrated
+  traps and seven honest tasks), loud/silent/structural calibration, oracle-isolated workspaces,
+  structured submissions, Pi event capture, deterministic G1-G4 attribution, safety/competence
+  aggregation, two-model baseline reporting, and a four-task cross-platform CI smoke set. See
+  [`docs/bench.md`](./docs/bench.md).
+- **First full bare-agent baseline**: Kimi K3 and K2.7 Code over all 14 tasks, with raw failures
+  retained as zero-credit outcomes and reviewed aggregates published under
+  [`bench/baselines/kimi-stage1-full-v1`](./bench/baselines/kimi-stage1-full-v1/).
+- **Independent QBench Engineering baseline and evaluator audit**: five score@1 tasks for Kimi K3
+  and Kimi K2.7 Code, with official results kept separate from a reproducible compatibility-normalized
+  diagnostic. The audit drove credential-stripped shell environments, symlink-safe file tools,
+  persistent per-run temp/config directories, atomic run checkpoints, content-addressed artifact
+  manifests, and deterministic recovery of valid terminal artifacts after a tail transport error.
+  See [`bench/baselines/kimi-qbench-engineering-v1`](./bench/baselines/kimi-qbench-engineering-v1/).
 - **Veil Contract v1.0** ([`docs/contract.md`](./docs/contract.md)): the six invariants, the
   guarantee-declaration and degradation rules, the `ContractViolation` shape, and the v1 threat
   model.

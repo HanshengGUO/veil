@@ -6,8 +6,10 @@
   "include": [
     "packages/*/src/**/*.ts",
     "packages/*/test/**/*.ts",
+    "bench/fixtures/**/*.ts",
     "bench/runner/src/**/*.ts",
     "bench/runner/test/**/*.ts",
+    "bench/tasks/**/*.ts",
     "examples/**/*.ts",
     "vitest.config.ts"
   ]
