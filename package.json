@@ -13,7 +13,7 @@
     "node": ">=20.10.0"
   },
   "scripts": {
-    "check": "npm run lint && npm run typecheck && npm run test && npm run engine:runtime:smoke && npm run csv-pit:verify && npm run parquet-pit:verify && npm run multi-file-pit:verify && npm run read-set:verify && npm run bench:smoke && npm run golden-path:verify",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run engine:runtime:smoke && npm run csv-pit:verify && npm run parquet-pit:verify && npm run multi-file-pit:verify && npm run read-set:verify && npm run veil-data:verify && npm run bench:smoke && npm run golden-path:verify",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "typecheck": "tsc -p tsconfig.json",
@@ -31,6 +31,7 @@
     "parquet-pit:verify": "tsx examples/parquet-pit/run.ts",
     "multi-file-pit:verify": "tsx examples/multi-file-pit/run.ts",
     "read-set:verify": "tsx examples/read-set/run.ts",
+    "veil-data:verify": "tsx examples/veil-data/run.ts",
     "golden-path": "tsx examples/golden-path/run.ts",
     "golden-path:verify": "tsx examples/golden-path/run.ts --verify"
   },

@@ -38,6 +38,19 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Added
 
+- **`veil-data` minimum surface**: backend-neutral point reads and exploration-grade bitemporal panel
+  exports require an explicit `as_of`, retain a declared tradability mask, and expose only Arrow
+  that passed the common temporal guard. Snapshot writes are a separate explicit action. The
+  dependency-injected CLI core accepts only point/panel, projection, decision time, and Arrow or
+  snapshot output; backend selection, physical roots, SQL, DSNs, and credentials remain outside it.
+- **Durable read-set snapshots**: guarded Arrow and its manifest publish atomically into a local
+  content-addressed namespace, converge under concurrent writers, revalidate on every read, and fail
+  closed for missing or corrupt evidence without silently querying a current source or overwriting a
+  damaged object.
+- **Stable multi-file source manifests**: file adapters accept confined portable globs and hash the
+  exact sorted set of root-relative members before and after each read. Added, removed, renamed,
+  replaced, or truncated members change source identity or raise `SOURCE_CHANGED`; paths, mtimes,
+  discovery order, and binding ids remain outside the identity.
 - **Database-neutral temporal protection** in `@veilquant/engine`: SQL-free read plans, replaceable
   capability-declared backends, opaque runtime source bindings, and one mandatory Arrow IPC guard
   that independently removes future rows even when a backend claims predicate pushdown.

@@ -13,9 +13,10 @@ and does not ask you to learn a new research API. It changes one thing:
 Nobody would accept an editor that blocks their keystrokes. Everybody accepts CI that blocks their
 merge. Veil is CI for research claims.
 
-Status: **Stage 1 exit / Stage 2B-2 implementation, pre-alpha.** The backend-neutral temporal guard,
+Status: **Stage 1 exit / Stage 2B-3 implementation, pre-alpha.** The backend-neutral temporal guard,
 native runtime gate, single/multi-file CSV/Parquet point-in-time backend, source/read-set v0
-identities, and durable content-addressed snapshots are now implemented. The 14-task bench, runner,
+identities, durable content-addressed snapshots, and the minimum `veil-data` point/panel surface are
+now implemented. The 14-task bench, runner,
 and first real
 [two-model bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are also complete. Independent scoring
 review, an external docs-only trial, and remote CI confirmation remain before Stage 1 closes. An
@@ -93,6 +94,7 @@ examples/csv-pit/         the smallest adapter → guarded CSV view
 examples/parquet-pit/     the same guarded contract over Parquet
 examples/multi-file-pit/  one portable glob → one stable source manifest
 examples/read-set/        atomic snapshot + independent-process replay
+examples/veil-data/        cold point Arrow + exploration-grade panel snapshot
 docs/                     one page per thing
 ```
 
@@ -103,10 +105,12 @@ docs/                     one page per thing
 | [contract.md](./docs/contract.md) | The specification: invariants, degradation rules, threat model |
 | [adapters.md](./docs/adapters.md) | Declare time semantics, conservative defaults, lineage, and source bindings |
 | [read-sets.md](./docs/read-sets.md) | Distinguish source, query, logical result, Arrow, and whole-read identities |
+| [veil-data.md](./docs/veil-data.md) | Query guarded point views and export exploration-grade panels |
 | [examples/csv-pit](./examples/csv-pit) | Run the smallest guarded CSV point-in-time view |
 | [examples/parquet-pit](./examples/parquet-pit) | Run the same guarded view over generated Parquet |
 | [examples/multi-file-pit](./examples/multi-file-pit) | Read a stable multi-file view through one portable glob |
 | [examples/read-set](./examples/read-set) | Atomically persist and cold-replay one guarded read set |
+| [examples/veil-data](./examples/veil-data) | Exercise point/panel output in clean Node processes |
 | [examples/golden-path](./examples/golden-path) | What a Veil research log looks like, with real numbers |
 | [bench/README.md](./bench/README.md) | How scoring works: two axes, four attribution layers |
 | [bench.md](./docs/bench.md) | Run, score, replay, and contribute Veil-bench tasks |

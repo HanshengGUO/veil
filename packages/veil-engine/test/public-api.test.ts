@@ -8,6 +8,8 @@ describe("public engine API", () => {
     expect(engineApi).toHaveProperty("DuckDbFileBackend");
     expect(engineApi).toHaveProperty("loadAdapterFile");
     expect(engineApi).toHaveProperty("ReadSetSnapshotStore");
+    expect(engineApi).toHaveProperty("runVeilDataCli");
+    expect(engineApi).toHaveProperty("VeilDataService");
     expect(engineApi).toHaveProperty("verifySourceManifest");
     expect(engineApi).toHaveProperty("TemporalGuard");
     expect(engineApi).not.toHaveProperty("readRegisteredBackend");

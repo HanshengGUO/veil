@@ -123,8 +123,9 @@ enter read-set identity. The default file backend supports one file or an explic
 CSV/Parquet set; it does not infer partition semantics beyond the declared locator. Like the current
 guard, v0 materializes the table and sorts row hashes in memory; streaming or external
 canonicalization is not claimed yet. The local snapshot store does not yet provide remote transport,
-garbage collection, or an automatic recovery policy. The `veil-data` point/panel export surface is
-the next Stage 2B slice.
+garbage collection, or an automatic recovery policy. `veil-data` now returns these guarded bytes and
+can write them only through an explicitly selected snapshot output; see
+[`docs/veil-data.md`](./veil-data.md).
 
 Run the independent-process snapshot replay with `npm run read-set:verify`; its source is under
 [`examples/read-set`](../examples/read-set/).

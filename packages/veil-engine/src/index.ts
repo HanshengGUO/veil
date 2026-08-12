@@ -53,3 +53,22 @@ export {
 } from "./source-manifest.ts";
 export * from "./temporal-guard.ts";
 export * from "./temporal-plan.ts";
+export {
+  createVeilData,
+  VEIL_DATA_VIEW_FORMAT,
+  type VeilDataGrade,
+  type VeilDataMode,
+  type VeilDataPanelView,
+  type VeilDataPointView,
+  type VeilDataReadRequest,
+  VeilDataService,
+  type VeilDataView,
+  type VeilDataViewSummary,
+} from "./veil-data.ts";
+export {
+  runVeilDataCli,
+  type VeilDataCliArrowResult,
+  type VeilDataCliContext,
+  type VeilDataCliResult,
+  type VeilDataCliSnapshotResult,
+} from "./veil-data-cli.ts";

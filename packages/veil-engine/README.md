@@ -2,10 +2,10 @@
 
 The verification surface. Everything that makes a claim expensive lives here.
 
-Status: Stage 2B-2 — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
+Status: Stage 2B-3 — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
 guard, strict adapter YAML loader, default single/multi-file DuckDB CSV/Parquet backend, source and
-read-set v0 identities, and durable content-addressed snapshots are implemented. The package remains
-private while the `veil-data` surface and remaining verification API are completed.
+read-set v0 identities, durable content-addressed snapshots, and the minimum `veil-data` point/panel
+surface are implemented. The package remains private while the verification API is completed.
 
 ## The database is replaceable; the guard is not
 
@@ -29,6 +29,37 @@ pushdown can waste I/O; it cannot expose a correctly timestamped future row thro
 
 This is the “invisible protection” boundary: callers use the same `as_of` read regardless of where
 the data lives. Backend-specific SQL, connections, and credentials stay behind the adapter.
+
+## `veil-data` exploration surface
+
+`VeilDataService` is the narrow public orchestration layer over `TemporalGuard`. Point and panel
+requests both require `asOf` at runtime and reject unknown fields; there is no fallback to the wall
+clock. Point reads preserve the requested projection and attach a declared tradability mask. Panel
+reads retain the entity key, event time, declared availability time, and mask around that projection
+and are explicitly labelled `exploration-grade`.
+
+```ts
+const data = createVeilData(registry);
+const point = await data.point({ declaration, binding, asOf: "2026-08-12" });
+const panel = await data.panel({
+  declaration,
+  binding,
+  asOf: "2026-08-12",
+  columns: ["value"],
+});
+```
+
+Both modes return only Arrow that passed the common guard. JSON/inspection exposes a small path-free
+identity summary; Arrow, read-set evidence, semantics, and the guard audit require explicit property
+access. Persistence is separate: `await panel.writeSnapshot(store)` is the only snapshot action on a
+view. A store cannot be embedded in the read request, and merely configuring one in the CLI context
+does not write anything.
+
+The dependency-injected CLI core accepts `point|panel`, `--as-of`, an optional comma-separated
+projection, and `--output arrow|snapshot`. A launcher supplies the registry, declaration, opaque
+binding, and—only for snapshot output—an opened store. The core contains no file/database switch,
+SQL, physical path, DSN, or credential handling. See [`docs/veil-data.md`](../../docs/veil-data.md)
+and the clean-process [`examples/veil-data`](../../examples/veil-data/).
 
 ## Extension surface
 
@@ -164,7 +195,8 @@ round-trips an Arrow IPC stream. Failures identify `duckdb-load`, `duckdb-query`
 Windows matrix verifies native installation and execution.
 
 No DuckDB type appears in the public data-plane API, and importing the engine does not load the
-native module. The next slice adds the first `veil-data` surface.
+native module. The next slice hardens operator-controlled snapshot recovery and completes the Stage
+2B documentation/acceptance pass.
 
 ## What lands here, and when
 
