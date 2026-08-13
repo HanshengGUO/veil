@@ -118,6 +118,12 @@ launcher can choose the default DuckDB backend; a DolphinDB, ClickHouse, API, or
 can inject another `TemporalBackend` without changing the command. Snapshot output additionally
 requires the launcher to pass an opened store.
 
+For the Stage 2 checkout trial, `npm run data:inspect` is that file-specific launcher. It accepts an
+adapter path, a local root, an explicit cutoff, an optional projection, and an opt-in row preview;
+then it emits a path-free summary of the guarded panel, semantics, audit, and evidence identities.
+It does not change the backend-neutral CLI grammar above or become part of artifact execution. See
+the [quickstart](./quickstart.md) for the exact command and privacy rules.
+
 Run `npm run veil-data:verify` for a clean-process CSV example. It decodes point Arrow directly,
 replays a panel through its explicit snapshot reference, verifies the bitemporal columns, and checks
 that the future sentinel is absent in both outputs.

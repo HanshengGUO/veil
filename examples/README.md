@@ -8,6 +8,7 @@
 | [`read-set/`](./read-set) | Atomic content-addressed snapshot publication and independent-process replay. |
 | [`snapshot-recovery/`](./snapshot-recovery) | Detect, quarantine, audit, and explicitly republish corrupt snapshot evidence. |
 | [`veil-data/`](./veil-data) | Cold point Arrow and exploration-grade panel snapshot through the backend-neutral CLI core. |
+| [`own-data/`](./own-data) | Checkout-local launcher for inspecting a private CSV/Parquet source without editing Veil code. |
 | [`artifact-identity/`](./artifact-identity) | Explicit Python code tree → path-independent artifact identity → cold verification. |
 | [`artifact-execution/`](./artifact-execution) | Guarded Arrow → bounded framed child → identity-bound result. |
 | [`walk-forward-windows/`](./walk-forward-windows) | Explicit schedule → replayable training windows → deterministic executed record. |

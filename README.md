@@ -13,7 +13,7 @@ and does not ask you to learn a new research API. It changes one thing:
 Nobody would accept an editor that blocks their keystrokes. Everybody accepts CI that blocks their
 merge. Veil is CI for research claims.
 
-Status: **Stage 1 exit / Stage 2D implementation, pre-alpha.** The backend-neutral temporal guard,
+Status: **Stage 1 exit / Stage 2D local implementation, pre-alpha.** The backend-neutral temporal guard,
 native runtime gate, single/multi-file CSV/Parquet point-in-time backend, source/read-set v0
 identities, durable snapshots with operator quarantine, minimum `veil-data` point/panel surface, and
 path-independent content-addressed artifact identities, runtime-provider-neutral framed execution,
@@ -25,8 +25,9 @@ that replay-verified record, checks hypothesis-registration chronology, and emit
 exercises that route with replayable prices-plus-PIT-membership composite evidence while keeping its
 hand-written pricing and committed metrics independent. A model-free Stage 2 bench acceptance now
 checks T1-T5 enforcement and all seven honest-task preflights. The 14-task bench, runner, and first real
-[two-model bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are also complete. Independent scoring
-review, an external docs-only trial, and remote CI confirmation remain before Stage 1 closes. An
+[two-model bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are also complete. Independent
+bench scoring and a docs-only runner trial remain before Stage 1 closes; an external own-CSV trial
+and remote CI confirmation remain before Stage 2 closes. An
 independent [QBench Engineering baseline](./bench/baselines/kimi-qbench-engineering-v1/) now also
 tests cold-start artifacts, causal reconciliation, recovery, and content-addressed manifests.
 Nothing is installable yet. The first public release (v0.1) lands at the end of Stage 3 — see
@@ -103,6 +104,7 @@ examples/multi-file-pit/  one portable glob → one stable source manifest
 examples/read-set/        atomic snapshot + independent-process replay
 examples/snapshot-recovery/ explicit corrupt-evidence quarantine + audit
 examples/veil-data/        cold point Arrow + exploration-grade panel snapshot
+examples/own-data/         checkout-local own-CSV/Parquet inspection launcher
 examples/artifact-identity/ explicit code tree + portable artifact identity
 examples/artifact-execution/ guarded Arrow + clean framed artifact child
 examples/walk-forward-windows/ explicit schedule + derived windows + deterministic run record
@@ -114,6 +116,8 @@ docs/                     one page per thing
 
 | Page | For |
 | --- | --- |
+| [quickstart.md](./docs/quickstart.md) | Inspect your own CSV through the temporal guard and run the 30-minute trial |
+| [concepts.md](./docs/concepts.md) | Exploration, verification, artifacts, candidates, Experiments, and gates |
 | [contract.md](./docs/contract.md) | The specification: invariants, degradation rules, threat model |
 | [adapters.md](./docs/adapters.md) | Declare time semantics, conservative defaults, lineage, and source bindings |
 | [read-sets.md](./docs/read-sets.md) | Distinguish source, query, logical result, Arrow, and whole-read identities |
@@ -125,6 +129,7 @@ docs/                     one page per thing
 | [examples/read-set](./examples/read-set) | Atomically persist and cold-replay one guarded read set |
 | [examples/snapshot-recovery](./examples/snapshot-recovery) | Quarantine corrupt evidence and cold-verify its audit |
 | [examples/veil-data](./examples/veil-data) | Exercise point/panel output in clean Node processes |
+| [examples/own-data](./examples/own-data) | Inspect a private CSV/Parquet source without editing Veil code |
 | [examples/artifact-identity](./examples/artifact-identity) | Reproduce a Python artifact identity across roots and a clean process |
 | [examples/artifact-execution](./examples/artifact-execution) | Execute a materialized artifact through the bounded child protocol |
 | [examples/walk-forward-windows](./examples/walk-forward-windows) | Execute derived rolling windows through a custom backend and deterministic run record |
@@ -134,7 +139,7 @@ docs/                     one page per thing
 | [bench.md](./docs/bench.md) | Run, score, replay, and contribute Veil-bench tasks |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Three ways to contribute without reading the internals |
 
-Written as they are built: `concepts`, `quickstart`, `gates`, `faq`.
+Written as they are built: `gates` and `faq` arrive with the features they document.
 
 ## Roadmap
 
@@ -160,6 +165,7 @@ Requires Node 20 or newer.
 ```bash
 npm install
 npm run check          # lint, types, tests, file cold probes, bench smoke, golden path
+npm run data:inspect -- --help # inspect your own CSV/Parquet from this checkout
 npm run golden-path    # regenerate the reference study and print the table above
 npm run golden-path:evidence:verify # run the full 370,728-row structural acceptance path
 npm run bench:stage2:verify # run model-free T1-T5 enforcement and honest-task preflights

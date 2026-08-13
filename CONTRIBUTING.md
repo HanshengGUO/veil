@@ -31,8 +31,9 @@ npm run check
 ```
 
 `npm run check` runs lint, typecheck, tests, the DuckDB/Arrow native-runtime probe, the cold CSV,
-Parquet, and read-set examples, the four-task bench smoke set, and the golden-path reproduction. It
-must pass before a pull request, and it is what CI runs on Linux, macOS and Windows.
+Parquet, multi-file, read-set, snapshot-recovery, artifact, and walk-forward examples, the Stage 2
+bench acceptance, the four-task bench smoke set, and the golden-path reproduction. It must pass
+before a pull request, and it is what CI runs on Linux, macOS and Windows.
 
 Useful individually:
 
@@ -42,6 +43,7 @@ npm run typecheck
 npm run test
 npm run engine:runtime:smoke
 npm run csv-pit:verify
+npm run data:inspect -- --help # checkout-local own CSV/Parquet inspection
 npm run parquet-pit:verify
 npm run read-set:verify
 npm run bench:smoke    # generate and validate two trap plus two honest tasks

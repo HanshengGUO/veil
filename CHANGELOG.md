@@ -38,6 +38,12 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Added
 
+- **Stage 2 own-data quickstart**: a checkout-local CSV/Parquet launcher now turns an adapter,
+  runtime root, explicit decision time, and optional projection into a path-free guarded-view report
+  without requiring users to edit Veil source. Row preview is opt-in and capped. The public
+  quickstart includes conservative availability guidance, report interpretation, and a privacy-safe
+  external 30-minute CSV trial checklist.
+
 - **Stage 2 bench acceptance**: all public task adapters now use the current portable
   `source.locator` schema and are strictly loaded during snapshot verification. A fast model-free
   acceptance checks the retired T1 future-isolation mechanism, rejects T2 as C2, propagates T3/T4

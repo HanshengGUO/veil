@@ -7,10 +7,11 @@ three fields the contract needs:
 (entity, event_time, available_time, payload)
 ```
 
-Status: Stage 2C-4. Declaration validation, strict YAML loading, the backend-neutral temporal guard,
-the default single/multi-file CSV/Parquet backend, read-set v0 identities, source manifests, and
-operator-controlled snapshots now feed both the minimum `veil-data` point/panel surface and the
-mask-first walk-forward contract path. No package is published yet.
+Status: Stage 2D local implementation. Declaration validation, strict YAML loading, the
+backend-neutral temporal guard, the default single/multi-file CSV/Parquet backend, read-set v0
+identities, source manifests, and operator-controlled snapshots now feed both the minimum
+`veil-data` point/panel surface and the mask-first walk-forward contract path. No package is
+published yet.
 
 ## Smallest honest CSV declaration
 
@@ -166,24 +167,16 @@ source from committed CSV data, so no opaque binary fixture is stored in the rep
 
 ## A 30-minute local CSV trial
 
-The package is still private, so the current trial runs from this checkout:
+The package is still private, so the current trial runs from this checkout. Follow the copyable
+[`quickstart`](./quickstart.md) to create an adapter and run `npm run data:inspect` against a private
+CSV without editing TypeScript. That page also contains the external trial checklist and a
+privacy-safe result template.
 
-1. Run `npm install`, then `npm run csv-pit:verify`. This confirms the native DuckDB/Arrow runtime
-   before involving your data.
-2. Put `adapter.yaml` beside or above your CSV root. Keep its `source.locator` relative and put no
-   absolute path, environment-variable name, DSN, or token in it.
-3. Copy the TypeScript snippet above, changing only the adapter path, absolute binding root,
-   decision time, and projected column names. Keep `asOf` explicit.
-4. Decode `view.arrowIpc` with Arrow in your own script, or use the point/panel surface shown in
-   [`veil-data.md`](./veil-data.md). Check `view.semantics.degradations` before interpreting rows.
-5. If exact replay matters, explicitly call `view.writeSnapshot(store)` and record its snapshot id.
-   Run `npm run read-set:verify` and `npm run snapshot-recovery:verify` once to exercise cold replay
-   and fail-closed recovery on temporary data.
-
-The expected success condition is not merely “the CSV loaded”: a future sentinel with
-`available_time > asOf` must be absent, the declared mask must remain attached, and the serialized
-view/read-set must contain no absolute root or credential value. A dataset without a real
-availability timestamp is still usable, but the result must visibly retain `PIT_UNSAFE`.
+The expected success condition is not merely “the CSV loaded”: the decision time and filtered
+column must be explicit, rows after the cutoff must be absent, every declared mask must remain
+attached, degradations must remain visible, and the JSON report must contain no absolute root or
+credential value. A dataset without a real availability timestamp is still usable, but the result
+must visibly retain `PIT_UNSAFE`.
 
 ## Backends are replaceable
 
