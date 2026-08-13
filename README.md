@@ -23,8 +23,8 @@ contains no prices, metrics, gates, or experiment verdict. The promotion boundar
 that replay-verified record, checks hypothesis-registration chronology, and emits an explicitly
 `unverified` candidate for later pricing and gates—not a citable Experiment. The golden path now
 exercises that route with replayable prices-plus-PIT-membership composite evidence while keeping its
-hand-written pricing and committed metrics independent. The 14-task bench,
-runner, and first real
+hand-written pricing and committed metrics independent. A model-free Stage 2 bench acceptance now
+checks T1-T5 enforcement and all seven honest-task preflights. The 14-task bench, runner, and first real
 [two-model bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are also complete. Independent scoring
 review, an external docs-only trial, and remote CI confirmation remain before Stage 1 closes. An
 independent [QBench Engineering baseline](./bench/baselines/kimi-qbench-engineering-v1/) now also
@@ -162,6 +162,7 @@ npm install
 npm run check          # lint, types, tests, file cold probes, bench smoke, golden path
 npm run golden-path    # regenerate the reference study and print the table above
 npm run golden-path:evidence:verify # run the full 370,728-row structural acceptance path
+npm run bench:stage2:verify # run model-free T1-T5 enforcement and honest-task preflights
 ```
 
 ## License

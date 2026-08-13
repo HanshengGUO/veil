@@ -44,6 +44,7 @@ function plan() {
       purgeDays: 1,
       embargoDays: 1,
       holdDays: 1,
+      executionLagDays: 1,
     },
     decisionSchedule: schedule,
   });

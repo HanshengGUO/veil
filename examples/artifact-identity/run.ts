@@ -124,6 +124,7 @@ async function verifyIdentity(): Promise<void> {
         purgeDays: 5,
         embargoDays: 2,
         holdDays: 5,
+        executionLagDays: 1,
       },
       costModel: "example-bps-v1",
     };

@@ -37,7 +37,9 @@ bench/
 ```
 
 Run the four-task, model-free CI subset with `npm run bench:smoke`, or validate all generators with
-`npm run bench:tasks:verify`. The complete runner and scoring guide is
+`npm run bench:tasks:verify`. `npm run bench:stage2:verify` separately checks the Stage 2 structural
+and declaration mechanisms for T1-T5 and confirms that all seven honest tasks pass preflight. The
+complete runner and scoring guide is
 [`docs/bench.md`](../docs/bench.md).
 
 ## Contributing a task

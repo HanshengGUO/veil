@@ -50,6 +50,7 @@ const artifact = createArtifactManifest({
     purgeDays: 5,
     embargoDays: 2,
     holdDays: 5,
+    executionLagDays: 1,
   },
   costModel: "equities-bps-v1",
 });
@@ -151,7 +152,9 @@ const run = await executeWalkForwardWindows({
 The schedule length must be exactly
 `trainDays + purgeDays + embargoDays + folds * oosDays`. It must contain unique, strictly increasing
 instants. Each fold records rolling or expanding training, purge, embargo, and contiguous OOS
-boundaries. Purge must cover the holding horizon and embargo is always non-zero.
+boundaries. Purge must cover the holding horizon, embargo is always non-zero, and
+`executionLagDays` must be at least one explicit session. These timing failures are structured C1/C2
+violations with actionable remedies, before data I/O or child launch.
 
 For each training cutoff, orchestration creates a new guarded source read-set. It then derives
 `veil.window-read-set.v0` by filtering the retained event-time column to the fold's inclusive training

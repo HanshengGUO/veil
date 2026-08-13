@@ -46,6 +46,7 @@ const rollingProtocol: ArtifactProtocol = {
   purgeDays: 1,
   embargoDays: 1,
   holdDays: 1,
+  executionLagDays: 1,
 };
 
 afterEach(async () => {

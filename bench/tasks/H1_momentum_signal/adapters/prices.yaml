@@ -6,4 +6,4 @@ available_time: date
 availability_basis: observed
 frequency: 1d
 guarantees: { point_in_time: true, vintage: false, survivorship_free: true, tradability_mask: tradable }
-source: { type: csv, connection: data/prices.csv }
+source: { type: csv, locator: data/prices.csv }

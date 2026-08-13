@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { normalizeDecisionTime } from "@veilquant/contract";
-import type { ArtifactProtocol } from "./artifact.ts";
+import { type ArtifactProtocol, validateArtifactProtocol } from "./artifact.ts";
 import { EngineConfigurationError } from "./errors.ts";
 
 export const WALK_FORWARD_PLAN_FORMAT = "veil.walk-forward-plan.v0" as const;
@@ -48,7 +48,7 @@ type WalkForwardPlanBody = Omit<WalkForwardPlan, "planHash">;
 /** Builds the only Stage 2C window topology: ordered rolling/expanding folds with purge + embargo. */
 export function createWalkForwardPlan(input: CreateWalkForwardPlanInput): WalkForwardPlan {
   const root = exactRecord(input, ["protocol", "decisionSchedule"], "walk-forward plan input");
-  const protocol = normalizeProtocol(root.protocol);
+  const protocol = validateArtifactProtocol(root.protocol);
   const requiredLength = requiredScheduleLength(protocol);
   const decisionSchedule = normalizeSchedule(root.decisionSchedule, requiredLength);
   const folds = Object.freeze(
@@ -79,7 +79,7 @@ export function verifyWalkForwardPlan(
     throw invalidPlan("walk-forward plan uses an unsupported format");
   }
   const recomputed = createWalkForwardPlan({
-    protocol: normalizeProtocol(root.protocol),
+    protocol: validateArtifactProtocol(root.protocol),
     decisionSchedule: normalizedSerializedSchedule(root.decisionSchedule),
   });
   if (canonicalJson(root.folds) !== canonicalJson(recomputed.folds)) {
@@ -193,30 +193,6 @@ function normalizedTime(input: unknown, field: string): string {
   }
 }
 
-function normalizeProtocol(input: unknown): ArtifactProtocol {
-  const protocol = exactRecord(
-    input,
-    ["mode", "folds", "trainDays", "oosDays", "purgeDays", "embargoDays", "holdDays"],
-    "walk-forward protocol",
-  );
-  if (protocol.mode !== "rolling" && protocol.mode !== "expanding") {
-    throw invalidPlan("walk-forward mode must be rolling or expanding");
-  }
-  const normalized: ArtifactProtocol = {
-    mode: protocol.mode,
-    folds: positiveInteger(protocol.folds, "fold count"),
-    trainDays: positiveInteger(protocol.trainDays, "training sessions"),
-    oosDays: positiveInteger(protocol.oosDays, "out-of-sample sessions"),
-    purgeDays: nonnegativeInteger(protocol.purgeDays, "purge sessions"),
-    embargoDays: positiveInteger(protocol.embargoDays, "embargo sessions"),
-    holdDays: positiveInteger(protocol.holdDays, "holding horizon"),
-  };
-  if (normalized.purgeDays < normalized.holdDays) {
-    throw invalidPlan("purge sessions cannot be shorter than the holding horizon");
-  }
-  return Object.freeze(normalized);
-}
-
 function normalizeEvidence(
   input: WalkForwardPlanVerificationEvidence,
 ): WalkForwardPlanVerificationEvidence {
@@ -229,20 +205,6 @@ function normalizeEvidence(
         ? undefined
         : sha256(input.expectedPlanHash, "expected plan hash"),
   });
-}
-
-function positiveInteger(input: unknown, field: string): number {
-  if (typeof input !== "number" || !Number.isSafeInteger(input) || input <= 0) {
-    throw invalidPlan(`${field} must be a positive safe integer`);
-  }
-  return input;
-}
-
-function nonnegativeInteger(input: unknown, field: string): number {
-  if (typeof input !== "number" || !Number.isSafeInteger(input) || input < 0) {
-    throw invalidPlan(`${field} must be a non-negative safe integer`);
-  }
-  return input;
 }
 
 function sha256(input: unknown, field: string): string {

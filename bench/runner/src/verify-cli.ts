@@ -11,7 +11,7 @@ if (suiteOption !== "smoke" && suiteOption !== "full") {
   throw new Error("--suite must be smoke or full");
 }
 
-const result = verifyCatalog({
+const result = await verifyCatalog({
   tasksDirectory: resolve(option("--tasks") ?? "bench/tasks"),
   suite: suiteOption,
   variant: option("--variant"),

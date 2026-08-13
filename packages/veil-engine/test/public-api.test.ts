@@ -29,6 +29,7 @@ describe("public engine API", () => {
     expect(engineApi).toHaveProperty("verifySourceManifest");
     expect(engineApi).toHaveProperty("verifyArtifactCode");
     expect(engineApi).toHaveProperty("verifyArtifactManifest");
+    expect(engineApi).toHaveProperty("validateArtifactProtocol");
     expect(engineApi).toHaveProperty("verifyCompositeSource");
     expect(engineApi).toHaveProperty("verifyCompositeSourceManifest");
     expect(engineApi).toHaveProperty("verifyHypothesisRegistration");

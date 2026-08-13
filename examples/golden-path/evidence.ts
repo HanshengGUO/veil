@@ -158,6 +158,7 @@ export async function runGoldenPathEvidence(
       purgeDays: PURGE_DAYS,
       embargoDays: EMBARGO_DAYS,
       holdDays: HOLD_DAYS,
+      executionLagDays: 1,
     },
     costModel: "golden-path-10bps-v1",
   });

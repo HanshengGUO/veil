@@ -97,6 +97,7 @@ const artifact = createArtifactManifest({
     purgeDays: 1,
     embargoDays: 1,
     holdDays: 1,
+    executionLagDays: 1,
   },
   costModel: "example-bps-v1",
 });

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { isAbsolute } from "node:path";
 import {
   type AdapterDeclaration,
+  ContractViolation,
   canonicalizeAdapterDeclaration,
   hashAdapterDeclaration,
   normalizeAdapterDeclaration,
@@ -88,6 +89,8 @@ export interface ArtifactProtocol {
   readonly purgeDays: number;
   readonly embargoDays: number;
   readonly holdDays: number;
+  /** Minimum explicit-session delay between signal formation and the first eligible fill. */
+  readonly executionLagDays: number;
 }
 
 export interface ArtifactManifest {
@@ -153,7 +156,7 @@ export function createArtifactManifest(input: CreateArtifactManifestInput): Arti
     trialsDeclared: positiveInteger(root.trialsDeclared, "declared trial count"),
     dataSemantics: createDataSemantics(root.dataSemantics),
     hypothesisRef: portableReference(root.hypothesisRef, "hypothesis reference"),
-    protocol: normalizeProtocol(root.protocol),
+    protocol: validateArtifactProtocol(root.protocol),
     costModel: portableReference(root.costModel, "cost model reference"),
   };
   return deepFreeze({
@@ -197,7 +200,7 @@ export function verifyArtifactManifest(
     trialsDeclared: positiveInteger(root.trialsDeclared, "declared trial count"),
     dataSemantics: normalizeDataSemantics(root.dataSemantics),
     hypothesisRef: portableReference(root.hypothesisRef, "hypothesis reference"),
-    protocol: normalizeProtocol(root.protocol),
+    protocol: validateArtifactProtocol(root.protocol),
     costModel: portableReference(root.costModel, "cost model reference"),
   };
   const artifactHash = sha256(root.artifactHash, "artifact hash");
@@ -361,10 +364,20 @@ function normalizedDeclaration(input: unknown): AdapterDeclaration {
   }
 }
 
-function normalizeProtocol(input: unknown): ArtifactProtocol {
+/** Normalizes the promotion protocol and rejects unsafe C1/C2 timing before execution starts. */
+export function validateArtifactProtocol(input: unknown): ArtifactProtocol {
   const protocol = exactRecord(
     input,
-    ["mode", "folds", "trainDays", "oosDays", "purgeDays", "embargoDays", "holdDays"],
+    [
+      "mode",
+      "folds",
+      "trainDays",
+      "oosDays",
+      "purgeDays",
+      "embargoDays",
+      "holdDays",
+      "executionLagDays",
+    ],
     "artifact protocol",
   );
   if (protocol.mode !== "rolling" && protocol.mode !== "expanding") {
@@ -376,13 +389,33 @@ function normalizeProtocol(input: unknown): ArtifactProtocol {
     trainDays: positiveInteger(protocol.trainDays, "protocol train days"),
     oosDays: positiveInteger(protocol.oosDays, "protocol out-of-sample days"),
     purgeDays: nonnegativeInteger(protocol.purgeDays, "protocol purge days"),
-    embargoDays: positiveInteger(protocol.embargoDays, "protocol embargo days"),
+    embargoDays: nonnegativeInteger(protocol.embargoDays, "protocol embargo days"),
     holdDays: positiveInteger(protocol.holdDays, "protocol hold days"),
+    executionLagDays: nonnegativeInteger(protocol.executionLagDays, "protocol execution lag days"),
   };
   if (normalized.purgeDays < normalized.holdDays) {
-    throw invalidArtifact("artifact purge days cannot be shorter than the holding horizon");
+    throw new ContractViolation("C2", "purge gap is shorter than the holding horizon", {
+      context: { purgeDays: normalized.purgeDays, holdDays: normalized.holdDays },
+      remedy: "Set purgeDays to at least holdDays before verification.",
+    });
   }
-  return normalized;
+  if (normalized.embargoDays === 0) {
+    throw new ContractViolation("C2", "walk-forward verification requires a non-zero embargo", {
+      context: { embargoDays: normalized.embargoDays },
+      remedy: "Set embargoDays to at least one explicit decision session.",
+    });
+  }
+  if (normalized.executionLagDays === 0) {
+    throw new ContractViolation(
+      "C1",
+      "same-session signal formation and execution are not allowed",
+      {
+        context: { executionLagDays: normalized.executionLagDays },
+        remedy: "Delay the first eligible fill by at least one explicit decision session.",
+      },
+    );
+  }
+  return deepFreeze(normalized);
 }
 
 function normalizeParameterMap(

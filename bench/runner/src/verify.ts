@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
-import { parse } from "yaml";
+import { loadAdapterFile } from "@veilquant/engine";
 import { type BenchSuite, selectSuiteTasks } from "./suite.ts";
 import { discoverTasks } from "./tasks.ts";
 import { prepareTaskWorkspace } from "./workspace.ts";
@@ -29,13 +29,6 @@ export interface VerifyCatalogOptions {
   variant?: string;
 }
 
-function record(value: unknown, path: string): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new Error(`${path} must be a mapping`);
-  }
-  return value as Record<string, unknown>;
-}
-
 function workspacePath(workspace: string, declaredPath: string): string {
   const target = resolve(workspace, declaredPath);
   const fromWorkspace = relative(resolve(workspace), target);
@@ -55,20 +48,15 @@ function listFiles(directory: string): string[] {
   return files;
 }
 
-function adapterConnection(adapterPath: string): string {
-  const root = record(parse(readFileSync(adapterPath, "utf8")), adapterPath);
-  const source = record(root.source, `${adapterPath}.source`);
-  if (typeof source.connection !== "string" || source.connection.length === 0) {
-    throw new Error(`${adapterPath}.source.connection must be a non-empty string`);
-  }
-  return source.connection;
+async function adapterLocator(adapterPath: string): Promise<string> {
+  return (await loadAdapterFile(adapterPath)).source.locator;
 }
 
-function verifyWorkspace(
+async function verifyWorkspace(
   workspace: string,
   universeSource: string,
   adapterPaths: readonly string[],
-): Pick<TaskVerification, "dataFiles" | "dataBytes"> {
+): Promise<Pick<TaskVerification, "dataFiles" | "dataBytes">> {
   for (const privateName of ["generate.ts", "trap.yaml", "golden.yaml"]) {
     if (existsSync(join(workspace, privateName))) {
       throw new Error(`runner-only file leaked into the agent workspace: ${privateName}`);
@@ -77,7 +65,9 @@ function verifyWorkspace(
 
   const declaredSources = [
     universeSource,
-    ...adapterPaths.map((path) => adapterConnection(workspacePath(workspace, path))),
+    ...(await Promise.all(
+      adapterPaths.map((path) => adapterLocator(workspacePath(workspace, path))),
+    )),
   ];
   for (const declaredSource of declaredSources) {
     const source = workspacePath(workspace, declaredSource);
@@ -103,7 +93,7 @@ function verifyWorkspace(
 }
 
 /** Generate and validate task snapshots without starting a model session. */
-export function verifyCatalog(options: VerifyCatalogOptions): CatalogVerification {
+export async function verifyCatalog(options: VerifyCatalogOptions): Promise<CatalogVerification> {
   const suite = options.suite ?? "full";
   const variant = options.variant ?? `${suite}-v1`;
   const tasks = selectSuiteTasks(discoverTasks(options.tasksDirectory), suite);
@@ -121,11 +111,11 @@ export function verifyCatalog(options: VerifyCatalogOptions): CatalogVerificatio
         taskId: task.manifest.taskId,
         kind: task.kind,
         seed: prepared.seed,
-        ...verifyWorkspace(
+        ...(await verifyWorkspace(
           prepared.workspaceDirectory,
           task.manifest.universe.source,
           task.manifest.datasets.map((dataset) => dataset.adapter),
-        ),
+        )),
       });
     }
   } finally {

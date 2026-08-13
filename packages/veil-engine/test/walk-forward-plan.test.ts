@@ -15,6 +15,7 @@ function protocol(mode: "rolling" | "expanding" = "rolling"): ArtifactProtocol {
     purgeDays: 1,
     embargoDays: 1,
     holdDays: 1,
+    executionLagDays: 1,
   };
 }
 
@@ -102,7 +103,7 @@ describe("walk-forward window planner", () => {
         protocol: { ...protocol(), purgeDays: 0 },
         decisionSchedule: schedule(11),
       }),
-    ).toThrowError(expect.objectContaining({ code: "INVALID_WALK_FORWARD_PLAN" }));
+    ).toThrowError(expect.objectContaining({ invariant: "C2" }));
 
     const plan = createWalkForwardPlan({ protocol: protocol(), decisionSchedule: schedule() });
     const tampered = JSON.parse(JSON.stringify(plan)) as {

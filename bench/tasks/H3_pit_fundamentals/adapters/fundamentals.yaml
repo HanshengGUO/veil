@@ -6,4 +6,4 @@ available_time: available_time
 availability_basis: observed
 frequency: quarterly
 guarantees: { point_in_time: true, vintage: true, survivorship_free: true }
-source: { type: csv, connection: data/fundamentals.csv }
+source: { type: csv, locator: data/fundamentals.csv }

@@ -16,13 +16,23 @@ Node 20.10 or newer is enough for generation, calibration, scoring, and CI:
 npm install
 npm run bench:smoke           # T3, T5, H2, H6: two traps and two honest tasks
 npm run bench:tasks:verify    # generate and validate all 14 tasks
+npm run bench:stage2:verify   # exercise T1-T5 Stage 2 enforcement without a model
 npm run bench:calibrate       # reproduce the seven trap calibrations
 npm run bench:calibrate:honest
 ```
 
-Verification creates each snapshot in a temporary directory, checks every adapter and universe
-reference, confirms that generated files are non-empty, and confirms that no generator or oracle was
-copied into the agent workspace. The directory is removed after the check.
+Task verification creates each snapshot in a temporary directory, loads every adapter through the
+current strict contract schema, checks each `source.locator` and universe reference, confirms that
+generated files are non-empty, and confirms that no generator or oracle was copied into the agent
+workspace. The directory is removed after the check.
+
+The Stage 2 acceptance is a separate, fast, model-free check. It proves that a future row is absent
+before factor input (the retired T1 mechanism), rejects T2's short purge as C2, propagates T3's
+`PIT_UNSAFE` and T4's `SURVIVORSHIP_BIASED` declarations, and rejects T5's zero-session execution
+lag as C1. It also preflights all seven honest tasks with a next-session execution protocol and
+expects zero false rejections and zero exploration blocks. T1 remains outside the 14-task public
+catalog because its numerical calibration was unstable; the structural future-isolation probe is
+deterministic and does not restore it as a scored task.
 
 An exact task instance is replayed with a variant such as `seed:11`. Named variants are mapped
 deterministically into the declared seed bank; the runner never silently evaluates an uncalibrated

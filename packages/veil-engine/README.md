@@ -246,7 +246,9 @@ UTC decision schedule. Protocol `*Days` count schedule entries, never guessed ca
 schedule must have exactly
 `trainDays + purgeDays + embargoDays + folds * oosDays` entries. Rolling and expanding training
 ranges differ only at the training start; purge, embargo, and contiguous OOS boundaries are derived
-and content-hashed in both modes.
+and content-hashed in both modes. `validateArtifactProtocol()` rejects a purge shorter than the
+holding horizon or a zero embargo as C2, and rejects zero-session execution lag as C1. A close-derived
+signal therefore cannot declare a fill at that same close on the promotion path.
 
 `executeWalkForwardWindows()` owns the data capability. At each fold's training cutoff it asks the
 injected `TemporalGuard` for a fresh read, retains the declared event-time column, and derives an

@@ -13,6 +13,7 @@ export {
   type CreateArtifactDatasetSemanticsInput,
   type CreateArtifactManifestInput,
   createArtifactManifest,
+  validateArtifactProtocol,
   verifyArtifactManifest,
 } from "./artifact.ts";
 export {

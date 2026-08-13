@@ -41,6 +41,7 @@ const protocol: ArtifactProtocol = {
   purgeDays: 1,
   embargoDays: 1,
   holdDays: 1,
+  executionLagDays: 1,
 };
 const verificationStart = {
   startedAt: "2026-08-12T12:00:00.000Z",
@@ -323,6 +324,7 @@ describe("walk-forward contract verification", () => {
       purgeDays: 1,
       embargoDays: 1,
       holdDays: 1,
+      executionLagDays: 1,
     });
     const result = await run(
       overlappingArtifact,

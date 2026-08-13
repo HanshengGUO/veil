@@ -38,6 +38,13 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Added
 
+- **Stage 2 bench acceptance**: all public task adapters now use the current portable
+  `source.locator` schema and are strictly loaded during snapshot verification. A fast model-free
+  acceptance checks the retired T1 future-isolation mechanism, rejects T2 as C2, propagates T3/T4
+  data degradations, rejects T5's same-session execution as C1, and preflights all seven honest tasks
+  without blocking exploration. Artifact protocols now bind a minimum explicit-session execution
+  lag alongside purge, embargo, and holding horizon.
+
 - **Golden-path structural evidence flow**: guarded prices and point-in-time membership are joined by
   a database-neutral, independently replayable composite-source manifest. The materialized result
   returns through the temporal guard, the honest candidate factor runs in framed per-decision

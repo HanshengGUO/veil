@@ -126,6 +126,7 @@ beforeEach(async () => {
       purgeDays: 5,
       embargoDays: 2,
       holdDays: 5,
+      executionLagDays: 1,
     },
     costModel: "test-bps-v1",
   });

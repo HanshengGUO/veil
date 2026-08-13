@@ -49,6 +49,7 @@ protocol:                         # C2 inputs are frozen before OOS execution
   purgeDays: 5                    # must be >= holdDays
   embargoDays: 2                  # must be non-zero
   holdDays: 5
+  executionLagDays: 1             # signal close t cannot fill before the next explicit session
 
 costModel: equities-bps-v1        # logical plugin reference, never a DSN/path
 artifactHash: <sha256>             # computed over every field above except artifactHash itself

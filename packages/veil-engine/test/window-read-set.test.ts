@@ -39,6 +39,7 @@ function plan(mode: "rolling" | "expanding" = "rolling") {
       purgeDays: 1,
       embargoDays: 1,
       holdDays: 1,
+      executionLagDays: 1,
     },
     decisionSchedule: Array.from({ length: 7 }, (_, index) =>
       new Date(Date.UTC(2026, 0, index + 1)).toISOString(),

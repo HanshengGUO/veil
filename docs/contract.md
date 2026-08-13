@@ -63,6 +63,9 @@ The rule that connects them is C5. Everything else exists to make C5 worth obeyi
   applies to files, databases, extracts, and custom adapters without depending on a SQL dialect.
 - Full-sample statistics (means, volatilities, quantiles, fitted scalers) computed over a period
   extending beyond `t` and then applied at `t` are violations, whether or not the code looks wrong.
+- Promotion protocols declare `executionLagDays` in explicit decision sessions. Zero is rejected as
+  C1 before data I/O or child launch, so a close-derived signal cannot declare a fill at that same
+  close. The later pricing evidence must still prove which bars were actually used.
 - Having an `available_time` is not the same as being able to trust it. Where it came from MUST be
   declared (`availability_basis`): the fifteen years of history a vendor hands over on the first
   pull were never observed arriving. See §5.

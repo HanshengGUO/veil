@@ -12,4 +12,4 @@ guarantees:
   tradability_mask: tradable
 source:
   type: csv
-  connection: data/prices.csv
+  locator: data/prices.csv

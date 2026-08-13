@@ -81,6 +81,7 @@ function artifactInput(
       purgeDays: 5,
       embargoDays: 2,
       holdDays: 5,
+      executionLagDays: 1,
     },
     costModel: "equities-bps-v1",
     ...overrides,
@@ -263,13 +264,19 @@ describe("content-addressed artifacts", () => {
       root,
       files: ["requirements.lock", "src/factor.py"],
     });
+    for (const [protocol, invariant] of [
+      [{ ...artifactInput(code).protocol, purgeDays: 4 }, "C2"],
+      [{ ...artifactInput(code).protocol, embargoDays: 0 }, "C2"],
+      [{ ...artifactInput(code).protocol, executionLagDays: 0 }, "C1"],
+    ] as const) {
+      expect(() => createArtifactManifest(artifactInput(code, { protocol }))).toThrowError(
+        expect.objectContaining({
+          invariant,
+          detail: expect.objectContaining({ remedy: expect.any(String) }),
+        }),
+      );
+    }
     const invalidInputs: CreateArtifactManifestInput[] = [
-      artifactInput(code, {
-        protocol: { ...artifactInput(code).protocol, purgeDays: 4 },
-      }),
-      artifactInput(code, {
-        protocol: { ...artifactInput(code).protocol, embargoDays: 0 },
-      }),
       artifactInput(code, { paramsLocked: { apiKey: "must-not-enter" } }),
       artifactInput(code, { paramsLocked: { cache: "/tmp/machine-specific" } }),
       artifactInput(code, { paramsLocked: { cache: "C:\\machine-specific" } }),
