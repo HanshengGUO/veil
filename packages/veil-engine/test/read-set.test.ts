@@ -323,4 +323,95 @@ describe("read-set v0", () => {
       verifyReadSetManifest(forward.readSet, { arrowIpc: forward.arrowIpc }),
     ).not.toThrow();
   });
+
+  it("falls back to full identity calculation when a fingerprint-stable prefix is rewritten", async () => {
+    const dates = ["2026-08-11T00:00:00.000Z", "2026-08-12T00:00:00.000Z"] as const;
+    const tables = [
+      tableFromIPC(
+        tableToIPC(
+          new Table({
+            ticker: vectorFromArray(["AAA"], new Utf8()),
+            event_time: vectorFromArray([dates[0]], new Utf8()),
+            available_time: vectorFromArray([dates[0]], new Utf8()),
+            value: vectorFromArray([1], new Float64()),
+          }),
+          "stream",
+        ),
+      ),
+      tableFromIPC(
+        tableToIPC(
+          new Table({
+            ticker: vectorFromArray(["AAA", "BBB"], new Utf8()),
+            event_time: vectorFromArray(dates, new Utf8()),
+            available_time: vectorFromArray(dates, new Utf8()),
+            value: vectorFromArray([99, 2], new Float64()),
+          }),
+          "stream",
+        ),
+      ),
+    ];
+    let reads = 0;
+    const backend: TemporalBackend = {
+      id: "read-set-mutating-prefix",
+      capabilities: {
+        projectionPushdown: false,
+        temporalPredicatePushdown: false,
+        sourceFingerprint: "content-hash",
+        readOnly: true,
+      },
+      accepts: (source) => source.type === "custom",
+      read: async () => ({
+        arrowIpc: tableToIPC(tables[Math.min(reads++, 1)] ?? tables[1], "stream"),
+        sourceFingerprint: {
+          algorithm: "sha256",
+          value: "stable-but-dishonest-backend-token",
+          scope: "source-version",
+        },
+        runtime: { name: "memory", version: "test-v1" },
+        pushdown: { projectionApplied: false, temporalPredicateApplied: false },
+      }),
+    };
+    const registry = new BackendRegistry();
+    registry.register(backend);
+    const temporalGuard = new TemporalGuard(registry);
+    const adapter = normalizeAdapterDeclaration({
+      dataset: "mutating-prefix",
+      version: "1",
+      entity_key: "ticker",
+      event_time: "event_time",
+      available_time: "available_time",
+      availability_basis: "observed",
+      guarantees: { point_in_time: true },
+      payload_schema: { value: "float64" },
+      source: { type: "custom", locator: "logical/mutating-prefix" },
+    });
+    const sourceBinding = createSourceBinding({
+      id: "mutating-prefix",
+      backend: backend.id,
+    });
+    const first = await temporalGuard.read(
+      adapter,
+      { asOf: dates[0], columns: ["ticker", "value"] },
+      sourceBinding,
+    );
+    const second = await temporalGuard.read(
+      adapter,
+      { asOf: dates[1], columns: ["ticker", "value"] },
+      sourceBinding,
+    );
+
+    expect(first.readSet.result.rowCount).toBe(1);
+    expect(second.readSet.result.rowCount).toBe(2);
+    expect(tableFromIPC(second.arrowIpc).getChild("value")?.toArray()).toEqual(
+      new Float64Array([99, 2]),
+    );
+    expect(second.readSet.result.resultHash).not.toBe(first.readSet.result.resultHash);
+    expect(
+      verifyReadSetManifest(JSON.parse(JSON.stringify(second.readSet)), {
+        arrowIpc: second.arrowIpc,
+        declaration: adapter,
+        sourceFingerprint: second.sourceFingerprint,
+      }),
+    ).toEqual(second.readSet);
+  });
 });

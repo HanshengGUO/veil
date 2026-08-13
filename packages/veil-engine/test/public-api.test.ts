@@ -6,8 +6,10 @@ describe("public engine API", () => {
     expect(engineApi).toHaveProperty("BackendRegistry");
     expect(engineApi).toHaveProperty("ArtifactRuntimeRegistry");
     expect(engineApi).toHaveProperty("captureArtifactCode");
+    expect(engineApi).toHaveProperty("CompositeSourceBackend");
     expect(engineApi).toHaveProperty("createArtifactManifest");
     expect(engineApi).toHaveProperty("createArtifactRuntimeProvider");
+    expect(engineApi).toHaveProperty("createCompositeSource");
     expect(engineApi).toHaveProperty("createHypothesisRegistration");
     expect(engineApi).toHaveProperty("createPromotionCandidate");
     expect(engineApi).toHaveProperty("createSourceManifest");
@@ -27,6 +29,8 @@ describe("public engine API", () => {
     expect(engineApi).toHaveProperty("verifySourceManifest");
     expect(engineApi).toHaveProperty("verifyArtifactCode");
     expect(engineApi).toHaveProperty("verifyArtifactManifest");
+    expect(engineApi).toHaveProperty("verifyCompositeSource");
+    expect(engineApi).toHaveProperty("verifyCompositeSourceManifest");
     expect(engineApi).toHaveProperty("verifyHypothesisRegistration");
     expect(engineApi).toHaveProperty("verifyPromotionCandidate");
     expect(engineApi).toHaveProperty("verifyWalkForwardContractRecord");
@@ -41,5 +45,7 @@ describe("public engine API", () => {
     expect(engineApi).not.toHaveProperty("createWalkForwardContractRecord");
     expect(engineApi).not.toHaveProperty("createWalkForwardContractExecutionRecord");
     expect(engineApi).not.toHaveProperty("parameterLockHashForArtifact");
+    expect(engineApi).not.toHaveProperty("readSetIdentityCacheForGuard");
+    expect(engineApi).not.toHaveProperty("createVerificationViewWithIdentityCache");
   });
 });

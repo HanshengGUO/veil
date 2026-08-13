@@ -108,7 +108,7 @@ export function generate(outDir: string, kappa: number = MOMENTUM_KAPPA): Genera
   }
 
   const priceLines: string[] = ["date,ticker,close,volume,tradable"];
-  const universeLines: string[] = ["date,ticker"];
+  const universeLines: string[] = ["date,ticker,in_universe"];
 
   for (let d = 0; d < dates.length; d++) {
     const date = dates[d];
@@ -117,7 +117,7 @@ export function generate(outDir: string, kappa: number = MOMENTUM_KAPPA): Genera
     for (const instrument of instruments) {
       if (instrument.delistIndex >= 0 && d > instrument.delistIndex) continue;
 
-      universeLines.push(`${date},${instrument.ticker}`);
+      universeLines.push(`${date},${instrument.ticker},true`);
 
       if (instrument.haltDaysLeft === 0 && rng() < 0.0015) {
         instrument.haltDaysLeft = 1 + Math.floor(4 * rng());

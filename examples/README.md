@@ -12,9 +12,9 @@
 | [`artifact-execution/`](./artifact-execution) | Guarded Arrow → bounded framed child → identity-bound result. |
 | [`walk-forward-windows/`](./walk-forward-windows) | Explicit schedule → replayable training windows → deterministic executed record. |
 | [`walk-forward-contract/`](./walk-forward-contract) | Fresh per-decision PIT reads → mask-first child inputs → C1-C4 contract → unverified promotion candidate. |
-| [`golden-path/`](./golden-path) | The reference research run, written by hand. One factor evaluated under an honest protocol and under seven variations, each leaking in exactly one way. |
+| [`golden-path/`](./golden-path) | An independent hand-written reference plus the real guard → composite evidence → artifact → contract → unverified-candidate acceptance path. |
 
-The golden path is the standard answer for the whole project: Stage 2 re-runs it on the engine,
-Stage 3 asks an agent to reproduce it, and its synthetic market seeds several bench tasks. Start
-with its [research log](./golden-path/README.md) — it doubles as the template every Veil research
-log follows.
+The golden path is the standard answer for the whole project. Its pricing implementation stays
+independent from the engine evidence harness, Stage 3 asks an agent to reproduce it, and its
+synthetic market seeds several bench tasks. Start with its
+[research log](./golden-path/README.md) — it doubles as the template every Veil research log follows.

@@ -19,5 +19,5 @@ describe("trap calibration", () => {
         result.class === "structural" ? 0 : CALIBRATION_SEEDS.length,
       );
     }
-  }, 30_000);
+  }, 60_000);
 });

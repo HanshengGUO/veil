@@ -141,6 +141,7 @@ function backendHarness(id: string, table: Table) {
 async function buildArtifact(
   selectedAdapter: AdapterDeclaration,
   developmentReadSetId: string,
+  selectedProtocol: ArtifactProtocol = protocol,
 ): Promise<ArtifactManifest> {
   const code = await captureArtifactCode({ root: codeRoot, files: ["src/factor.mjs"] });
   return createArtifactManifest({
@@ -156,7 +157,7 @@ async function buildArtifact(
       datasets: [{ declaration: selectedAdapter, developmentReadSets: [developmentReadSetId] }],
     },
     hypothesisRef: "test.contract-v1",
-    protocol,
+    protocol: selectedProtocol,
     costModel: "test-bps-v1",
   });
 }
@@ -188,6 +189,10 @@ function run(
   source = primary,
   runtime = runtimes().registry,
   selectedSchedule: readonly string[] = schedule,
+  executionOptions: {
+    readonly concurrency?: number;
+    readonly retainExecutionEvidence?: boolean;
+  } = {},
 ) {
   return executeWalkForwardContract({
     artifact: selectedArtifact,
@@ -198,6 +203,7 @@ function run(
     binding: source.binding,
     runtimes: runtime,
     columns: ["ticker", "value"],
+    ...executionOptions,
   });
 }
 
@@ -274,6 +280,76 @@ describe("walk-forward contract verification", () => {
     ]) {
       expect(serialized).not.toContain(`"${absent}"`);
     }
+  });
+
+  it("can discard large Arrow evidence under bounded concurrency without changing the record", async () => {
+    const retained = await run();
+    const compact = await run(artifact, adapter, primary, runtimes().registry, schedule, {
+      concurrency: 2,
+      retainExecutionEvidence: false,
+    });
+
+    expect(compact.executionCount).toBe(4);
+    expect(compact.executionEvidence).toBe("discarded");
+    expect(compact.executions).toEqual([]);
+    expect(compact.record).toEqual(retained.record);
+  });
+
+  it("allows overlapping fold roles to share one decision-time source read-set", async () => {
+    const overlappingSchedule = Array.from({ length: 11 }, (_, index) =>
+      new Date(Date.UTC(2026, 1, index + 1)).toISOString(),
+    );
+    const eventTime = overlappingSchedule.flatMap((time) => [time, time]);
+    const source = backendHarness(
+      "contract-overlapping-folds",
+      tableFromArrays({
+        ticker: overlappingSchedule.flatMap(() => ["AAA", "BBB"]),
+        event_time: eventTime,
+        available_time: eventTime,
+        tradable: eventTime.map(() => true),
+        value: eventTime.map((_, index) => index + 1),
+      }),
+    );
+    const developmentRead = await source.guard.read(
+      adapter,
+      { asOf: "2025-12-31", columns: ["ticker", "value"] },
+      source.binding,
+    );
+    const overlappingArtifact = await buildArtifact(adapter, developmentRead.readSet.manifestHash, {
+      mode: "expanding",
+      folds: 2,
+      trainDays: 3,
+      oosDays: 3,
+      purgeDays: 1,
+      embargoDays: 1,
+      holdDays: 1,
+    });
+    const result = await run(
+      overlappingArtifact,
+      adapter,
+      source,
+      runtimes().registry,
+      overlappingSchedule,
+    );
+    const repeatedDecision = result.record.executions.filter(
+      (execution) => execution.decisionIndex === 5,
+    );
+
+    expect(repeatedDecision.map((execution) => [execution.foldIndex, execution.role])).toEqual([
+      [0, "out-of-sample"],
+      [1, "train"],
+    ]);
+    expect(new Set(repeatedDecision.map((execution) => execution.sourceReadSetId)).size).toBe(1);
+    expect(new Set(repeatedDecision.map((execution) => execution.viewHash)).size).toBe(2);
+    expect(new Set(repeatedDecision.map((execution) => execution.requestHash)).size).toBe(2);
+    expect(new Set(repeatedDecision.map((execution) => execution.executionHash)).size).toBe(2);
+    expect(
+      verifyWalkForwardContractRecord(JSON.parse(JSON.stringify(result.record)), {
+        artifact: overlappingArtifact,
+        plan: result.plan,
+        declaration: adapter,
+      }),
+    ).toEqual(result.record);
   });
 
   it("fails C4 before I/O or child launch when no tradability mask is declared", async () => {
@@ -406,7 +482,7 @@ describe("walk-forward contract verification", () => {
     expect(serialized).not.toContain("contract-memory-b");
     expect(serialized).not.toContain("credential");
   });
-});
+}, 15_000);
 
 describe("promotion evidence boundary", () => {
   it("binds a preregistered hypothesis to contract evidence without issuing a claim", async () => {

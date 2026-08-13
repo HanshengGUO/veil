@@ -1,0 +1,25 @@
+dataset: golden-path-prices
+version: "2026-08-12"
+entity_key: ticker
+event_time: date
+available_time: date
+availability_basis: observed
+frequency: P1D
+guarantees:
+  point_in_time: true
+  tradability_mask: tradable
+provenance:
+  certified: false
+payload_schema:
+  close: float64
+  volume: int64
+  tradable: bool
+source:
+  type: csv
+  locator: prices.csv
+time_semantics:
+  bar_labeling: close
+  timestamp_basis: exchange
+  timezone: UTC
+  latency_class: eod
+notes: Deterministic synthetic close bars with an explicit tradability mask.

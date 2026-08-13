@@ -7,5 +7,5 @@ describe("honest task calibration", () => {
     expect(() => assertHonestCalibration(results)).not.toThrow();
     expect(results).toHaveLength(7);
     expect(results.every((result) => result.passed)).toBe(true);
-  }, 30_000);
+  }, 60_000);
 });

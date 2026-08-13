@@ -11,8 +11,16 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { GoldenPathEvidenceReport } from "./evidence.ts";
 import { generate, SEED } from "./generate.ts";
-import { loadPanel, PROTOCOLS, type ProtocolResult, runProtocol } from "./research.ts";
+import {
+  FOLD_COUNT,
+  loadPanel,
+  OOS_BLOCK_DAYS,
+  PROTOCOLS,
+  type ProtocolResult,
+  runProtocol,
+} from "./research.ts";
 
 interface ProtocolReport {
   sharpe: number;
@@ -46,8 +54,16 @@ const dataDir = join(here, "data");
 const nullDataDir = join(here, "data-null");
 const resultsPath = join(here, "results.json");
 const verify = process.argv.includes("--verify");
+const evidenceOnly = process.argv.includes("--evidence-only");
 
 const generated = generate(dataDir);
+if (evidenceOnly) {
+  const { runGoldenPathEvidence } = await import("./evidence.ts");
+  const evidence = await runGoldenPathEvidence({ dataDir, dates: generated.dates });
+  validateEvidence(evidence, generated.priceRows, generated.universeRows);
+  console.log(JSON.stringify({ ok: true, evidence }, null, 2));
+  process.exit(0);
+}
 const panel = loadPanel(dataDir);
 
 const toReport = (result: ProtocolResult): ProtocolReport => ({
@@ -197,3 +213,20 @@ if (differences.length > 0) {
 }
 
 console.log("golden path reproduced exactly");
+
+function validateEvidence(
+  evidence: GoldenPathEvidenceReport,
+  priceRows: number,
+  universeRows: number,
+): void {
+  const expectedExecutions = FOLD_COUNT * (OOS_BLOCK_DAYS + 1);
+  if (
+    evidence.componentRows.prices !== priceRows ||
+    evidence.componentRows.membership !== universeRows ||
+    evidence.componentRows.composite !== priceRows ||
+    evidence.executionCount !== expectedExecutions ||
+    evidence.claimStatus !== "unverified"
+  ) {
+    throw new Error("golden-path structural evidence is incomplete");
+  }
+}

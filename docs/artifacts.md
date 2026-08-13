@@ -168,6 +168,41 @@ DuckDB, another database, a service, or an in-memory backend without changing or
 Run `npm run walk-forward:verify` for a cold custom-backend example. This frozen training-only
 surface deliberately remains `executed`; the complete mask-first contract path is separate.
 
+## Compose guarded sources without trusting a database join
+
+A factor may need obligations from more than one source even though the contract executor currently
+accepts one dataset. The golden path, for example, needs both price tradability and point-in-time
+universe membership. `createCompositeSource()` resolves that case before artifact execution:
+
+```ts
+const composite = createCompositeSource({
+  primary: { declaration: prices, readSet: priceRead.readSet, arrowIpc: priceRead.arrowIpc },
+  membership: {
+    declaration: universe,
+    readSet: universeRead.readSet,
+    arrowIpc: universeRead.arrowIpc,
+  },
+  outputDeclaration: researchPanel,
+  membershipColumn: "in_universe",
+  outputAvailableTimeColumn: "eligible_at",
+  outputMembershipColumn: "in_universe",
+  outputMaskColumn: "eligible",
+});
+```
+
+Both inputs must already be `TemporalGuard` read sets at the same `as_of`. The transform performs an
+exact entity/event join, rejects duplicate or uncovered primary keys, and requires strict boolean
+tradability and membership. It retains every primary row, sets `eligible_at` to the later component
+availability, and computes `eligible = tradable && in_universe`. No SQL, connection, or backend
+handle enters this step.
+
+`veil.composite-source-manifest.v0` binds both declarations, guarded read-set ids, Arrow/result
+identities, the versioned join rule, row audit, and output identity. `verifyCompositeSource()`
+replays the join from both Arrow inputs. `CompositeSourceBackend` then serves the materialized result
+through an ordinary `TemporalBackend`; callers must put it behind a new `TemporalGuard` for each
+decision. Its `SourceFingerprint.evidence` carries the composite manifest, while
+`SourceFingerprint.manifest` remains reserved for physical file membership.
+
 ## Verify every train and OOS decision
 
 `executeWalkForwardContract()` enforces C1-C4 without adding a database-specific query language or
@@ -183,6 +218,10 @@ const checked = await executeWalkForwardContract({
   binding,
   runtimes,
   columns: ["ticker", "value"],
+  // Useful for large independent decisions; record order is still the declared order.
+  concurrency: 4,
+  // Release intermediate Arrow after its identities and execution record are fixed.
+  retainExecutionEvidence: false,
 });
 
 verifyWalkForwardContractRecord(checked.record, {
@@ -209,10 +248,18 @@ Invalid WFA topology or an incomplete fold raises C2, parameter identity drift r
 missing, malformed, late-applied, or reintroduced mask raises C4. Future output remains a C1
 violation. No partial failure returns a contract record.
 
+Concurrency is bounded to 1-32 and defaults to 1. It changes neither the schedule nor content
+identity. `retainExecutionEvidence: false` is a memory policy for large runs: `executionCount` and
+the complete contract record remain available, while the returned `executions` array is empty and
+`executionEvidence` is `discarded`. It does not skip a read, view, child invocation, admission check,
+or record; use the default when the caller needs every intermediate Arrow payload after completion.
+
 After all decisions succeed, the engine issues `veil.walk-forward-contract.v0` with status
 `contract-verified`. That wording is intentionally narrow: the record contains no pricing, costs,
 returns, metrics, gates, or experiment verdict, so it does not satisfy C5 and cannot make a number
 citable. Run `npm run walk-forward-contract:verify` for the cold custom-backend probe.
+The full 370,728-row golden-path structural acceptance is
+`npm run golden-path:evidence:verify`; reference pricing remains a separate implementation.
 
 ## Prepare promotion evidence without making a claim
 

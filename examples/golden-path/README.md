@@ -1,14 +1,19 @@
-# Golden path — research log
+# Golden path — research log and structural acceptance
 
-The hand-written reference run. Nothing in this directory uses Veil: it is what a careful
-researcher produces with their own hands, and it is the target Stage 3 asks an agent to reproduce.
+`research.ts` remains the hand-written reference run: it does not call Veil and is the target Stage
+3 asks an agent to reproduce. A separate `evidence.ts` harness now sends the honest candidate through
+the implemented Stage 2 structural path. Keeping those implementations separate prevents the system
+under test from becoming its own reference answer.
 
 ```bash
 npm run golden-path          # regenerate data, run every protocol, rewrite results.json
 npm run golden-path:verify   # same, but fail if any number moved
+npm run golden-path:evidence:verify # full guard → contract → candidate structural acceptance
 ```
 
-Data is synthetic and regenerated from a seed, so it is not committed. Metrics are committed
+Data is synthetic and regenerated from a seed, so it is not committed. The structural command is a
+full-scale acceptance run and intentionally remains separate from the fast cross-platform metric
+check. Metrics are committed
 ([`results.json`](./results.json)) and CI checks them on Linux, macOS and Windows — identical
 inputs must produce identical numbers.
 
@@ -62,15 +67,49 @@ an adapter and a point-in-time join against a feed whose `available_time` genuin
 | Evaluation | 6 expanding walk-forward folds, 252 out-of-sample days each | C2 |
 | Purge + embargo | 10 days (5-day label horizon + 5 conservative) | C2 |
 | Execution | signal from close t, position held from close t+1 | the decision cannot use the bar it trades on |
-| Costs | 10 bps per unit of turnover, charged at rebalance | see §7 |
+| Costs | 10 bps per unit of turnover, charged at rebalance | see §8 |
 
-## 5. Results
+## 5. Engine structural acceptance
+
+The engine harness does not reuse the reference backtest or import its metrics. It follows this
+evidence chain:
+
+```text
+prices.csv → TemporalGuard ───────────┐
+                                      ├→ replayable composite mask → TemporalGuard per decision
+universe_history.csv → TemporalGuard ┘                         ↓
+                        content-addressed momentum artifact → framed child
+                                                               ↓
+                           6 expanding folds × 252 OOS sessions
+                                                               ↓
+                         C1-C4 contract → unverified candidate
+```
+
+The two input adapters are explicit. Historical membership now carries an `in_universe` boolean;
+the hand-written loader still uses the same entity/date rows, so this added evidence column does not
+change reference pricing. The composite transform joins exact entity/date keys, derives availability
+as the later of price and membership availability, and computes `eligible = tradable &&
+in_universe`. Its manifest binds both guarded read sets and can be replayed without DuckDB or SQL.
+The materialized result then goes behind a normal backend and through the mandatory guard again.
+
+The artifact emits the four pre-registered momentum candidates with expanding statistics. Because
+Stage 2 has no pricing/cost evidence contract, it does not pretend to select a winning lookback or
+price a portfolio. The candidate set and the requirement that selection occur only inside training
+folds are locked; the independent reference remains responsible for the per-fold selection and all
+numbers below. Every train cutoff and all 1,512 OOS decisions execute in a framed child under the
+same parameter-lock identity.
+
+The resulting `veil.promotion-candidate.v0` is deliberately `unverified`. It contains structural
+identities and future evidence requirements, but no price, return, metric, gate outcome, verdict, or
+experiment id. Null and leaky protocols remain calibration references only.
+
+## 6. Results
 
 Out-of-sample, stitched across the six folds (1,512 trading days):
 
 | Protocol | Sharpe | Return | Vol | Max DD | Turnover | L per fold |
 | --- | --- | --- | --- | --- | --- | --- |
-| **honest (promoted)** | **0.88** | 3.8% | 4.3% | -8.0% | 80x | 5/3/3/3/3/3 |
+| **honest reference** | **0.88** | 3.8% | 4.3% | -8.0% | 80x | 5/3/3/3/3/3 |
 | honest, costs off | 2.81 | 11.8% | 4.2% | -4.0% | 80x | 5/3/3/3/3/3 |
 | leak: same-bar execution | 8.44 | 81.5% | 9.7% | -1.2% | 80x | 5/5/3/3/3/3 |
 | leak: full-sample statistics | 0.63 | 2.7% | 4.3% | -8.6% | 80x | 5/3/3/3/3/3 |
@@ -93,7 +132,7 @@ is about 0.41, so 0.88 corresponds to t ≈ 2.1.
 | honest | **-0.93** |
 | naive pipeline | **7.21** |
 
-## 6. Verdict
+## 7. Reference verdict
 
 **H1 is supported weakly and survives costs, with two caveats recorded against it.**
 
@@ -107,7 +146,10 @@ Promote as a small allocation, subject to:
    sets the sizing constraint, and the parameter-stability gate — the first fold picked L=5 where
    the rest picked L=3 — should be the binding check on any size increase.
 
-## 7. What the leaks teach
+This is the hand-written study's verdict, not a Veil Experiment verdict. The engine candidate above
+cannot make this claim citable until the later pricing, cost, and statistical-gate stages exist.
+
+## 8. What the leaks teach
 
 1. **Same-bar execution is the catastrophic one.** Sharpe 0.88 becomes 8.44 from a single timestamp
    mistake, and the result *looks* like a discovery: 81% annual return, 1.2% drawdown. Nothing about
@@ -136,7 +178,7 @@ Promote as a small allocation, subject to:
    inflation with no obviously wrong line of code anywhere. It is invisible to inspection and shows
    up only when the choice is forced to happen inside a fold.
 
-## 8. Two bugs this log found in itself
+## 9. Two bugs this log found in itself
 
 Recorded because they are the reason per-fold reporting exists, and because Stage 3 should expect an
 agent to hit the same class of problem:
@@ -152,7 +194,7 @@ agent to hit the same class of problem:
 Both were found by looking at dispersion rather than at the headline number, and the second was
 found only because a null environment was available to compare against.
 
-## 9. Implications for Veil-bench (Stage 1)
+## 10. Implications for Veil-bench (Stage 1)
 
 The leaks that did **not** inflate are the useful findings, because trap tasks have to actually bite:
 
@@ -169,12 +211,18 @@ The leaks that did **not** inflate are the useful findings, because trap tasks h
 Each of these becomes a `naive_outcome.expected_sharpe_min` the Stage 1 baseline must reproduce. If
 the baseline cannot produce an inflated result on a task, the task measures nothing.
 
-## 10. Reproduction
+## 11. Reproduction
 
 `results.json` records the seed, the row counts, and every metric above.
 `npm run golden-path:verify` regenerates from the seed and fails on any difference — which is why
 the generator avoids `exp`, `log` and `pow`: with only arithmetic and `sqrt`, results are
 bit-identical across platforms.
+
+`npm run golden-path:evidence:verify` separately reads all 370,728 price and membership rows,
+replays the composite, executes the complete per-decision contract, independently verifies the
+contract and candidate, and prints only content identities and structural row counts. Its output is
+not added to `results.json`, because structural runtime identities and priced reference metrics have
+different jobs.
 
 This is the smallest useful version of metric-level reproduction. Stage 4 generalizes it:
 content-addressed manifest, snapshot of the read set, replay, compare.

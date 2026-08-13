@@ -8,6 +8,7 @@ import {
 import {
   type SourceFingerprint,
   sourceFingerprintMatchesManifest,
+  verifyCompositeSourceManifest,
   verifySourceManifest,
 } from "./source-manifest.ts";
 import type { TemporalReadPlan } from "./temporal-plan.ts";
@@ -249,16 +250,22 @@ function validateBackendResult(result: BackendReadResult, backend: TemporalBacke
       throw invalidResult(backendId, "returned an invalid source fingerprint");
     }
     const hasManifest = Object.hasOwn(fingerprint, "manifest");
+    const hasEvidence = Object.hasOwn(fingerprint, "evidence");
     const actualKeys = Object.keys(fingerprint).sort(compareText);
-    const expectedKeys = ["algorithm", "value", "scope", ...(hasManifest ? ["manifest"] : [])].sort(
-      compareText,
-    );
+    const expectedKeys = [
+      "algorithm",
+      "value",
+      "scope",
+      ...(hasManifest ? ["manifest"] : []),
+      ...(hasEvidence ? ["evidence"] : []),
+    ].sort(compareText);
     if (
       typeof fingerprint.algorithm !== "string" ||
       fingerprint.algorithm.length === 0 ||
       typeof fingerprint.value !== "string" ||
       fingerprint.value.length === 0 ||
-      !["source-version", "read-snapshot"].includes(fingerprint.scope)
+      !["source-version", "read-snapshot"].includes(fingerprint.scope) ||
+      (hasManifest && hasEvidence)
     ) {
       throw invalidResult(backendId, "returned an invalid source fingerprint");
     }
@@ -279,6 +286,16 @@ function validateBackendResult(result: BackendReadResult, backend: TemporalBacke
         }
       } catch {
         throw invalidResult(backendId, "returned an invalid or mismatched source manifest");
+      }
+    }
+    if (hasEvidence) {
+      try {
+        const evidence = verifyCompositeSourceManifest(fingerprint.evidence);
+        if (!sourceFingerprintMatchesManifest(fingerprint, evidence)) {
+          throw new Error("fingerprint mismatch");
+        }
+      } catch {
+        throw invalidResult(backendId, "returned invalid or mismatched source evidence");
       }
     }
   }
@@ -308,11 +325,19 @@ function validateBackendResult(result: BackendReadResult, backend: TemporalBacke
 }
 
 function cloneFingerprint(fingerprint: SourceFingerprint): SourceFingerprint {
-  if (fingerprint.manifest === undefined) {
+  if (fingerprint.manifest === undefined && fingerprint.evidence === undefined) {
     return Object.freeze({
       algorithm: fingerprint.algorithm,
       value: fingerprint.value,
       scope: fingerprint.scope,
+    });
+  }
+  if (fingerprint.evidence !== undefined) {
+    return Object.freeze({
+      algorithm: fingerprint.algorithm,
+      value: fingerprint.value,
+      scope: fingerprint.scope,
+      evidence: verifyCompositeSourceManifest(fingerprint.evidence),
     });
   }
   return Object.freeze({

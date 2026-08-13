@@ -400,7 +400,7 @@ function requireCompleteExecutions(
   if (executions.length !== expected.length) {
     throw c2("walk-forward contract is missing a train or OOS decision execution");
   }
-  const sourceIds = new Set<string>();
+  const sourceByDecision = new Map<number, string>();
   const viewIds = new Set<string>();
   const requestIds = new Set<string>();
   const executionIds = new Set<string>();
@@ -416,15 +416,18 @@ function requireCompleteExecutions(
     ) {
       throw c2("walk-forward contract executions do not cover the exact ordered WFA topology");
     }
+    const priorSource = sourceByDecision.get(actual.decisionIndex);
+    if (priorSource !== undefined && priorSource !== actual.sourceReadSetId) {
+      throw c2("repeated WFA decision times must use the same source read-set evidence");
+    }
     if (
-      sourceIds.has(actual.sourceReadSetId) ||
       viewIds.has(actual.viewHash) ||
       requestIds.has(actual.requestHash) ||
       executionIds.has(actual.executionHash)
     ) {
-      throw c2("each WFA decision must use distinct source, view, request, and execution evidence");
+      throw c2("each WFA fold role must use distinct view, request, and execution evidence");
     }
-    sourceIds.add(actual.sourceReadSetId);
+    sourceByDecision.set(actual.decisionIndex, actual.sourceReadSetId);
     viewIds.add(actual.viewHash);
     requestIds.add(actual.requestHash);
     executionIds.add(actual.executionHash);

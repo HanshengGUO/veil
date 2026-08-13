@@ -1,0 +1,30 @@
+dataset: golden-path-research-panel
+version: "2026-08-12"
+entity_key: ticker
+event_time: date
+available_time: eligible_at
+availability_basis:
+  basis: reconstructed
+  source: veil.composite-source-manifest.v0
+frequency: P1D
+guarantees:
+  point_in_time: true
+  survivorship_free: true
+  tradability_mask: eligible
+provenance:
+  certified: false
+payload_schema:
+  close: float64
+  volume: int64
+  tradable: bool
+  in_universe: bool
+  eligible: bool
+source:
+  type: custom
+  locator: golden/composite-research-panel
+time_semantics:
+  bar_labeling: close
+  timestamp_basis: processed
+  timezone: UTC
+  latency_class: eod
+notes: Replayable prices-plus-membership panel; eligibility is computed before factor execution.

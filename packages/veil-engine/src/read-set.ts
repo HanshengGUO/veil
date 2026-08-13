@@ -7,10 +7,14 @@ import {
   SOURCE_TYPES,
   type SourceType,
 } from "@veilquant/contract";
-import { type Table, tableFromIPC } from "apache-arrow";
+import { type Table, tableFromIPC, tableToIPC } from "apache-arrow";
 import type { BackendDescriptor, BackendRuntime, SourceFingerprint } from "./backend.ts";
 import { EngineConfigurationError } from "./errors.ts";
-import { sourceFingerprintMatchesManifest, verifySourceManifest } from "./source-manifest.ts";
+import {
+  sourceFingerprintMatchesManifest,
+  verifyCompositeSourceManifest,
+  verifySourceManifest,
+} from "./source-manifest.ts";
 import {
   createTemporalReadPlan,
   type TemporalReadPlan,
@@ -26,6 +30,7 @@ const ARROW_RUNTIME = "apache-arrow@21.2.0";
 const QUERY_HASH_DOMAIN = "veil.read-set.query.v0";
 const SCHEMA_HASH_DOMAIN = "veil.read-set.schema.v0";
 const ROW_HASH_DOMAIN = "veil.read-set.row.v0";
+const ORDERED_CACHE_HASH_DOMAIN = "veil.read-set.ordered-cache.v0";
 const RESULT_HASH_DOMAIN = "veil.read-set.result.v0";
 const MANIFEST_HASH_DOMAIN = "veil.read-set.manifest.v0";
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/;
@@ -114,9 +119,58 @@ interface CanonicalField {
   readonly schema: ReadSetSchemaField;
 }
 
-export function createReadSetManifest(input: CreateReadSetManifestInput): ReadSetManifest {
+const READ_SET_IDENTITY_CACHE_BRAND: unique symbol = Symbol("veil.read-set-identity-cache");
+
+/** Opaque internal per-guard memo; result identities remain unchanged. */
+export type ReadSetIdentityCache = {
+  readonly [READ_SET_IDENTITY_CACHE_BRAND]: true;
+};
+
+interface ReadSetIdentityCacheState {
+  readonly maximumRows: number;
+  readonly rowHashes: Map<string, string>;
+  readonly resultsByArrow: WeakMap<Uint8Array, CachedArrowResult>;
+  readonly resultsByArrowHash: Map<string, ExactCachedArrowResult>;
+  readonly series: Map<string, CachedArrowResult>;
+}
+
+interface CachedArrowResult {
+  readonly arrowHash: string;
+  readonly result: ReadSetResultIdentity;
+  readonly rowHashesInOrder: readonly string[];
+  readonly orderedRowsHash: string | null;
+  readonly orderedRowsHasher: ReturnType<typeof createHash> | null;
+}
+
+interface ExactCachedArrowResult {
+  readonly arrowHash: string;
+  readonly result: ReadSetResultIdentity;
+}
+
+const IDENTITY_CACHE_STATES = new WeakMap<ReadSetIdentityCache, ReadSetIdentityCacheState>();
+
+export function createReadSetIdentityCache(maximumRows = 500_000): ReadSetIdentityCache {
+  if (!Number.isSafeInteger(maximumRows) || maximumRows < 0) {
+    throw invalidReadSet("read-set identity cache limit must be a non-negative safe integer");
+  }
+  const cache = Object.freeze({ [READ_SET_IDENTITY_CACHE_BRAND]: true as const });
+  IDENTITY_CACHE_STATES.set(cache, {
+    maximumRows,
+    rowHashes: new Map(),
+    resultsByArrow: new WeakMap(),
+    resultsByArrowHash: new Map(),
+    series: new Map(),
+  });
+  return cache;
+}
+
+export function createReadSetManifest(
+  input: CreateReadSetManifestInput,
+  identityCache?: ReadSetIdentityCache,
+  identitySeries?: string,
+): ReadSetManifest {
   const query = queryEnvelope(input.plan);
-  const result = canonicalArrowResult(input.table, input.arrowIpc);
+  const result = canonicalArrowResult(input.table, input.arrowIpc, identityCache, identitySeries);
   const body: ReadSetManifestBody = {
     format: READ_SET_FORMAT,
     declarationHash: hashAdapterDeclaration(input.declaration),
@@ -146,6 +200,7 @@ export function createReadSetManifest(input: CreateReadSetManifestInput): ReadSe
 export function verifyReadSetManifest(
   input: unknown,
   evidence: ReadSetVerificationEvidence,
+  identityCache?: ReadSetIdentityCache,
 ): ReadSetManifest {
   if (!(evidence.arrowIpc instanceof Uint8Array) || evidence.arrowIpc.byteLength === 0) {
     throw invalidReadSet("read-set verification requires non-empty Arrow IPC evidence");
@@ -204,13 +259,16 @@ export function verifyReadSetManifest(
     );
   }
 
-  verifyReadSetResultIdentity(manifest.result, evidence.arrowIpc);
+  verifyReadSetResultIdentity(manifest.result, evidence.arrowIpc, identityCache);
 
   return manifest;
 }
 
 /** Builds the same canonical Arrow identity used inside read-set and derived-window manifests. */
-export function createReadSetResultIdentity(arrowIpc: Uint8Array): ReadSetResultIdentity {
+export function createReadSetResultIdentity(
+  arrowIpc: Uint8Array,
+  identityCache?: ReadSetIdentityCache,
+): ReadSetResultIdentity {
   if (!(arrowIpc instanceof Uint8Array) || arrowIpc.byteLength === 0) {
     throw invalidReadSet("read-set result identity requires non-empty Arrow IPC evidence");
   }
@@ -220,13 +278,14 @@ export function createReadSetResultIdentity(arrowIpc: Uint8Array): ReadSetResult
   } catch {
     throw invalidReadSet("read-set Arrow IPC evidence is unreadable");
   }
-  return canonicalArrowResult(table, arrowIpc);
+  return canonicalArrowResult(table, arrowIpc, identityCache);
 }
 
 /** Independently recomputes schema, logical rows, and exact Arrow bytes for a result identity. */
 export function verifyReadSetResultIdentity(
   input: unknown,
   arrowIpc: Uint8Array,
+  identityCache?: ReadSetIdentityCache,
 ): ReadSetResultIdentity {
   const expected = normalizeResult(input);
   requireHash(
@@ -236,7 +295,7 @@ export function verifyReadSetResultIdentity(
     }) === expected.schemaHash,
     "read-set result schema hash does not match its schema",
   );
-  const actual = createReadSetResultIdentity(arrowIpc);
+  const actual = createReadSetResultIdentity(arrowIpc, identityCache);
   requireHash(
     canonicalJson(actual.schema) === canonicalJson(expected.schema),
     "read-set Arrow schema differs from the result identity",
@@ -246,6 +305,48 @@ export function verifyReadSetResultIdentity(
   requireHash(actual.resultHash === expected.resultHash, "read-set result hash differs");
   requireHash(actual.arrowHash === expected.arrowHash, "read-set Arrow content hash differs");
   return deepFreeze(expected);
+}
+
+/** Internal fast path for an engine-created exact row selection from a cached guarded Arrow. */
+export function createSelectedReadSetResultIdentity(
+  sourceArrowIpc: Uint8Array,
+  selectedTable: Table,
+  selectedArrowIpc: Uint8Array,
+  rows: readonly number[],
+  identityCache: ReadSetIdentityCache,
+): ReadSetResultIdentity {
+  const state = identityCacheState(identityCache);
+  const source = state.resultsByArrow.get(sourceArrowIpc);
+  if (source === undefined || source.arrowHash !== hashBytes(sourceArrowIpc)) {
+    throw invalidReadSet("selected result source is absent from the guarded identity cache");
+  }
+  if (
+    selectedTable.numRows !== rows.length ||
+    rows.some(
+      (row, index) =>
+        !Number.isSafeInteger(row) ||
+        row < 0 ||
+        row >= source.rowHashesInOrder.length ||
+        (index > 0 && row <= (rows[index - 1] ?? -1)),
+    )
+  ) {
+    throw invalidReadSet("selected result rows are not a valid ordered source selection");
+  }
+  const { schema, schemaHash } = canonicalSchema(selectedTable);
+  const rowHashesInOrder = rows.map((row) => source.rowHashesInOrder[row] ?? "");
+  if (rowHashesInOrder.some((rowHash) => rowHash.length === 0)) {
+    throw invalidReadSet("selected result is missing a cached source row identity");
+  }
+  const arrowHash = hashBytes(selectedArrowIpc);
+  const result = resultIdentity(schema, schemaHash, rowHashesInOrder, arrowHash);
+  state.resultsByArrow.set(selectedArrowIpc, {
+    arrowHash,
+    result,
+    rowHashesInOrder,
+    orderedRowsHash: null,
+    orderedRowsHasher: null,
+  });
+  return result;
 }
 
 function queryEnvelope(plan: TemporalReadPlan): ReadSetQueryEnvelope {
@@ -265,12 +366,129 @@ function queryFromEnvelope(query: ReadSetQueryEnvelope): TemporalReadQuery {
     : { asOf: query.asOf, columns: query.projection };
 }
 
-function canonicalArrowResult(table: Table, arrowIpc: Uint8Array): ReadSetResultIdentity {
+function canonicalArrowResult(
+  table: Table,
+  arrowIpc: Uint8Array,
+  identityCache?: ReadSetIdentityCache,
+  identitySeries?: string,
+): ReadSetResultIdentity {
+  const cacheState = identityCache === undefined ? undefined : identityCacheState(identityCache);
+  const arrowHash = hashBytes(arrowIpc);
+  const cachedByObject = cacheState?.resultsByArrow.get(arrowIpc);
+  if (cachedByObject !== undefined && cachedByObject.arrowHash === arrowHash) {
+    return cachedByObject.result;
+  }
+  const cachedByHash = cacheState?.resultsByArrowHash.get(arrowHash);
+  if (
+    identitySeries === undefined &&
+    cachedByHash !== undefined &&
+    cachedByHash.arrowHash === arrowHash
+  ) {
+    return cachedByHash.result;
+  }
   const names = table.schema.fields.map((field) => field.name);
   if (names.some((name, index) => names.indexOf(name) !== index)) {
     throw invalidReadSet("canonical read-set schema contains duplicate column names");
   }
 
+  const { fields, schema, schemaHash } = canonicalSchema(table);
+  const prior = identitySeries === undefined ? undefined : cacheState?.series.get(identitySeries);
+  const canCheckExtension =
+    prior !== undefined &&
+    prior.result.schemaHash === schemaHash &&
+    prior.result.rowCount <= table.numRows &&
+    prior.orderedRowsHash !== null &&
+    prior.orderedRowsHasher !== null;
+  let orderedHasher = orderedCacheHasher(schemaHash);
+  let rowHashesInOrder: string[] = [];
+  if (canCheckExtension) {
+    const physicalPrefixMatches =
+      hashBytes(tableToIPC(table.slice(0, prior.result.rowCount), "stream")) === prior.arrowHash;
+    if (physicalPrefixMatches) {
+      rowHashesInOrder = [...prior.rowHashesInOrder];
+      orderedHasher = prior.orderedRowsHasher.copy();
+    } else {
+      for (let row = 0; row < prior.result.rowCount; row += 1) {
+        updateOrderedCacheHash(orderedHasher, canonicalTableRow(table, fields, row));
+      }
+      if (orderedCacheDigest(orderedHasher) === prior.orderedRowsHash) {
+        rowHashesInOrder = [...prior.rowHashesInOrder];
+      } else {
+        orderedHasher = orderedCacheHasher(schemaHash);
+      }
+    }
+  }
+  for (let row = rowHashesInOrder.length; row < table.numRows; row += 1) {
+    const canonicalRow = canonicalTableRow(table, fields, row);
+    updateOrderedCacheHash(orderedHasher, canonicalRow);
+    const cacheKey = `${schemaHash}\0${canonicalRow}`;
+    let rowHash = cacheState?.rowHashes.get(cacheKey);
+    if (rowHash === undefined) {
+      rowHash = hashCanonicalText(ROW_HASH_DOMAIN, canonicalRow);
+      if (cacheState !== undefined && cacheState.rowHashes.size < cacheState.maximumRows) {
+        cacheState.rowHashes.set(cacheKey, rowHash);
+      }
+    }
+    rowHashesInOrder.push(rowHash);
+  }
+  const result = resultIdentity(schema, schemaHash, rowHashesInOrder, arrowHash);
+  const cachedResult = {
+    arrowHash,
+    result,
+    rowHashesInOrder,
+    orderedRowsHash: orderedCacheDigest(orderedHasher),
+    orderedRowsHasher: orderedHasher.copy(),
+  };
+  if (cacheState !== undefined) {
+    cacheState.resultsByArrow.set(arrowIpc, cachedResult);
+    if (cacheState.resultsByArrowHash.size < 5_000) {
+      cacheState.resultsByArrowHash.set(arrowHash, { arrowHash, result });
+    }
+    if (identitySeries !== undefined) {
+      const latest = cacheState.series.get(identitySeries);
+      if (latest === undefined || result.rowCount >= latest.result.rowCount) {
+        cacheState.series.set(identitySeries, cachedResult);
+      }
+    }
+  }
+  return result;
+}
+
+function canonicalTableRow(table: Table, fields: readonly CanonicalField[], row: number): string {
+  const values = fields.map((field) => {
+    const vector = table.getChildAt(field.index);
+    if (vector === null) {
+      throw invalidReadSet("canonical read-set schema is missing a column vector");
+    }
+    return canonicalScalar(vector.get(row));
+  });
+  return canonicalJson(values);
+}
+
+function orderedCacheHasher(schemaHash: string): ReturnType<typeof createHash> {
+  return createHash("sha256")
+    .update(ORDERED_CACHE_HASH_DOMAIN)
+    .update("\0")
+    .update(schemaHash)
+    .update("\0");
+}
+
+function updateOrderedCacheHash(hasher: ReturnType<typeof createHash>, canonicalRow: string): void {
+  hasher
+    .update(String(Buffer.byteLength(canonicalRow)))
+    .update(":")
+    .update(canonicalRow);
+}
+
+function orderedCacheDigest(hasher: ReturnType<typeof createHash>): string {
+  return `sha256:${hasher.copy().digest("hex")}`;
+}
+
+function canonicalSchema(table: Table): {
+  readonly fields: readonly CanonicalField[];
+  readonly schema: ReadSetSchema;
+  readonly schemaHash: string;
+} {
   const fields: CanonicalField[] = table.schema.fields
     .map((field, index) => ({
       index,
@@ -286,36 +504,44 @@ function canonicalArrowResult(table: Table, arrowIpc: Uint8Array): ReadSetResult
     fields: fields.map((field) => field.schema),
     metadata: metadataEntries(table.schema.metadata),
   };
-  const schemaHash = hashCanonical(SCHEMA_HASH_DOMAIN, {
-    canonicalizationVersion: READ_SET_RESULT_VERSION,
+  return {
+    fields,
     schema,
-  });
-  const rowHashes: string[] = [];
-  for (let row = 0; row < table.numRows; row += 1) {
-    const values = fields.map((field) => {
-      const vector = table.getChildAt(field.index);
-      if (vector === null) {
-        throw invalidReadSet("canonical read-set schema is missing a column vector");
-      }
-      return canonicalScalar(vector.get(row));
-    });
-    rowHashes.push(hashCanonical(ROW_HASH_DOMAIN, values));
-  }
-  rowHashes.sort(compareText);
+    schemaHash: hashCanonical(SCHEMA_HASH_DOMAIN, {
+      canonicalizationVersion: READ_SET_RESULT_VERSION,
+      schema,
+    }),
+  };
+}
 
+function resultIdentity(
+  schema: ReadSetSchema,
+  schemaHash: string,
+  rowHashesInOrder: readonly string[],
+  arrowHash: string,
+): ReadSetResultIdentity {
+  const rowHashes = [...rowHashesInOrder].sort(compareText);
   return deepFreeze({
     canonicalizationVersion: READ_SET_RESULT_VERSION,
     schema,
     schemaHash,
-    rowCount: table.numRows,
+    rowCount: rowHashes.length,
     resultHash: hashCanonical(RESULT_HASH_DOMAIN, {
       canonicalizationVersion: READ_SET_RESULT_VERSION,
       schemaHash,
-      rowCount: table.numRows,
+      rowCount: rowHashes.length,
       rowHashes,
     }),
-    arrowHash: hashBytes(arrowIpc),
+    arrowHash,
   });
+}
+
+function identityCacheState(cache: ReadSetIdentityCache): ReadSetIdentityCacheState {
+  const state = IDENTITY_CACHE_STATES.get(cache);
+  if (state === undefined) {
+    throw invalidReadSet("read-set identity cache was not created by this engine instance");
+  }
+  return state;
 }
 
 function canonicalScalar(value: unknown): unknown {
@@ -409,9 +635,16 @@ function normalizeFingerprint(input: unknown, field: string): SourceFingerprint 
     throw invalidReadSet(`${field} must be an object`);
   }
   const hasManifest = Object.hasOwn(input, "manifest");
+  const hasEvidence = Object.hasOwn(input, "evidence");
   const fingerprint = exactRecord(
     input,
-    ["algorithm", "value", "scope", ...(hasManifest ? ["manifest"] : [])],
+    [
+      "algorithm",
+      "value",
+      "scope",
+      ...(hasManifest ? ["manifest"] : []),
+      ...(hasEvidence ? ["evidence"] : []),
+    ],
     field,
   );
   const scope = nonemptyString(fingerprint.scope, `${field} scope`);
@@ -423,15 +656,23 @@ function normalizeFingerprint(input: unknown, field: string): SourceFingerprint 
     value: nonemptyString(fingerprint.value, `${field} value`),
     scope,
   };
-  if (!hasManifest) {
+  if (hasManifest && hasEvidence) {
+    throw invalidReadSet(`${field} cannot contain both file manifest and derived evidence`);
+  }
+  if (!hasManifest && !hasEvidence) {
     return normalized;
   }
   try {
-    const manifest = verifySourceManifest(fingerprint.manifest);
-    if (!sourceFingerprintMatchesManifest(normalized, manifest)) {
+    const evidence = hasManifest
+      ? verifySourceManifest(fingerprint.manifest)
+      : verifyCompositeSourceManifest(fingerprint.evidence);
+    if (!sourceFingerprintMatchesManifest(normalized, evidence)) {
       throw new Error("fingerprint mismatch");
     }
-    return { ...normalized, manifest };
+    if (evidence.format === "veil.source-manifest.v0") {
+      return { ...normalized, manifest: evidence };
+    }
+    return { ...normalized, evidence };
   } catch {
     throw invalidReadSet(`${field} contains an invalid or mismatched source manifest`);
   }
@@ -663,11 +904,11 @@ function requireHash(condition: boolean, message: string): void {
 }
 
 function hashCanonical(domain: string, value: unknown): string {
-  const digest = createHash("sha256")
-    .update(domain)
-    .update("\0")
-    .update(canonicalJson(value))
-    .digest("hex");
+  return hashCanonicalText(domain, canonicalJson(value));
+}
+
+function hashCanonicalText(domain: string, canonical: string): string {
+  const digest = createHash("sha256").update(domain).update("\0").update(canonical).digest("hex");
   return `sha256:${digest}`;
 }
 

@@ -12,7 +12,12 @@ import {
   type SourceFingerprint,
 } from "./backend.ts";
 import { EngineConfigurationError } from "./errors.ts";
-import { createReadSetManifest, type ReadSetManifest } from "./read-set.ts";
+import {
+  createReadSetIdentityCache,
+  createReadSetManifest,
+  type ReadSetIdentityCache,
+  type ReadSetManifest,
+} from "./read-set.ts";
 import type { SourceBinding } from "./source-binding.ts";
 import {
   createTemporalReadPlan,
@@ -38,6 +43,8 @@ export interface GuardedReadResult {
   readonly audit: TemporalGuardAudit;
 }
 
+const GUARD_IDENTITY_CACHES = new WeakMap<TemporalGuard, ReadSetIdentityCache>();
+
 /**
  * The mandatory backend-neutral protection layer. Backends may push down the structured predicate
  * for speed, but every Arrow result is independently checked and filtered before it is returned.
@@ -47,6 +54,7 @@ export class TemporalGuard {
 
   constructor(registry: BackendRegistry) {
     this.#registry = registry;
+    GUARD_IDENTITY_CACHES.set(this, createReadSetIdentityCache());
   }
 
   async read(
@@ -92,15 +100,19 @@ export class TemporalGuard {
       plan.requestedColumns === null ? guarded : guarded.select([...plan.requestedColumns]);
     const outputIpc = tableToIPC(projected, "stream");
     const droppedFutureRows = input.numRows - keptRows.length;
-    const readSet = createReadSetManifest({
-      declaration,
-      plan,
-      table: projected,
-      arrowIpc: outputIpc,
-      sourceFingerprint: backendRead.result.sourceFingerprint,
-      backend: backendRead.descriptor,
-      backendRuntime: backendRead.result.runtime,
-    });
+    const readSet = createReadSetManifest(
+      {
+        declaration,
+        plan,
+        table: projected,
+        arrowIpc: outputIpc,
+        sourceFingerprint: backendRead.result.sourceFingerprint,
+        backend: backendRead.descriptor,
+        backendRuntime: backendRead.result.runtime,
+      },
+      identityCache(this),
+      identitySeries(plan, backendRead.descriptor.id, backendRead.result.sourceFingerprint),
+    );
 
     return Object.freeze({
       arrowIpc: outputIpc,
@@ -118,6 +130,42 @@ export class TemporalGuard {
       }),
     });
   }
+}
+
+/** Internal bridge used by contract issuance; intentionally omitted from the package entrypoint. */
+export function readSetIdentityCacheForGuard(guard: TemporalGuard): ReadSetIdentityCache {
+  return identityCache(guard);
+}
+
+function identityCache(guard: TemporalGuard): ReadSetIdentityCache {
+  const cache = GUARD_IDENTITY_CACHES.get(guard);
+  if (cache === undefined) {
+    throw new EngineConfigurationError(
+      "INVALID_READ_SET",
+      "temporal guard identity cache is unavailable",
+      "Construct the guard with new TemporalGuard(registry).",
+    );
+  }
+  return cache;
+}
+
+function identitySeries(
+  plan: TemporalReadPlan,
+  backendId: string,
+  fingerprint: SourceFingerprint | null,
+): string | undefined {
+  if (fingerprint === null) return undefined;
+  return JSON.stringify({
+    dataset: plan.dataset,
+    adapterVersion: plan.adapterVersion,
+    projection: plan.requestedColumns,
+    backendId,
+    fingerprint: {
+      algorithm: fingerprint.algorithm,
+      value: fingerprint.value,
+      scope: fingerprint.scope,
+    },
+  });
 }
 
 function decodeArrow(ipc: Uint8Array, backendId: string): Table {

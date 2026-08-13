@@ -38,6 +38,7 @@
     "walk-forward:verify": "tsx examples/walk-forward-windows/run.ts",
     "walk-forward-contract:verify": "tsx examples/walk-forward-contract/run.ts",
     "golden-path": "tsx examples/golden-path/run.ts",
+    "golden-path:evidence:verify": "tsx examples/golden-path/run.ts --evidence-only",
     "golden-path:verify": "tsx examples/golden-path/run.ts --verify"
   },
   "devDependencies": {

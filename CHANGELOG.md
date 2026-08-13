@@ -38,6 +38,14 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Added
 
+- **Golden-path structural evidence flow**: guarded prices and point-in-time membership are joined by
+  a database-neutral, independently replayable composite-source manifest. The materialized result
+  returns through the temporal guard, the honest candidate factor runs in framed per-decision
+  expanding WFA, and the replayed contract produces only an unverified promotion candidate. Bounded
+  execution concurrency and records-only Arrow retention keep large contracts deterministic and
+  memory-bounded. The hand-written pricing, leak calibration, null environment, and committed metrics
+  remain independent and unchanged.
+
 - **Framed artifact execution**: opaque runtime providers resolve logical runtime constraints while
   exposing only a path-free concrete implementation identity. The engine verifies and materializes
   artifact code, rejects reuse of development evidence, supplies only exact guarded Arrow plus

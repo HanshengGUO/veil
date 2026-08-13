@@ -10,7 +10,9 @@ content-addressed artifact identity and runtime-provider-neutral framed executio
 implemented. Explicit-session rolling/expanding plans, replayable derived views, per-decision OOS
 mask-first execution, and complete C1-C4 contract records now feed a narrow promotion boundary.
 That boundary checks C5/C6 evidence and emits only an unverified candidate for later pricing and
-gates. The package stays private while the full promotion integration is completed.
+gates. The golden-path prices and point-in-time membership now meet through replayable composite
+evidence before this contract path. The package stays private while the remaining Stage 2
+acceptance work is completed.
 
 ## The database is replaceable; the guard is not
 
@@ -78,8 +80,9 @@ and the clean-process [`examples/veil-data`](../../examples/veil-data/).
 
 `SourceFingerprint.manifest` is deliberately optional. Enumerable file backends can attach a strict
 `veil.source-manifest.v0`; a database backend can instead return its transaction/version token, and
-an unversioned source returns `null`. The common guard and read-set verifier preserve these cases
-without requiring a database to pretend it is a directory of files.
+an unversioned source returns `null`. Derived sources use the separate `evidence` field. The first
+format, `veil.composite-source-manifest.v0`, binds two guarded read sets and a replayable exact-key
+membership join without pretending that derived evidence is a directory of files.
 
 `BackendRegistry` accepts custom implementations but exposes no raw read method. Reads leave the
 registry only through the engine's internal bridge into `TemporalGuard`. The contract test uses an
@@ -262,11 +265,22 @@ custom in-memory backend probe in
 
 ## Contract and promotion boundary
 
+`createCompositeSource()` combines a guarded primary source with guarded point-in-time membership
+before the factor runs. It rejects missing/duplicate entity-event keys and non-boolean masks,
+derives availability as the later component timestamp, and computes the output mask as tradability
+AND membership. Its manifest binds both read sets, join rule, audit, and result. The materialized
+snapshot is served by `CompositeSourceBackend` and must pass through `TemporalGuard` again at every
+decision; database-specific joins never enter orchestration or artifact code.
+
 `executeWalkForwardContract()` performs a fresh guarded read at every train cutoff and OOS decision,
 derives a bounded history, applies the declared boolean mask before child execution, and validates
 that child entity/event output came from that masked view. Only the current OOS decision slice is
 admitted. One immutable parameter-lock identity and the exact complete fold topology are required
 before `veil.walk-forward-contract.v0` is issued.
+
+Large contracts may set bounded `concurrency` and `retainExecutionEvidence: false`. Every decision
+still executes and remains in the record, but intermediate Arrow is released after its identities
+are fixed. Completion order is excluded from content identity.
 
 `createPromotionCandidate()` accepts that replay-verified contract and no lower-level result. It
 binds a `veil.hypothesis-registration.v0` whose durable timestamp must predate verification. Missing

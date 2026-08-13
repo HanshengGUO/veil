@@ -20,9 +20,9 @@ import {
   type ReadSetResultIdentity,
 } from "./read-set.ts";
 import { SourceBinding } from "./source-binding.ts";
-import { TemporalGuard } from "./temporal-guard.ts";
+import { readSetIdentityCacheForGuard, TemporalGuard } from "./temporal-guard.ts";
 import {
-  createVerificationView,
+  createVerificationViewWithIdentityCache,
   type VerificationView,
   type VerificationViewRole,
 } from "./verification-view.ts";
@@ -48,6 +48,10 @@ export interface ExecuteWalkForwardContractInput {
   readonly columns?: readonly string[];
   readonly limits?: ArtifactExecutionLimits;
   readonly signal?: AbortSignal;
+  /** Bounded independent decision executions. Defaults to 1 and never changes record order. */
+  readonly concurrency?: number;
+  /** Set false for large runs that need records but not every intermediate Arrow payload. */
+  readonly retainExecutionEvidence?: boolean;
 }
 
 export interface WalkForwardContractExecution {
@@ -67,6 +71,8 @@ export interface WalkForwardContractExecution {
 export interface WalkForwardContractResult {
   readonly plan: WalkForwardPlan;
   readonly parameterLockHash: string;
+  readonly executionCount: number;
+  readonly executionEvidence: "retained" | "discarded";
   readonly executions: readonly WalkForwardContractExecution[];
   /** C1-C4 structural evidence only; pricing, metrics, gates, and experiment verdict are absent. */
   readonly record: WalkForwardContractRecord;
@@ -95,9 +101,10 @@ export async function executeWalkForwardContract(
   const plan = contractPlan(artifact, input.decisionSchedule);
   const columns = verificationColumns(input.columns, input.declaration, maskColumn);
   const parameterLockHash = parameterLockHashForArtifact(artifact);
-  const executions: WalkForwardContractExecution[] = [];
-
-  for (const decision of decisionExecutions(plan)) {
+  const decisions = decisionExecutions(plan);
+  const concurrency = input.concurrency ?? 1;
+  const retainExecutionEvidence = input.retainExecutionEvidence ?? true;
+  const outcomes = await mapWithConcurrency(decisions, concurrency, async (decision) => {
     throwIfAborted(input.signal);
     const decisionTime = plan.decisionSchedule[decision.decisionIndex];
     if (decisionTime === undefined) {
@@ -108,15 +115,18 @@ export async function executeWalkForwardContract(
       columns === undefined ? { asOf: decisionTime } : { asOf: decisionTime, columns },
       input.binding,
     );
-    const view = createVerificationView({
-      sourceReadSet: source.readSet,
-      sourceArrowIpc: source.arrowIpc,
-      declaration: input.declaration,
-      plan,
-      foldIndex: decision.foldIndex,
-      role: decision.role,
-      decisionIndex: decision.decisionIndex,
-    });
+    const view = createVerificationViewWithIdentityCache(
+      {
+        sourceReadSet: source.readSet,
+        sourceArrowIpc: source.arrowIpc,
+        declaration: input.declaration,
+        plan,
+        foldIndex: decision.foldIndex,
+        role: decision.role,
+        decisionIndex: decision.decisionIndex,
+      },
+      readSetIdentityCacheForGuard(input.guard),
+    );
     if (decision.role === "train" && view.manifest.result.rowCount === 0) {
       throw new ContractViolation("C2", "walk-forward fold has no mask-eligible training rows", {
         dataset: `${input.declaration.dataset}@${input.declaration.version}`,
@@ -159,26 +169,35 @@ export async function executeWalkForwardContract(
     if (record.parameterLockHash !== parameterLockHash) {
       throw c3("parameter lock changed during walk-forward execution");
     }
-    executions.push(
-      Object.freeze({
-        source: Object.freeze({ readSet: source.readSet, arrowIpc: source.arrowIpc }),
-        view,
-        execution,
-        admitted: Object.freeze(admitted),
-        record,
-      }),
-    );
-  }
+    const retained = retainExecutionEvidence
+      ? Object.freeze({
+          source: Object.freeze({ readSet: source.readSet, arrowIpc: source.arrowIpc }),
+          view,
+          execution,
+          admitted: Object.freeze(admitted),
+          record,
+        })
+      : null;
+    return Object.freeze({
+      record,
+      retained,
+    });
+  });
+  const executions = outcomes.flatMap((outcome) =>
+    outcome.retained === null ? [] : [outcome.retained],
+  );
 
   const record = createWalkForwardContractRecord({
     artifact,
     plan,
     declaration: input.declaration,
-    executions: executions.map((execution) => execution.record),
+    executions: outcomes.map((outcome) => outcome.record),
   });
   return Object.freeze({
     plan,
     parameterLockHash,
+    executionCount: decisions.length,
+    executionEvidence: retainExecutionEvidence ? "retained" : "discarded",
     executions: Object.freeze(executions),
     record,
   });
@@ -514,7 +533,14 @@ function validateInput(input: ExecuteWalkForwardContractInput): void {
     "binding",
     "runtimes",
   ];
-  const allowed = new Set([...required, "columns", "limits", "signal"]);
+  const allowed = new Set([
+    ...required,
+    "columns",
+    "limits",
+    "signal",
+    "concurrency",
+    "retainExecutionEvidence",
+  ]);
   if (
     Object.keys(input).some((key) => !allowed.has(key)) ||
     required.some((key) => !Object.hasOwn(input, key))
@@ -531,6 +557,47 @@ function validateInput(input: ExecuteWalkForwardContractInput): void {
   ) {
     throw invalidContract("walk-forward contract input contains an invalid engine capability");
   }
+  if (
+    (input.concurrency !== undefined &&
+      (!Number.isSafeInteger(input.concurrency) ||
+        input.concurrency < 1 ||
+        input.concurrency > 32)) ||
+    (input.retainExecutionEvidence !== undefined &&
+      typeof input.retainExecutionEvidence !== "boolean")
+  ) {
+    throw invalidContract(
+      "walk-forward contract concurrency must be 1-32 and evidence retention must be boolean",
+    );
+  }
+}
+
+async function mapWithConcurrency<T, U>(
+  values: readonly T[],
+  concurrency: number,
+  worker: (value: T) => Promise<U>,
+): Promise<readonly U[]> {
+  const results = new Array<U>(values.length);
+  let next = 0;
+  let failed = false;
+  const failures: unknown[] = [];
+  const run = async (): Promise<void> => {
+    while (!failed) {
+      const index = next;
+      next += 1;
+      const value = values[index];
+      if (value === undefined) return;
+      try {
+        results[index] = await worker(value);
+      } catch (error) {
+        failed = true;
+        failures.push(error);
+        return;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, values.length) }, () => run()));
+  if (failures.length > 0) throw failures[0];
+  return Object.freeze(results);
 }
 
 function throwIfAborted(signal: AbortSignal | undefined): void {

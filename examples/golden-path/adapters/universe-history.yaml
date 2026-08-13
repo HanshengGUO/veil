@@ -1,0 +1,23 @@
+dataset: golden-path-universe-history
+version: "2026-08-12"
+entity_key: ticker
+event_time: date
+available_time: date
+availability_basis: observed
+frequency: P1D
+guarantees:
+  point_in_time: true
+  survivorship_free: true
+provenance:
+  certified: false
+payload_schema:
+  in_universe: bool
+source:
+  type: csv
+  locator: universe_history.csv
+time_semantics:
+  bar_labeling: close
+  timestamp_basis: exchange
+  timezone: UTC
+  latency_class: eod
+notes: Historical membership is explicit per entity and session; current membership is not used.

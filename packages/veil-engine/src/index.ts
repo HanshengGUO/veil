@@ -73,6 +73,17 @@ export {
   type BackendRuntime,
   type TemporalBackend,
 } from "./backend.ts";
+export {
+  COMPOSITE_SOURCE_BACKEND_ID,
+  CompositeSourceBackend,
+  type CompositeSourceBackendInput,
+  type CompositeSourceComponentEvidence,
+  type CompositeSourceSnapshot,
+  type CompositeSourceVerificationEvidence,
+  type CreateCompositeSourceInput,
+  createCompositeSource,
+  verifyCompositeSource,
+} from "./composite-source.ts";
 export { DUCKDB_FILE_BACKEND_ID, DuckDbFileBackend } from "./duckdb-file-backend.ts";
 export * from "./errors.ts";
 export {
@@ -133,15 +144,31 @@ export {
   type SourceBindingSummary,
 } from "./source-binding.ts";
 export {
+  COMPOSITE_SOURCE_JOIN_VERSION,
+  COMPOSITE_SOURCE_MANIFEST_FORMAT,
+  type CompositeSourceComponentIdentity,
+  type CompositeSourceJoin,
+  type CompositeSourceManifest,
+  type CreateCompositeSourceManifestInput,
+  createCompositeSourceManifest,
   createSourceManifest,
   SOURCE_MANIFEST_FORMAT,
+  type SourceEvidenceManifest,
   type SourceFingerprint,
   type SourceManifest,
   type SourceManifestFile,
+  sourceFingerprintFromCompositeManifest,
   sourceFingerprintFromManifest,
+  sourceFingerprintMatchesManifest,
+  verifyCompositeSourceManifest,
+  verifySourceEvidenceManifest,
   verifySourceManifest,
 } from "./source-manifest.ts";
-export * from "./temporal-guard.ts";
+export {
+  type GuardedReadResult,
+  TemporalGuard,
+  type TemporalGuardAudit,
+} from "./temporal-guard.ts";
 export * from "./temporal-plan.ts";
 export {
   createVeilData,

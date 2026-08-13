@@ -21,7 +21,9 @@ deterministic rolling/expanding training-window runs, and per-decision OOS mask-
 verification are now implemented. A `contract-verified` record binds complete C1-C4 evidence but
 contains no prices, metrics, gates, or experiment verdict. The promotion boundary now admits only
 that replay-verified record, checks hypothesis-registration chronology, and emits an explicitly
-`unverified` candidate for later pricing and gates—not a citable Experiment. The 14-task bench,
+`unverified` candidate for later pricing and gates—not a citable Experiment. The golden path now
+exercises that route with replayable prices-plus-PIT-membership composite evidence while keeping its
+hand-written pricing and committed metrics independent. The 14-task bench,
 runner, and first real
 [two-model bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are also complete. Independent scoring
 review, an external docs-only trial, and remote CI confirmation remain before Stage 1 closes. An
@@ -94,7 +96,7 @@ packages/veil-contract/   the invariants, the declaration formats, their validat
 packages/veil-engine/     point-in-time views, walk-forward verification, gates
 packages/veil-agent/      the Pi package users install (published as veil-quant)
 bench/                    Veil-bench: tasks, runner, bare-agent baselines
-examples/golden-path/     the reference study, done by hand
+examples/golden-path/     independent reference + full structural evidence acceptance
 examples/csv-pit/         the smallest adapter → guarded CSV view
 examples/parquet-pit/     the same guarded contract over Parquet
 examples/multi-file-pit/  one portable glob → one stable source manifest
@@ -159,6 +161,7 @@ Requires Node 20 or newer.
 npm install
 npm run check          # lint, types, tests, file cold probes, bench smoke, golden path
 npm run golden-path    # regenerate the reference study and print the table above
+npm run golden-path:evidence:verify # run the full 370,728-row structural acceptance path
 ```
 
 ## License

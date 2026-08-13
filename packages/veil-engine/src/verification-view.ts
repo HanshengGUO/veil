@@ -11,6 +11,8 @@ import { Table, tableFromIPC, tableToIPC, type Vector, vectorFromArray } from "a
 import { EngineConfigurationError } from "./errors.ts";
 import {
   createReadSetResultIdentity,
+  createSelectedReadSetResultIdentity,
+  type ReadSetIdentityCache,
   type ReadSetManifest,
   type ReadSetResultIdentity,
   verifyReadSetManifest,
@@ -84,6 +86,21 @@ type VerificationViewBody = Omit<VerificationViewManifest, "viewHash">;
 
 /** Applies the fold history boundary and declared tradability mask before factor code can run. */
 export function createVerificationView(input: CreateVerificationViewInput): VerificationView {
+  return createVerificationViewInternal(input);
+}
+
+/** Internal contract fast path; intentionally omitted from the package entrypoint. */
+export function createVerificationViewWithIdentityCache(
+  input: CreateVerificationViewInput,
+  identityCache: ReadSetIdentityCache,
+): VerificationView {
+  return createVerificationViewInternal(input, identityCache);
+}
+
+function createVerificationViewInternal(
+  input: CreateVerificationViewInput,
+  identityCache?: ReadSetIdentityCache,
+): VerificationView {
   const root = exactRecord(
     input,
     [
@@ -115,10 +132,14 @@ export function createVerificationView(input: CreateVerificationViewInput): Veri
   }
   const history = historyRange(plan, fold.train.startIndex, decisionIndex);
   const sourceArrowIpc = nonemptyArrow(root.sourceArrowIpc, "source Arrow IPC");
-  const sourceReadSet = verifyReadSetManifest(root.sourceReadSet, {
-    arrowIpc: sourceArrowIpc,
-    declaration,
-  });
+  const sourceReadSet = verifyReadSetManifest(
+    root.sourceReadSet,
+    {
+      arrowIpc: sourceArrowIpc,
+      declaration,
+    },
+    identityCache,
+  );
   if (sourceReadSet.query.asOf !== decisionTime) {
     throw invalidView("source read-set decision time does not match the verification decision");
   }
@@ -194,7 +215,10 @@ export function createVerificationView(input: CreateVerificationViewInput): Veri
     history,
     filterVersion: VERIFICATION_VIEW_FILTER_VERSION,
     audit,
-    result: createReadSetResultIdentity(arrowIpc),
+    result:
+      identityCache === undefined
+        ? createReadSetResultIdentity(arrowIpc)
+        : createSelectedReadSetResultIdentity(sourceArrowIpc, table, arrowIpc, rows, identityCache),
   };
   const manifest = deepFreeze({ ...body, viewHash: hashCanonical(VIEW_HASH_DOMAIN, body) });
   return Object.freeze({ manifest, arrowIpc });

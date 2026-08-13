@@ -12,6 +12,8 @@ import {
   VERIFICATION_VIEW_FORMAT,
   verifyVerificationView,
 } from "../src/index.ts";
+import { createReadSetIdentityCache } from "../src/read-set.ts";
+import { createVerificationViewWithIdentityCache } from "../src/verification-view.ts";
 
 const BACKEND_ID = "verification-view-memory";
 const schedule = Array.from({ length: 7 }, (_, index) =>
@@ -121,7 +123,19 @@ describe("mask-first verification views", () => {
       schedule[2],
       schedule[2],
     ]);
-
+    const cachedTrain = createVerificationViewWithIdentityCache(
+      {
+        sourceReadSet: trainRead.readSet,
+        sourceArrowIpc: trainRead.arrowIpc,
+        declaration: adapter,
+        plan: topology,
+        foldIndex: 0,
+        role: "train",
+        decisionIndex: 2,
+      },
+      createReadSetIdentityCache(),
+    );
+    expect(cachedTrain).toEqual(train);
     const oosRead = await source.guard.read(adapter, { asOf: schedule[5] ?? "" }, source.binding);
     const oos = createVerificationView({
       sourceReadSet: oosRead.readSet,
