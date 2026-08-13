@@ -1,21 +1,32 @@
 {
   "name": "@veilquant/engine",
-  "version": "0.0.0",
-  "private": true,
-  "description": "Veil engine: point-in-time views, read-set snapshots, walk-forward verification, gates",
+  "version": "0.1.0",
+  "description": "Veil engine: point-in-time views, artifact execution, and walk-forward contract evidence",
   "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=20.10.0 <30"
+  },
   "exports": {
     ".": "./src/index.ts"
   },
   "files": [
     "src",
+    "LICENSE",
     "README.md"
   ],
   "dependencies": {
-    "@veilquant/contract": "0.0.0",
+    "@veilquant/contract": "0.1.0",
     "@duckdb/node-api": "1.4.5-r.1",
     "apache-arrow": "21.2.0",
     "yaml": "2.9.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HanshengGUO/veil.git",
+    "directory": "packages/veil-engine"
   }
 }

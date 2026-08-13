@@ -94,9 +94,39 @@ also remains untouched when Arrow output is selected. Corrupt snapshots are neve
 query; inspection and explicit operator quarantine are documented in
 [`read-sets.md`](./read-sets.md#inspect-and-recover-without-erasing-evidence).
 
+## Pi tool
+
+The v0.1 `veil-quant` package registers the same boundary as `veil-data`. Its model-facing request
+uses snake case and selects a dataset from `.veil/project.yaml`:
+
+```json
+{
+  "dataset": "my-prices",
+  "mode": "panel",
+  "as_of": "2026-08-12T00:00:00.000Z",
+  "columns": ["ticker", "close"],
+  "output": "arrow"
+}
+```
+
+The `tool_call` hook normalizes and checks `as_of` before execution; missing or malformed input is a
+C1 rejection. `output: "summary"` writes nothing. `output: "arrow"` explicitly writes an immutable
+project-local `.veil/views/<read-set-id>.arrow` and records the read-set identity on the active Pi
+branch. The physical data root stays inside the opaque binding and never enters the response or
+ledger.
+
+Guarded access is not the same as promotion eligibility. The file profile still permits exploratory
+reads from declarations carrying `PIT_UNSAFE`, unverified/assumed availability, or survivorship
+degradation, but `veil-backtest` rejects those critical semantics as C1. Fix the source evidence;
+never edit a guarantee merely to obtain a candidate.
+
+This extension wrapper chooses the default CSV/Parquet file profile. The engine API below remains
+backend-neutral, and a custom `VeilProjectLoader` can register another backend without changing the
+tool request.
+
 ## CLI core
 
-The pre-alpha package exposes a dependency-injected command runner rather than a database-specific
+The engine exposes a dependency-injected command runner rather than a database-specific
 global config format:
 
 ```ts

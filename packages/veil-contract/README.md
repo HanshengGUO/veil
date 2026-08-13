@@ -3,10 +3,11 @@
 The Veil Contract: the six invariants (C1-C6) that any claim must satisfy, the adapter and
 guarantee declaration formats, and the validators that enforce them.
 
-- Normative specification: [`docs/contract.md`](../../docs/contract.md)
+- Normative specification:
+  [`docs/contract.md`](https://github.com/HanshengGUO/veil/blob/master/docs/contract.md)
 - Declaration formats: [`schemas/`](./schemas)
 
-Status: Stage 2C-2 — adapter declaration normalization, semantic validation, conservative degradation
+Status: v0.1 — adapter declaration normalization, semantic validation, conservative degradation
 derivation, lineage cross-checking, and content identity are implemented. Backend-neutral temporal
 reads, their mandatory Arrow guard, and artifact identity/execution live in
 `@veilquant/engine`. Storage and runtime providers remain outside this pure semantic package.

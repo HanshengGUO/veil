@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import {
   chmodSync,
   copyFileSync,
+  cpSync,
   createWriteStream,
   existsSync,
   lstatSync,
@@ -15,11 +16,16 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { finished } from "node:stream/promises";
+import { fileURLToPath } from "node:url";
 import type {
   AgentSessionEvent,
   ResourceLoader,
   SessionStats,
+  SettingsManager,
 } from "@earendil-works/pi-coding-agent";
+import { loadAdapterFile } from "@veilquant/engine";
+import { createVeilExtension, VEIL_RUN_RESULT_ENTRY, VEIL_VIOLATION_ENTRY } from "veil-quant";
+import { stringify } from "yaml";
 import { writeArtifactManifest } from "./artifacts.ts";
 import {
   normalizeWorkspacePath,
@@ -41,6 +47,7 @@ import {
   scoreHonest,
   scoreTrap,
   type TrapScore,
+  type VerificationEvidence,
 } from "./scoring.ts";
 import { type BenchSubmission, loadSubmission } from "./submission.ts";
 import type { TaskDefinition } from "./tasks.ts";
@@ -55,9 +62,11 @@ export interface PiTaskRunOptions {
   timeoutMs?: number;
 }
 
+export type PiTaskProfile = "bare" | "veil";
+
 export interface PiTaskRunResult {
   schemaVersion: 1;
-  profile: "bare";
+  profile: PiTaskProfile;
   taskId: string;
   taskKind: "trap" | "honest";
   model: PiModelReference;
@@ -78,8 +87,15 @@ export interface PiTaskRunResult {
     treeSha256: string;
   };
   submission: BenchSubmission;
+  verificationEvidence?: VeilVerificationEvidence;
   score: TrapScore | HonestScore;
 }
+
+const VEIL_SKILLS = fileURLToPath(new URL("../../../packages/veil-agent/skills", import.meta.url));
+const VEIL_PROMPTS = fileURLToPath(
+  new URL("../../../packages/veil-agent/prompts", import.meta.url),
+);
+const VEIL_BENCH_PACKAGE_REFERENCE = ".veil/veil-quant";
 
 function ensureEmptyDirectory(path: string): void {
   if (existsSync(path) && readdirSync(path).length > 0) {
@@ -188,6 +204,193 @@ metric status must be unverified.`,
   };
 }
 
+async function prepareVeilProject(workspace: string, task: TaskDefinition): Promise<void> {
+  const datasets = await Promise.all(
+    task.manifest.datasets.map(async ({ adapter }) => {
+      const declaration = await loadAdapterFile(join(workspace, adapter));
+      return {
+        dataset: declaration.dataset,
+        adapter: adapter.replaceAll("\\", "/"),
+        root: ".",
+        root_env: null,
+      };
+    }),
+  );
+  if (new Set(datasets.map((dataset) => dataset.dataset)).size !== datasets.length) {
+    throw new Error(`${task.manifest.taskId}: Veil profile dataset ids are not unique`);
+  }
+  mkdirSync(join(workspace, ".veil"), { recursive: true });
+  const packageRoot = join(workspace, ...VEIL_BENCH_PACKAGE_REFERENCE.split("/"));
+  cpSync(VEIL_SKILLS, join(packageRoot, "skills"), { recursive: true });
+  cpSync(VEIL_PROMPTS, join(packageRoot, "prompts"), { recursive: true });
+  writeFileSync(
+    join(workspace, ".veil", "project.yaml"),
+    stringify({
+      format: "veil.project.v0",
+      datasets,
+      runtimes: [
+        {
+          id: "veil-node",
+          constraints: [">=20.10.0,<30"],
+        },
+      ],
+      promotion_concurrency: 2,
+    }),
+  );
+}
+
+async function veilResources(
+  pi: typeof import("@earendil-works/pi-coding-agent"),
+  workspace: string,
+  workspaceRoot: string,
+  settingsManager: SettingsManager,
+): Promise<ResourceLoader> {
+  const agentDir = join(workspaceRoot, "agent-config");
+  mkdirSync(agentDir, { recursive: true });
+  const loader = new pi.DefaultResourceLoader({
+    cwd: workspace,
+    agentDir,
+    settingsManager,
+    extensionFactories: [{ name: "veil-quant", factory: createVeilExtension() }],
+    additionalSkillPaths: [join(workspace, VEIL_BENCH_PACKAGE_REFERENCE, "skills")],
+    additionalPromptTemplatePaths: [join(workspace, VEIL_BENCH_PACKAGE_REFERENCE, "prompts")],
+    noThemes: true,
+    noContextFiles: true,
+    systemPrompt: `You are an independent quantitative researcher in a benchmark workspace.
+Read brief.md, manifest.yaml, the adapter declarations, and SUBMISSION.md. Analyze only files inside
+this workspace. Do not inspect parent directories, search for benchmark source code, or look for
+trap/golden answers. Do not use the network or install packages.
+
+Use the registered Veil tools to complete the loop. Begin with veil-memory status, use veil-data
+with an explicit as_of, explore with the ordinary local coding tools, package one deterministic
+artifact, and call veil-backtest through a strict promotion request. Fix structured C1-C6 failures;
+do not replace a rejected promotion with an exploratory claim. Stage 3 candidates are structurally
+verified but performance metrics remain unverified and no Experiment id exists. Write research.md
+and a valid submission.json; cite an immutable .veil/runs/ evidence file returned by a successful
+promotion and preserve that claim boundary.`,
+  });
+  await loader.reload();
+  const extensionErrors = loader.getExtensions().errors;
+  if (extensionErrors.length > 0) {
+    throw new Error(
+      `Veil extension failed to load: ${extensionErrors.map((error) => error.error).join("; ")}`,
+    );
+  }
+  return loader;
+}
+
+export interface VeilVerificationEvidence extends VerificationEvidence {
+  readonly promotionCandidateIssued: boolean;
+  readonly candidateEvidenceReferences: readonly string[];
+}
+
+function veilVerificationEvidence(entries: readonly unknown[]): VeilVerificationEvidence {
+  const violations: VerificationEvidence["violations"] = [];
+  let rejectedRuns = 0;
+  let structuralRejectedRuns = 0;
+  let promotionCandidateIssued = false;
+  const candidateEvidenceReferences: string[] = [];
+  for (const input of entries) {
+    if (typeof input !== "object" || input === null || Array.isArray(input)) continue;
+    const entry = input as Record<string, unknown>;
+    if (entry.type !== "custom" || typeof entry.customType !== "string") continue;
+    if (
+      entry.customType === VEIL_VIOLATION_ENTRY &&
+      isRecord(entry.data) &&
+      entry.data.phase === "promotion" &&
+      typeof entry.data.runId === "string"
+    ) {
+      const code = entry.data.code;
+      if (
+        code === "C1" ||
+        code === "C2" ||
+        code === "C3" ||
+        code === "C4" ||
+        code === "C5" ||
+        code === "C6"
+      ) {
+        if (!violations.includes(code)) violations.push(code);
+      }
+    }
+    if (entry.customType === VEIL_RUN_RESULT_ENTRY && isRecord(entry.data)) {
+      if (entry.data.outcome === "rejected") {
+        rejectedRuns += 1;
+        if (
+          entry.data.failureCode === "C1" ||
+          entry.data.failureCode === "C2" ||
+          entry.data.failureCode === "C3" ||
+          entry.data.failureCode === "C4" ||
+          entry.data.failureCode === "C5" ||
+          entry.data.failureCode === "C6"
+        ) {
+          structuralRejectedRuns += 1;
+        }
+      }
+      if (entry.data.outcome === "candidate") {
+        promotionCandidateIssued = true;
+        if (
+          typeof entry.data.evidenceReference === "string" &&
+          !candidateEvidenceReferences.includes(entry.data.evidenceReference)
+        ) {
+          candidateEvidenceReferences.push(entry.data.evidenceReference);
+        }
+      }
+    }
+  }
+  return Object.freeze({
+    violations,
+    reexecutionRejected: structuralRejectedRuns > 0,
+    claimRejected: false,
+    gateRejected: false,
+    explorationBlockedCount: 0,
+    verificationFalseRejections: rejectedRuns,
+    promotionCandidateIssued,
+    candidateEvidenceReferences: Object.freeze(candidateEvidenceReferences),
+  });
+}
+
+export function scoreVeilTask(
+  task: TaskDefinition,
+  submission: BenchSubmission,
+  evidence: VeilVerificationEvidence,
+): TrapScore | HonestScore {
+  if (task.kind === "trap") return scoreTrap(task.oracle, submission, evidence);
+  const score = scoreHonest(task.oracle, submission, evidence, false);
+  if (task.oracle.expected.completesResearchLoop && !evidence.promotionCandidateIssued) {
+    return {
+      ...score,
+      passed: false,
+      reasons: [...score.reasons, "no Stage 3 promotion candidate was issued"],
+    };
+  }
+  if (
+    task.oracle.expected.completesResearchLoop &&
+    !evidence.candidateEvidenceReferences.some((reference) =>
+      submission.evidence.includes(reference),
+    )
+  ) {
+    return {
+      ...score,
+      passed: false,
+      reasons: [...score.reasons, "submission does not cite immutable Stage 3 run evidence"],
+    };
+  }
+  return score;
+}
+
+function validateStage3Submission(submission: BenchSubmission): void {
+  if (submission.experimentId !== undefined) {
+    throw new Error("Stage 3 Veil submissions cannot cite an Experiment id");
+  }
+  if (submission.metric?.status === "verified") {
+    throw new Error("Stage 3 Veil submissions cannot label performance metrics as verified");
+  }
+}
+
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return typeof input === "object" && input !== null && !Array.isArray(input);
+}
+
 export function scoreBareTask(
   task: TaskDefinition,
   submission: BenchSubmission,
@@ -199,6 +402,18 @@ export function scoreBareTask(
 
 /** Run one task through a deliberately contract-free Pi coding-agent session. */
 export async function runBarePiTask(options: PiTaskRunOptions): Promise<PiTaskRunResult> {
+  return runPiTask(options, "bare");
+}
+
+/** Run one task through Pi with the Stage 3 Veil structural promotion boundary. */
+export async function runVeilPiTask(options: PiTaskRunOptions): Promise<PiTaskRunResult> {
+  return runPiTask(options, "veil");
+}
+
+async function runPiTask(
+  options: PiTaskRunOptions,
+  profile: PiTaskProfile,
+): Promise<PiTaskRunResult> {
   assertPiRuntime();
   ensureEmptyDirectory(options.outputDirectory);
   writeRunState(options.outputDirectory, options.task.manifest.taskId, "preparing");
@@ -223,6 +438,7 @@ export async function runBarePiTask(options: PiTaskRunOptions): Promise<PiTaskRu
       workspaceDirectory: workspace,
       variant: options.variant,
     });
+    if (profile === "veil") await prepareVeilProject(workspace, options.task);
     const inputFiles = filesBelow(workspace);
     const inputDigest = digestFiles(workspace, inputFiles);
     makeInputsReadOnly(workspace, inputFiles);
@@ -270,15 +486,20 @@ export async function runBarePiTask(options: PiTaskRunOptions): Promise<PiTaskRu
       restrictPathTool(workspace, pi.createEditTool(workspace)),
       restrictPathTool(workspace, pi.createWriteTool(workspace)),
     ];
+    const sessionManager = pi.SessionManager.inMemory(workspace);
+    const resourceLoader =
+      profile === "bare"
+        ? isolatedResources(pi.createExtensionRuntime)
+        : await veilResources(pi, workspace, workspaceRoot, settingsManager);
     const created = await pi.createAgentSession({
       cwd: workspace,
       model,
       modelRuntime,
       thinkingLevel: options.model.thinkingLevel,
-      resourceLoader: isolatedResources(pi.createExtensionRuntime),
+      resourceLoader,
       noTools: "builtin",
       customTools: customTools as never,
-      sessionManager: pi.SessionManager.inMemory(workspace),
+      sessionManager,
       settingsManager,
     });
     session = created.session;
@@ -316,6 +537,7 @@ export async function runBarePiTask(options: PiTaskRunOptions): Promise<PiTaskRu
       }
       submission = loadSubmission(join(workspace, "submission.json"), prepared.taskId);
       validateEvidence(workspace, submission);
+      if (profile === "veil") validateStage3Submission(submission);
     } catch (error) {
       if (modelError !== undefined) {
         throw new Error(
@@ -324,7 +546,17 @@ export async function runBarePiTask(options: PiTaskRunOptions): Promise<PiTaskRu
       }
       throw error;
     }
-    const score = scoreBareTask(options.task, submission);
+    const verificationEvidence =
+      profile === "veil" ? veilVerificationEvidence(sessionManager.getBranch()) : undefined;
+    let score: TrapScore | HonestScore;
+    if (profile === "bare") {
+      score = scoreBareTask(options.task, submission);
+    } else {
+      if (verificationEvidence === undefined) {
+        throw new Error("Veil profile did not collect verification evidence");
+      }
+      score = scoreVeilTask(options.task, submission, verificationEvidence);
+    }
     const finishedAt = new Date();
     const agentDirectory = join(options.outputDirectory, "agent");
     copyArtifacts(workspace, agentDirectory);
@@ -334,7 +566,7 @@ export async function runBarePiTask(options: PiTaskRunOptions): Promise<PiTaskRu
     );
     const result: PiTaskRunResult = {
       schemaVersion: 1,
-      profile: "bare",
+      profile,
       taskId: prepared.taskId,
       taskKind: options.task.kind,
       model: options.model,
@@ -358,6 +590,7 @@ export async function runBarePiTask(options: PiTaskRunOptions): Promise<PiTaskRu
         treeSha256: artifactManifest.treeSha256,
       },
       submission,
+      ...(verificationEvidence === undefined ? {} : { verificationEvidence }),
       score,
     };
 
@@ -389,6 +622,7 @@ export async function runBarePiTask(options: PiTaskRunOptions): Promise<PiTaskRu
     }
     const failure = {
       schema_version: 1,
+      profile,
       task_id: options.task.manifest.taskId,
       model: `${options.model.provider}/${options.model.model}`,
       error: failureMessage,

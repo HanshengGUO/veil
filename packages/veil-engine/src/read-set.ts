@@ -25,7 +25,7 @@ export const READ_SET_FORMAT = "veil.read-set.v0" as const;
 export const READ_SET_FILTER_VERSION = "veil.temporal-filter.v1" as const;
 export const READ_SET_RESULT_VERSION = "veil.arrow-result.v1" as const;
 
-const ENGINE_RUNTIME = "@veilquant/engine@0.0.0";
+const ENGINE_RUNTIME = "@veilquant/engine@0.1.0";
 const ARROW_RUNTIME = "apache-arrow@21.2.0";
 const QUERY_HASH_DOMAIN = "veil.read-set.query.v0";
 const SCHEMA_HASH_DOMAIN = "veil.read-set.schema.v0";

@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  smoke:
+    name: package smoke / ${{ matrix.os }} / node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, node: 22 }
+          - { os: ubuntu-latest, node: 24 }
+          - { os: macos-latest, node: 24 }
+          - { os: windows-latest, node: 24 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+
+      - name: Run the full repository gate
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 24
+        run: npm run check
+
+      - name: Audit high-severity production dependencies
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 24
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Verify tag and package manifests
+        shell: bash
+        run: npm run release:verify -- --version "${GITHUB_REF_NAME#v}"
+
+      - name: Pack public packages
+        shell: bash
+        run: |
+          mkdir -p .release
+          npm pack --workspace @veilquant/contract --pack-destination .release
+          npm pack --workspace @veilquant/engine --pack-destination .release
+          npm pack --workspace veil-quant --pack-destination .release
+
+      - run: npm run release:install-smoke -- --packages-dir .release
+
+      - name: Upload publish artifacts
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 24
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-packages
+          path: .release/*.tgz
+          if-no-files-found: error
+
+  publish:
+    name: Publish npm packages and GitHub release
+    needs: smoke
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-packages
+          path: .release
+
+      - name: Publish in dependency order
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm publish .release/veilquant-contract-*.tgz --access public --provenance
+          npm publish .release/veilquant-engine-*.tgz --access public --provenance
+          npm publish .release/veil-quant-*.tgz --access public --provenance
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" .release/*.tgz --generate-notes --verify-tag

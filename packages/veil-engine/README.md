@@ -2,7 +2,7 @@
 
 The verification surface. Everything that makes a claim expensive lives here.
 
-Status: Stage 2D — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
+Status: v0.1 / Stage 3 structural engine — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
 guard, strict adapter YAML loader, default single/multi-file DuckDB CSV/Parquet backend, source and
 read-set v0 identities, durable content-addressed snapshots, and the minimum `veil-data` point/panel
 surface are implemented and hardened with operator-controlled snapshot quarantine. Portable
@@ -10,9 +10,9 @@ content-addressed artifact identity and runtime-provider-neutral framed executio
 implemented. Explicit-session rolling/expanding plans, replayable derived views, per-decision OOS
 mask-first execution, and complete C1-C4 contract records now feed a narrow promotion boundary.
 That boundary checks C5/C6 evidence and emits only an unverified candidate for later pricing and
-gates. The golden-path prices and point-in-time membership now meet through replayable composite
-evidence before this contract path. The package stays private while the remaining Stage 2
-acceptance work is completed.
+gates. The golden-path prices and point-in-time membership meet through replayable composite
+evidence before this contract path. `veil-quant` now supplies the Pi session timestamps and invokes
+this public library; Stage 4 will add pricing, gates, and citable Experiment issuance.
 
 ## The database is replaceable; the guard is not
 
@@ -65,8 +65,9 @@ does not write anything.
 The dependency-injected CLI core accepts `point|panel`, `--as-of`, an optional comma-separated
 projection, and `--output arrow|snapshot`. A launcher supplies the registry, declaration, opaque
 binding, and—only for snapshot output—an opened store. The core contains no file/database switch,
-SQL, physical path, DSN, or credential handling. See [`docs/veil-data.md`](../../docs/veil-data.md)
-and the clean-process [`examples/veil-data`](../../examples/veil-data/).
+SQL, physical path, DSN, or credential handling. See
+[`docs/veil-data.md`](https://github.com/HanshengGUO/veil/blob/master/docs/veil-data.md) and the
+clean-process [`examples/veil-data`](https://github.com/HanshengGUO/veil/tree/master/examples/veil-data).
 
 ## Extension surface
 
@@ -141,9 +142,10 @@ the backend deliberately skips temporal pushdown so the common guard sees the ba
 instead of silently filtering it away. CSV and Parquet use the same backend, binding rules, hash
 semantics, and guard. The metamorphic suite verifies equal rows and schemas across formats while
 their physical source hashes remain different. See the runnable
-[`examples/csv-pit`](../../examples/csv-pit/) and
-[`examples/parquet-pit`](../../examples/parquet-pit/), plus the manifest-focused
-[`examples/multi-file-pit`](../../examples/multi-file-pit/).
+[`examples/csv-pit`](https://github.com/HanshengGUO/veil/tree/master/examples/csv-pit) and
+[`examples/parquet-pit`](https://github.com/HanshengGUO/veil/tree/master/examples/parquet-pit), plus
+the manifest-focused
+[`examples/multi-file-pit`](https://github.com/HanshengGUO/veil/tree/master/examples/multi-file-pit).
 
 The current canonical Arrow mapping covers primitive scalar columns. Unsupported nested Parquet
 types fail closed until an explicit canonical type adapter is provided.
@@ -159,8 +161,9 @@ The result hash canonicalizes column order and hashes a sorted multiset of rows,
 and reordered Parquet inputs share a result identity even though their source and manifest hashes
 differ. A separate Arrow hash remains order/layout-sensitive for exact replay.
 `verifyReadSetManifest()` independently checks stored Arrow bytes and optional declaration, source,
-and expected-id evidence. See [`docs/read-sets.md`](../../docs/read-sets.md) and the runnable
-[`examples/read-set`](../../examples/read-set/).
+and expected-id evidence. See
+[`docs/read-sets.md`](https://github.com/HanshengGUO/veil/blob/master/docs/read-sets.md) and the
+runnable [`examples/read-set`](https://github.com/HanshengGUO/veil/tree/master/examples/read-set).
 
 ## Durable snapshot store
 
@@ -196,8 +199,9 @@ operator supplies an actor and reason. It persists a hash-addressed intent, atom
 object out of the readable namespace, retains its bytes, and persists a hash-verified result audit.
 It refuses valid/missing objects and never interprets mismatched caller evidence as corruption.
 Restoration requires a later explicit `put()` of the exact trusted manifest and Arrow bytes. See the
-operator contract in [`docs/read-sets.md`](../../docs/read-sets.md) and the cold
-[`examples/snapshot-recovery`](../../examples/snapshot-recovery/).
+operator contract in
+[`docs/read-sets.md`](https://github.com/HanshengGUO/veil/blob/master/docs/read-sets.md) and the cold
+[`examples/snapshot-recovery`](https://github.com/HanshengGUO/veil/tree/master/examples/snapshot-recovery).
 
 ## Artifact v0 identity
 
@@ -216,9 +220,10 @@ Artifact, per-window read-set, and experiment identities are deliberately distin
 now bind an artifact, concrete runtime implementation, and one new guarded read-set without
 mutating either identity. WFA training orchestration aggregates those executions into a separate
 deterministic run record; it does not yet create the final experiment or a citable metric. See
-[`docs/artifacts.md`](../../docs/artifacts.md),
-[`examples/artifact-identity`](../../examples/artifact-identity/), and the clean child
-[`examples/artifact-execution`](../../examples/artifact-execution/).
+[`docs/artifacts.md`](https://github.com/HanshengGUO/veil/blob/master/docs/artifacts.md),
+[`examples/artifact-identity`](https://github.com/HanshengGUO/veil/tree/master/examples/artifact-identity),
+and the clean child
+[`examples/artifact-execution`](https://github.com/HanshengGUO/veil/tree/master/examples/artifact-execution).
 
 ## Framed artifact execution
 
@@ -263,7 +268,7 @@ runtime identities plus all fold boundaries. Temporary roots, stderr, wall time,
 order are excluded. An empty fold fails before child launch; any later failure returns no run record.
 Records say `executed`, never `verified`: this frozen API remains the training-only layer. See the
 custom in-memory backend probe in
-[`examples/walk-forward-windows`](../../examples/walk-forward-windows/).
+[`examples/walk-forward-windows`](https://github.com/HanshengGUO/veil/tree/master/examples/walk-forward-windows).
 
 ## Contract and promotion boundary
 

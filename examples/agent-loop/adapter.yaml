@@ -1,0 +1,16 @@
+dataset: agent-loop-prices
+version: "2026-08-13"
+entity_key: ticker
+event_time: event_time
+available_time: available_time
+availability_basis: observed
+frequency: 1d
+guarantees:
+  point_in_time: true
+  survivorship_free: true
+  tradability_mask: tradable
+payload_schema:
+  price: float64
+source:
+  type: csv
+  locator: prices.csv

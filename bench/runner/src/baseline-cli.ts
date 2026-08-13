@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { runBaseline } from "./baseline.ts";
 import { parseModelReference, parseProviderEnvironmentOverride } from "./model.ts";
+import type { PiTaskProfile } from "./pi-session.ts";
 
 function option(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -23,6 +24,10 @@ const timeoutMinutes = Number(option("--timeout-minutes") ?? "20");
 if (!Number.isFinite(timeoutMinutes) || timeoutMinutes <= 0) {
   throw new Error("--timeout-minutes must be positive");
 }
+const profile = (option("--profile") ?? "bare") as PiTaskProfile;
+if (profile !== "bare" && profile !== "veil") {
+  throw new Error("--profile must be bare or veil");
+}
 
 const summary = await runBaseline({
   tasksDirectory: resolve(option("--tasks") ?? "bench/tasks"),
@@ -30,6 +35,7 @@ const summary = await runBaseline({
   suite,
   variant: option("--variant") ?? `baseline-${suite}-v1`,
   models: modelNames.map((model) => parseModelReference(model, option("--thinking") ?? "medium")),
+  profile,
   providerOverride: parseProviderEnvironmentOverride(
     option("--provider-base-url-env"),
     option("--provider-api-key-env"),

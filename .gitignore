@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+.release/
 *.tsbuildinfo
 
 # Local reference checkouts (e.g. the upstream Pi repo), never committed here

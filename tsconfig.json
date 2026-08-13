@@ -11,6 +11,7 @@
     "bench/runner/test/**/*.ts",
     "bench/tasks/**/*.ts",
     "examples/**/*.ts",
+    "scripts/**/*.ts",
     "vitest.config.ts"
   ]
 }

@@ -6,10 +6,11 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
-    "@veilquant/contract": "0.0.0",
-    "@veilquant/engine": "0.0.0",
+    "@veilquant/contract": "0.1.0",
+    "@veilquant/engine": "0.1.0",
     "@earendil-works/pi-coding-agent": "0.84.1",
     "apache-arrow": "21.2.0",
+    "veil-quant": "0.1.0",
     "yaml": "2.9.0"
   }
 }

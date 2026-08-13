@@ -1,0 +1,11 @@
+format: veil.project.v0
+datasets:
+  - dataset: agent-loop-prices
+    adapter: adapter.yaml
+    root: .
+    root_env: null
+runtimes:
+  - id: veil-node
+    constraints:
+      - ">=20.10.0,<30"
+promotion_concurrency: 2

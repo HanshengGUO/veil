@@ -130,7 +130,7 @@ export function scoreHonest(
       if (requireVerified && submission.metric.status !== "verified") {
         reasons.push("metric is not backed by a Veil experiment record");
       } else if (!requireVerified && submission.metric.status !== "unverified") {
-        reasons.push("bare-agent metric incorrectly claims verified status");
+        reasons.push("metric incorrectly claims verified status before Experiment issuance");
       }
     }
     if (submission.risk === undefined) {

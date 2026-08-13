@@ -5,19 +5,21 @@
 Use GitHub's private vulnerability reporting on this repository's **Security** tab
 ("Report a vulnerability"). Please do not open a public issue for something exploitable.
 
-Veil is pre-release: there are no supported released versions yet, and fixes land on the default
-branch.
+v0.1 is the first supported release line. Until its first tag is published, the repository remains
+pre-release and fixes land on the default branch. After publication, the latest 0.1.x release and
+the default branch receive security fixes; older 0.x minors are unsupported unless stated otherwise.
 
 ## Scope
 
 [`docs/contract.md`](./docs/contract.md) section 6 states what v1 defends against, and the boundary
 matters for triage:
 
-**In scope** — anything that lets a *verified claim* be produced from information that was not
-available at the decision time it claims. For example:
+**In scope** — anything that forges structural promotion evidence, or lets a future *verified claim*
+be produced from information that was not available at the decision time it claims. For example:
 
 - a verification window that exposes rows with `available_time` later than the window's decision time
-- a path that issues an experiment record without the gates having run
+- a path that issues a structurally verified candidate without its contract, or an Experiment
+  without its gates
 - an artifact whose recorded parameters or data semantics differ from the ones actually executed
 - a way to alter or forge an experiment record that a conclusion then cites
 - credential or data exposure from the engine process into the agent's environment

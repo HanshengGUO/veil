@@ -131,6 +131,20 @@ The codec is public so a thin Python, Rust, or other language adapter can implem
 contract. The engine itself has no language or database switch. Run
 `npm run artifact-execution:verify` for the clean Node adapter example.
 
+### The v0.1 Pi runner
+
+`veil-quant` includes one registered Node capability, `veil-node`. Its generic runner decodes the
+guarded Arrow input and calls `compute(table, context)` from the materialized artifact directory.
+The callable may return Arrow IPC, an Arrow `Table`, or `{ rowIndices, columns }`; the last form lets
+a dependency-free factor select ordered input rows and add bounded primitive derived columns. The
+runner preserves all source columns for those rows. Parent-side admission still independently
+requires the declared entity/event pairs and current OOS time.
+
+The runner is a capability adapter, not a second execution protocol. It uses the same framed request
+and result codec described above, receives no binding or developer environment, and is selected only
+when `.veil/project.yaml` explicitly lists the artifact's exact runtime constraint. Other languages
+continue to use `ArtifactRuntimeProvider`.
+
 ## Execute deterministic training windows
 
 The WFA planner does not guess a trading calendar. Supply the exact ordered UTC sessions required by

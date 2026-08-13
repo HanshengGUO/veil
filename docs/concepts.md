@@ -1,6 +1,6 @@
 # Concepts
 
-Seven terms. Once these are clear, the rest of Veil is mechanical.
+Eight terms. Once these are clear, the rest of Veil is mechanical.
 
 ## Exploration surface
 
@@ -8,20 +8,21 @@ Your normal workflow. An agent reads data, writes code, runs its own backtest, i
 blocks anything here, and it never will — a harness that interrupts exploration would cost more than
 the errors it prevents, and would be abandoned within a week.
 
-What Veil does instead is make the safe path the default one: data arrives as a point-in-time view
-with a tradability mask attached, and when something looks like a leak, you get an advisory. An
-advisory is a remark, not a gate.
+What Veil does instead is make the safe path the default one: `veil-data` provides a point-in-time
+view with a tradability mask attached, and when tool output looks like a leak, you get an advisory.
+An advisory is a remark, not a gate. Ordinary Pi file and shell tools remain available.
 
 Everything produced here is **unverified**. That is not a criticism; it is the state of the number.
 
 ## Verification surface
 
-What you cross to make a claim. The factor is repackaged as an artifact and re-executed, one
-walk-forward window at a time. Inside each window, rows you could not have known at that moment are
-not filtered out — they are absent. There is no code path that reaches them.
+What you cross to make a claim. `veil-backtest` repackages the factor as an artifact and re-executes
+it, one walk-forward decision at a time. Inside each decision, rows you could not have known at that
+moment are absent before the child starts.
 
 This is why leakage is structural here rather than a matter of review: whole-sample statistics cannot
-be computed from data that is not present, and a fill cannot use a bar the window does not contain.
+be computed from data that is not present, and a signal cannot use a bar the window does not contain.
+Stage 3 completes this structural surface; pricing and statistical claim gates follow in Stage 4.
 
 ## Artifact
 
@@ -43,39 +44,55 @@ anyway before deploying anything.
 The structural handoff after an artifact completes every PIT, mask-first walk-forward decision and
 its hypothesis chronology is checked. It is an input to later pricing and gates, not a result.
 Its claim status remains `unverified`, and a candidate hash cannot be cited as an experiment id.
+The hash also binds that run's verification-start entry, so a structural rerun compares artifact,
+plan, and contract hashes while independently replay-verifying the newly issued candidate.
+
+## Research run
+
+The append-only Stage 3 ledger entry around one promotion attempt. It has a durable Pi session start
+entry, a `researchRunId`, and either a structured rejection or an unverified candidate plus a
+content-addressed evidence reference. The active Pi branch defines its ancestry.
+
+A research run is not an Experiment. Its Markdown log is an audit aid, not a source of citable
+performance. This distinction lets v0.1 close the complete agent workflow without pretending that
+the Stage 4 pricing and statistical system already exists.
 
 ## Experiment record
 
-What verification issues: metrics, gate outcomes, the artifact hash, the datasets and their declared
-guarantees, the registered hypothesis, the verdict, and the reasoning behind it.
+What the Stage 4 claim pipeline issues after structural verification, pricing, costs, and statistical
+gates: metrics, gate outcomes, the artifact hash, datasets and declared guarantees, the registered
+hypothesis, verdict, and reasoning.
 
-It is the only citable metric in the system. A conclusion referring to a number without an experiment
-id is rejected — not degraded, rejected. This single rule is what allows exploration to be free.
+It is the only citable metric in the system. Stage 3 deliberately issues none. Once the Stage 4
+claim pipeline exists, a conclusion referring to a performance number without an experiment id is
+rejected—not degraded. This single rule is what allows exploration to be free.
 
 ## Evaporation
 
 The difference between what exploration claimed and what verification issued.
 
-It is the number to watch, and the one Veil reports back to you: *your factor lost this much Sharpe
-when it was checked.* In the reference study it is 7.7 — an honest 0.88 against a naive 8.61. A high
-evaporation is not a failure of the tool. It is the tool doing the only job it has.
+It is the number to watch once Stage 4 pricing is available: *your factor lost this much Sharpe when
+it was checked.* In the hand-written reference study it is 7.7—an honest 0.88 against a naive 8.61.
+Stage 3 candidates do not report evaporation because they contain no performance metric.
 
 ## Gates
 
-Checks a claim passes before promotion. Two kinds, and the distinction matters:
+Checks a structurally promoted candidate passes before becoming an Experiment. Two kinds, and the
+distinction matters:
 
 - **Mechanism** is enforced and not configurable: reads are point-in-time, evaluation is
-  walk-forward, trials are counted, promotion faces a placebo comparison. These are the same for
-  equities, futures, crypto and satellite imagery, because none of them depend on what the data means.
+  walk-forward, and trials feed the statistical price. These are the same for equities, futures,
+  crypto and satellite imagery because none of them depend on what the data means.
 - **Method** is yours: which statistic prices significance, which generator builds the null, which
   cost model applies. Registered as plugins, per asset class.
 
-When a method is unavailable for your data — no null generator, no cost model — the result is marked
-and weakened, not blocked. Degrade, never silently accept.
+When a Stage 4 method is unavailable for your data—no null generator or cost model—the result is
+marked and weakened, not silently accepted. Stage 3 records these methods only as required future
+evidence; it does not run or waive them.
 
 ---
 
 ## The one-sentence version
 
-Explore however you like; when you want to call something a result, the system re-runs it under a
-protocol you cannot bend, and tells you what was left.
+Explore however you like; when you want to promote something, the system re-runs it under a protocol
+you cannot bend, then keeps it unverified until the complete claim pipeline says what is left.

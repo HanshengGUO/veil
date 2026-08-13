@@ -36,6 +36,10 @@ describe("baseline reports", () => {
     const report = renderBaselineReport(summary);
     expect(report).toContain("| `test/model` | 0.00 | no | 1.00 | 1 | 2 | 0 |");
     expect(report).toContain("| T5 | G4 | 0.00 |");
+
+    const veilReport = renderBaselineReport({ ...summary, profile: "veil" });
+    expect(veilReport).toContain("# Veil Stage 3 evaluation");
+    expect(veilReport).toContain("This Stage 3 evaluation is diagnostic.");
   });
 
   it("lists failed runs and escapes table delimiters in errors", () => {

@@ -38,6 +38,31 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Added
 
+- **Stage 3 single-agent Pi loop**: the publishable `veil-quant` package registers `veil-data`,
+  `veil-backtest`, and `veil-memory`; captures the first brief/hypothesis and verification start in
+  Pi's append-only active branch; exposes strict brief, hypothesis, promotion, and structural replay
+  commands; and ships a research-loop skill plus plan/log prompt templates. Built-in coding tools
+  remain unblocked. `tool_result` heuristics for full-sample fitting, future functions, and current
+  universes append advisories without changing tool success.
+- **Stage 3 promotion ledger**: a project-local profile keeps adapter paths, data roots, runtime
+  executables, and bindings outside portable evidence. Promotion packages explicit factor files,
+  performs fresh per-decision C1-C4 execution, derives C6 chronology from Pi entry ids/timestamps,
+  and writes one content-addressed evidence file plus an append-only Markdown entry. Success is a
+  research run and `unverified` candidate—never an Experiment or performance verdict. Rejections
+  receive a terminal run entry and actionable public diagnostic. Known point-in-time and
+  survivorship-critical degradations remain usable for exploration but fail promotion as C1.
+- **Stage 3 bench profile**: the Pi runner now selects `bare` or `veil` without changing task inputs.
+  Veil runs load the packaged extension/resources, collect active-branch violation and candidate
+  evidence, require honest submissions to cite immutable run evidence, and reject premature
+  Experiment or verified-metric claims. The model-free acceptance separately names deferred Stage 4
+  traps and never represents model, hidden-set, or external-user work as completed.
+- **v0.1 release path and cold example**: package versions and dependency order are aligned at
+  `0.1.0`; the Pi manifest includes extension, skills, prompts, generic framed Node runtime, and
+  public package metadata. A tag-triggered workflow packs and installs all three public packages on
+  Linux, macOS, and Windows before provenance-enabled npm publication and GitHub Release creation.
+  `examples/agent-loop` runs the complete model-free brief-to-candidate flow in an isolated project,
+  and the 30-minute quickstart now covers a private CSV through structural promotion.
+
 - **Stage 2 own-data quickstart**: a checkout-local CSV/Parquet launcher now turns an adapter,
   runtime root, explicit decision time, and optional projection into a path-free guarded-view report
   without requiring users to edit Veil source. Row preview is opt-in and capped. The public
@@ -151,4 +176,6 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Notes
 
-- Nothing is installable yet. The first public release is v0.1, at the end of Stage 3.
+- v0.1 package and release automation are prepared for source/path installation. The npm command is
+  not available until a versioned project release tag passes the release matrix and the publish job;
+  local automation is not represented as an npm or external-user release pass.

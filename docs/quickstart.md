@@ -1,33 +1,40 @@
-# Quickstart: inspect your own CSV
+# Quickstart: your first Veil research loop
 
-This pre-alpha quickstart is the Stage 2 onboarding path: declare what your rows mean in time, read
-your own CSV through the mandatory temporal guard, and inspect the resulting evidence and
-degradations. It runs from a source checkout because no Veil package is published yet.
+This is the 30-minute path from a private CSV to a structurally verified promotion candidate inside
+[Pi](https://github.com/badlogic/pi-mono). You keep the normal coding-agent workflow: explore with
+files and scripts, then ask Veil to re-execute one packaged factor before it can become a claim.
 
-It does **not** issue a verified return, Sharpe ratio, or Experiment. The end-user
-exploration-to-promotion command arrives with the Stage 3 Pi package. Today, the structural
-promotion path is demonstrated by the committed walk-forward and golden-path examples.
+One boundary matters from the start: v0.1 produces a **contract-verified, unverified promotion
+candidate**. It does not produce a return, Sharpe ratio, gate verdict, or citable Experiment. Pricing,
+costs, statistical gates, and Experiment issuance arrive in Stage 4.
 
-## Before you start
+## 1. Install
 
-You need Git and Node 20.10 or newer. Keep the CSV local; do not commit it, paste its rows into an
-issue, or put credentials or an absolute path in the adapter.
+Veil's libraries require Node 20.10 or newer. Use a Pi release compatible with your Node version;
+the repository-pinned Pi 0.84.1 model runner requires Node 22.19 or newer. After the v0.1 npm
+release:
+
+```bash
+pi install npm:veil-quant@0.1.0
+```
+
+From a source checkout before the release tag, install dependencies and point Pi at the package:
 
 ```bash
 git clone https://github.com/HanshengGUO/veil.git
 cd veil
 npm install
-npm run engine:runtime:smoke
+pi install ./packages/veil-agent
 ```
 
-The runtime probe should report one DuckDB row and two Arrow rows. If installation or the probe
-fails, stop the trial timer and record the operating system, CPU architecture, Node version, and
-public error message. Do not include data paths or credentials.
+Pi packages execute with the user's permissions. Review third-party extension source before
+installing it. Veil does not add a credential or sandbox to your shell; its security property is that
+only the separate promotion surface can issue structural claim evidence.
 
-## 1. Write one adapter
+## 2. Declare the CSV
 
-Save this as `adapter.yaml` next to your CSV and change the dataset name and four column/file names.
-This conservative form works when your file has no trustworthy “first known at” timestamp:
+In the project where you will start Pi, save this as `adapters/prices.yaml`. Change the dataset,
+column names, and file name. Do not put an absolute path, DSN, token, or credential in this file.
 
 ```yaml
 dataset: my-prices
@@ -35,6 +42,11 @@ version: "1"
 entity_key: ticker
 event_time: date
 available_time: null
+frequency: 1d
+guarantees:
+  point_in_time: false
+  survivorship_free: false
+  tradability_mask: tradable
 payload_schema:
   close: float64
 source:
@@ -42,94 +54,230 @@ source:
   locator: prices.csv
 ```
 
-`source.locator` is relative to the root you pass at runtime. It is portable and non-secret. The
-runtime root is a separate local capability and never enters the declaration or read-set identity.
-
-With `available_time: null`, Veil filters conservatively on `event_time` and reports `PIT_UNSAFE`.
-That is an honest, usable exploration result—not a validation failure. If your file really records
-when each value first became knowable, declare it explicitly:
+This conservative declaration is usable for guarded exploration even when downloaded history has no
+trustworthy “first known at” timestamp. Veil filters on `event_time` and preserves `PIT_UNSAFE`; it
+does not pretend the data is point-in-time safe. Promotion will reject this declaration as C1 because
+later gates cannot repair missing point-in-time or survivorship evidence. If the file really records
+when each value first became knowable, declare that column and its evidence honestly:
 
 ```yaml
 available_time: first_known_at
 availability_basis: observed
 guarantees:
   point_in_time: true
+  survivorship_free: true
+  tradability_mask: tradable
 ```
 
-Do not label downloaded history `observed` merely because an availability-like column exists. Use
-`reconstructed` or `assumed` as described in [Dataset adapters](./adapters.md) when that is what the
-timestamp represents.
+Set `survivorship_free: true` only when the source genuinely includes point-in-time universe history;
+a current constituent list is not sufficient. Historical data received in one backfill was not
+“observed” arriving merely because it contains a date-like field. Use `reconstructed` or `assumed`
+as described in [Dataset adapters](./adapters.md).
 
-## 2. Run the guarded read
+## 3. Register the local capability
 
-From the repository root, replace the paths, decision time, and projected columns:
+Create `.veil/project.yaml` in the Pi working directory:
+
+```yaml
+format: veil.project.v0
+datasets:
+  - dataset: my-prices
+    adapter: adapters/prices.yaml
+    root: null
+    root_env: VEIL_PRICES_ROOT
+runtimes:
+  - id: veil-node
+    constraints:
+      - ">=20.10.0,<30"
+promotion_concurrency: 2
+```
+
+Set the environment variable before starting Pi. Its value may point outside the project and is
+never copied into tool results, the session ledger, run evidence, or the research log:
 
 ```bash
-npm run data:inspect -- --adapter ./my-data/adapter.yaml --root ./my-data --as-of 2026-08-12 --columns ticker,close
+export VEIL_PRICES_ROOT=/private/path/to/csv-directory
+pi
 ```
 
-Relative paths are resolved only by this local launcher. The JSON report contains no physical root
-or source rows. Its important fields are:
+For data beside the adapter, set `root: .` and `root_env: null`. For a narrower data directory beneath
+the project, use `root: relative/directory`. Exactly one of `root` and `root_env` must be selected.
+The v0.1 default profile supports CSV and Parquet through the file backend; custom backends use the
+exported project-loader interface rather than adding SQL or DSNs to the tool schema.
 
-- `view.asOf`, `rowCount`, and `columns`: the normalized cutoff and guarded panel shape;
-- `guard.mandatoryArrowGuardApplied`: always `true`; backend pushdown is only an optimization;
-- `semantics.degradations`: trust limits that must follow the data downstream;
-- `evidence`: content identities for the exact declaration, query, source, and Arrow result.
+Generated `.veil/views/`, `.veil/runs/`, and `.veil/research-log.md` may reveal research identities
+or notes even though they contain no source path. Add them to your project's ignore policy when they
+should remain local. Keep `.veil/project.yaml` and promotion requests only if their declarations are
+safe to share.
 
-Use `--preview 5` only when printing up to five guarded rows in your local terminal is acceptable.
-Preview is opt-in and capped at 20. `droppedByArrowGuard` may be zero even when future rows existed:
-the default backend can remove valid future timestamps first, after which the mandatory Arrow guard
-checks the returned rows again. The safety property is that no row after `asOf` appears in the
-preview or Arrow result, regardless of pushdown.
+## 4. Start from a brief
 
-For the committed three-row future-sentinel check, run:
-
-```bash
-npm run csv-pit:verify
-```
-
-It must report `futureRowsVisible: false`. Your own-data command succeeds when it emits
-`"ok": true`, the output columns are the ones you intended, the cutoff row count is plausible, and
-every degradation is understood rather than silently discarded.
-
-## 3. Choose the next boundary
-
-- For unrestricted analysis, consume the guarded Arrow panel through the API documented in
-  [`veil-data.md`](./veil-data.md). A panel remains `exploration-grade`.
-- For durable evidence, explicitly write and cold-replay a read-set snapshot as documented in
-  [`read-sets.md`](./read-sets.md). Reads never persist implicitly.
-- To package a factor, continue to [`artifacts.md`](./artifacts.md). A structural promotion candidate
-  remains `unverified` until the future pricing and statistical gates exist.
-
-## External 30-minute trial checklist
-
-This checklist is for a person who did not implement the feature. Start the timer before reading
-this page and use only public repository documentation.
-
-- [ ] Record the commit, operating system, architecture, `node --version`, and `npm --version`.
-- [ ] Use a real CSV not committed in this repository; record only its approximate rows and columns.
-- [ ] Install dependencies and pass `npm run engine:runtime:smoke`.
-- [ ] Create an adapter without copying a physical root, credential, DSN, or token into it.
-- [ ] Run `npm run data:inspect` without editing TypeScript or Veil source files.
-- [ ] Explain which timestamp Veil filtered and why each reported degradation is present.
-- [ ] Confirm that the report contains no physical root or credential value.
-- [ ] Reach the successful report within 30 minutes, or record the exact step that prevented it.
-
-Copy this small record into the review issue or pull request; never attach the data or private paths:
+Inside Pi, invoke the packaged prompt template:
 
 ```text
-Commit:
+/veil-research-plan Test whether 20-session cross-sectional momentum survives a one-session execution lag.
+```
+
+Before the agent starts, Veil automatically writes the first brief and hypothesis to the active Pi
+session branch. Pi supplies the durable entry id and timestamp; a timestamp typed into a tool
+argument is not accepted as chronology evidence. Inspect the state at any time by asking the agent to
+call:
+
+```json
+{ "action": "status" }
+```
+
+on `veil-memory`. For a stricter, more specific registration, use:
+
+```text
+/veil-hypothesis momentum-20-v1 :: Past 20-session winners outperform losers after a one-session lag.
+```
+
+A material change needs a new reference. Forking a Pi session inherits only entries on the selected
+ancestor branch, so sibling research does not silently count as preregistration.
+
+## 5. Read and explore
+
+Ask the agent to call `veil-data` with an explicit cutoff:
+
+```json
+{
+  "dataset": "my-prices",
+  "mode": "panel",
+  "as_of": "2026-08-12T00:00:00.000Z",
+  "columns": ["ticker", "date", "close"],
+  "output": "arrow"
+}
+```
+
+`output: "arrow"` explicitly creates `.veil/views/<read-set-id>.arrow`; `output: "summary"` has no
+file side effect. Both modes pass through the mandatory temporal guard. A panel remains
+`exploration-grade`; a point read is `guarded`, which still does not mean that a performance claim is
+verified.
+
+Now explore normally. Pi can read files, write scripts, and run your preferred analysis. Veil does
+not block those tools. If a result resembles full-sample fitting, a future function, or a current
+constituent universe, the extension appends an advisory. Advisories are heuristics and never change
+tool success. Label every exploratory metric `unverified`.
+
+## 6. Package one factor
+
+The built-in `veil-node` runner calls a deterministic module as `compute(table, context)`. `table` is
+the guarded Arrow table for exactly one train cutoff or OOS decision. `context` contains the locked
+parameters, declared literals, dataset identity, decision time, and content hashes—no source binding,
+path, credential, or future block.
+
+The callable may return Arrow IPC bytes, an Arrow `Table`, or a dependency-free row selection plus
+derived columns:
+
+```js
+// factor/factor.mjs
+export function compute(table, context) {
+  const close = table.getChild("close");
+  if (close === null) throw new Error("close is missing");
+
+  const rowIndices = Array.from({ length: table.numRows }, (_, row) => row);
+  return {
+    rowIndices,
+    columns: {
+      signal: rowIndices.map((row) => Number(close.get(row))),
+    },
+  };
+}
+```
+
+The runner preserves source columns for the selected rows and adds the declared derived columns.
+The parent process independently rejects output that reintroduces an entity/event pair absent from
+the mask-first input or presents historical rows as the current OOS signal.
+
+## 7. Prepare and promote
+
+Copy the complete request shape from
+[`packages/veil-agent/skills/research-loop/assets/promotion-request.yaml`](../packages/veil-agent/skills/research-loop/assets/promotion-request.yaml)
+to `.veil/promotion.yaml`, then replace every placeholder. Important fields are:
+
+- `hypothesis_ref`: a reference visible in `veil-memory status`;
+- `development_read_sets`: ids actually returned by `veil-data` on this active branch;
+- `factor.code_root` and `factor.files`: explicit project-relative code membership;
+- `params_locked`, `declared_literals`, and `trials_declared`: the exact searched artifact identity;
+- `decision_schedule`: unique ordered sessions, not a guessed calendar;
+- `protocol`: rolling/expanding folds with purge, embargo, holding, and execution-lag semantics;
+- `cost_model`: a future method reference, not evidence that costs were already applied.
+
+Then run:
+
+```text
+/veil-promote .veil/promotion.yaml
+```
+
+After parsing the strict request and resolving its registered dataset, `veil-backtest` appends a
+durable verification-start entry before semantic preflight or engine work. It rejects known
+point-in-time or survivorship degradation, recaptures the code, creates the content-addressed
+artifact, performs a fresh guarded read and framed child execution at every train/OOS decision,
+verifies C1-C4, and applies C6 chronology. A missing or late matching registration remains explicitly
+`exploratory`; a damaged registration or structural contract violation is rejected with a stable
+code and remedy.
+
+A success looks like this shape:
+
+```json
+{
+  "ok": true,
+  "status": "awaiting-pricing-and-gates",
+  "structuralStatus": "contract-verified",
+  "claimStatus": "unverified",
+  "registrationStatus": "preregistered",
+  "candidateHash": "sha256:...",
+  "requiredEvidence": ["pricing", "costs", "statistical-gates"]
+}
+```
+
+The full portable C1-C6 evidence is written once under `.veil/runs/`; the Pi entry records its
+relative reference and content hash. `.veil/research-log.md` receives a corresponding append-only
+entry. Neither file contains the data root or an Experiment id.
+
+Use `/veil-reproduce <researchRunId>` to rerun the same promotion request and compare artifact, plan,
+and contract hashes. Each candidate is independently replay-verified, but its hash normally changes
+because it binds a new verification-start entry and timestamp. This is structural reproduction only.
+Metric-level reproduction arrives with Stage 4 Experiments.
+
+## Cold reference and 30-minute trial
+
+From a source checkout, run the model-free reference loop:
+
+```bash
+npm run agent-loop:verify
+```
+
+It uses an isolated temporary project and emits path-free JSON. For the external usability trial,
+use a person who did not implement this feature and a real private CSV:
+
+- [ ] Record the Veil version/commit, OS, architecture, Node, npm, and Pi versions.
+- [ ] Install `veil-quant` without editing its source.
+- [ ] Create one adapter and `.veil/project.yaml` without embedding a private root or credential.
+- [ ] Reach one successful `veil-data` read and explain every reported degradation.
+- [ ] Register a specific hypothesis and package one deterministic factor.
+- [ ] Run `/veil-promote`. Reach a candidate only with genuinely point-in-time, survivorship-safe
+      data; otherwise preserve and explain the expected C1 rejection. Use the cold fixture to inspect
+      the successful shape without relabelling private data.
+- [ ] Confirm tool output, session entries, run evidence, and the log contain no private root.
+- [ ] Finish within 30 minutes, or preserve the exact blocked step and public error.
+
+Record only metadata, never the CSV, paths, credentials, environment values, or source rows:
+
+```text
+Veil version / commit:
 OS / architecture:
-Node / npm:
+Node / npm / Pi:
 Approximate CSV shape:
-Minutes to first successful report:
-Adapter changes beyond the template:
-Unexpected error code and remedy (if any):
+Minutes to first guarded read:
+Minutes to promotion candidate:
+Unexpected public code and remedy:
 First unclear documentation step:
-Did any output expose a physical root or secret? yes/no
+Did any output expose a root or secret? yes/no
+Could the user explain candidate vs Experiment? yes/no
 Outcome: pass / blocked
 ```
 
-An external pass is evidence about usability, not a substitute for contract tests. A blocked trial
-is useful: fix the public instruction or diagnostic that caused it, then preserve the report rather
-than rewriting the result as a pass.
+An external pass measures usability; it does not replace contract tests. Preserve blocked outcomes
+and fix the instruction or diagnostic that caused them.

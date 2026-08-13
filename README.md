@@ -13,25 +13,19 @@ and does not ask you to learn a new research API. It changes one thing:
 Nobody would accept an editor that blocks their keystrokes. Everybody accepts CI that blocks their
 merge. Veil is CI for research claims.
 
-Status: **Stage 1 exit / Stage 2D local implementation, pre-alpha.** The backend-neutral temporal guard,
-native runtime gate, single/multi-file CSV/Parquet point-in-time backend, source/read-set v0
-identities, durable snapshots with operator quarantine, minimum `veil-data` point/panel surface, and
-path-independent content-addressed artifact identities, runtime-provider-neutral framed execution,
-deterministic rolling/expanding training-window runs, and per-decision OOS mask-first contract
-verification are now implemented. A `contract-verified` record binds complete C1-C4 evidence but
-contains no prices, metrics, gates, or experiment verdict. The promotion boundary now admits only
-that replay-verified record, checks hypothesis-registration chronology, and emits an explicitly
-`unverified` candidate for later pricing and gates—not a citable Experiment. The golden path now
-exercises that route with replayable prices-plus-PIT-membership composite evidence while keeping its
-hand-written pricing and committed metrics independent. A model-free Stage 2 bench acceptance now
-checks T1-T5 enforcement and all seven honest-task preflights. The 14-task bench, runner, and first real
-[two-model bare-agent baseline](./bench/baselines/kimi-stage1-full-v1/) are also complete. Independent
-bench scoring and a docs-only runner trial remain before Stage 1 closes; an external own-CSV trial
-and remote CI confirmation remain before Stage 2 closes. An
-independent [QBench Engineering baseline](./bench/baselines/kimi-qbench-engineering-v1/) now also
-tests cold-start artifacts, causal reconciliation, recovery, and content-addressed manifests.
-Nothing is installable yet. The first public release (v0.1) lands at the end of Stage 3 — see
-[Roadmap](#roadmap).
+Status: **v0.1 / Stage 3 implementation, release acceptance pending.** The `veil-quant` Pi package now
+registers `veil-data`, `veil-backtest`, and `veil-memory`; captures C6 chronology in Pi's append-only
+session tree; keeps ordinary exploration tools unblocked; and writes content-addressed structural
+run evidence plus an honest Markdown log. The engine beneath it provides the backend-neutral temporal
+guard, CSV/Parquet file backend, read-set identities/snapshots, content-addressed artifacts, framed
+runtime execution, per-decision mask-first WFA contracts, and the narrow promotion boundary. A
+successful v0.1 run is `contract-verified` and still explicitly `unverified`: it contains no prices,
+returns, metrics, gate verdict, or Experiment id. The hand-written golden-path metrics remain an
+independent reference until Stage 4 pricing and statistical gates exist.
+
+The source package can be installed locally now; `pi install npm:veil-quant@0.1.0` becomes available
+only after the v0.1 tag passes release smoke and is published. Model-free and local acceptance do not
+replace the remaining external own-data, bench, cross-OS user, hidden-set, and native CI trials.
 
 ---
 
@@ -58,28 +52,42 @@ The last row is the one that matters. A protocol that reports an edge on pure no
 evidence of anything. Full study and reproduction instructions:
 [`examples/golden-path`](./examples/golden-path).
 
+## Start a loop
+
+From a source checkout:
+
+```bash
+npm install
+pi install ./packages/veil-agent
+npm run agent-loop:verify # model-free cold reference
+```
+
+The libraries support Node 20.10 through 29; the repository-pinned Pi 0.84.1 model runner requires
+Node 22.19 or newer.
+
+Then follow the [30-minute quickstart](./docs/quickstart.md) to declare a private CSV, create
+`.veil/project.yaml`, start from a brief, explore normally, and run `/veil-promote`. The default
+profile never serializes the data root; use an environment variable when the data lives outside the
+project.
+
 ## How it works
 
 Two surfaces, different rules.
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│ your agent, your code, your workflow                                 │
-├───────────────────────────────┬──────────────────────────────────────┤
-│ EXPLORATION                   │ VERIFICATION                         │
-│ never blocked                 │ structurally enforced                │
-│                               │                                      │
-│ point-in-time views by        │ artifact re-executed window by       │
-│ default, tradability mask     │ window; rows you could not have      │
-│ attached, advisories when     │ known do not exist in the window     │
-│ something looks off           │                                      │
-│                               │ gates: costs, trials-aware           │
-│ output: unverified            │ significance, parameter stability,   │
-│                               │ falsification against synthetic null │
-│                               │                                      │
-│                               │ output: an experiment record — the   │
-│                               │ only citable metric there is         │
-└───────────────────────────────┴──────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│ your agent, your code, your workflow                                     │
+├────────────────────────────┬──────────────────────────┬──────────────────┤
+│ EXPLORATION                │ STRUCTURAL PROMOTION     │ CLAIM (Stage 4)  │
+│ never blocked              │ enforced in v0.1        │ not in v0.1      │
+│                            │                          │                  │
+│ guarded views available;   │ artifact rerun at each  │ pricing, costs,  │
+│ ordinary code and shell;   │ train/OOS decision;     │ statistical and  │
+│ advisories never gate      │ C1-C6 chronology        │ null gates       │
+│                            │                          │                  │
+│ output: unverified notes   │ output: unverified      │ output: citable  │
+│ and exploratory metrics    │ promotion candidate     │ Experiment       │
+└────────────────────────────┴──────────────────────────┴──────────────────┘
 ```
 
 The six invariants that hold this together — decision-time information sets, walk-forward only,
@@ -94,7 +102,7 @@ interception, session log and package system it uses rather than reimplements. V
 
 ```
 packages/veil-contract/   the invariants, the declaration formats, their validators
-packages/veil-engine/     point-in-time views, walk-forward verification, gates
+packages/veil-engine/     point-in-time views, walk-forward verification, promotion evidence
 packages/veil-agent/      the Pi package users install (published as veil-quant)
 bench/                    Veil-bench: tasks, runner, bare-agent baselines
 examples/golden-path/     independent reference + full structural evidence acceptance
@@ -109,6 +117,7 @@ examples/artifact-identity/ explicit code tree + portable artifact identity
 examples/artifact-execution/ guarded Arrow + clean framed artifact child
 examples/walk-forward-windows/ explicit schedule + derived windows + deterministic run record
 examples/walk-forward-contract/ per-decision PIT + mask-first C1-C4 contract record
+examples/agent-loop/       cold Stage 3 brief → candidate → research-log loop
 docs/                     one page per thing
 ```
 
@@ -116,7 +125,7 @@ docs/                     one page per thing
 
 | Page | For |
 | --- | --- |
-| [quickstart.md](./docs/quickstart.md) | Inspect your own CSV through the temporal guard and run the 30-minute trial |
+| [quickstart.md](./docs/quickstart.md) | Install the Pi package and run a private CSV through the first full loop |
 | [concepts.md](./docs/concepts.md) | Exploration, verification, artifacts, candidates, Experiments, and gates |
 | [contract.md](./docs/contract.md) | The specification: invariants, degradation rules, threat model |
 | [adapters.md](./docs/adapters.md) | Declare time semantics, conservative defaults, lineage, and source bindings |
@@ -134,6 +143,7 @@ docs/                     one page per thing
 | [examples/artifact-execution](./examples/artifact-execution) | Execute a materialized artifact through the bounded child protocol |
 | [examples/walk-forward-windows](./examples/walk-forward-windows) | Execute derived rolling windows through a custom backend and deterministic run record |
 | [examples/walk-forward-contract](./examples/walk-forward-contract) | Verify fresh PIT and mask-first train/OOS decisions without binding to a database |
+| [examples/agent-loop](./examples/agent-loop) | Run the Stage 3 orchestration in an isolated project without a model |
 | [examples/golden-path](./examples/golden-path) | What a Veil research log looks like, with real numbers |
 | [bench/README.md](./bench/README.md) | How scoring works: two axes, four attribution layers |
 | [bench.md](./docs/bench.md) | Run, score, replay, and contribute Veil-bench tasks |
@@ -166,9 +176,13 @@ Requires Node 20 or newer.
 npm install
 npm run check          # lint, types, tests, file cold probes, bench smoke, golden path
 npm run data:inspect -- --help # inspect your own CSV/Parquet from this checkout
+npm run agent-loop:verify # run the cold Stage 3 brief-to-candidate loop
 npm run golden-path    # regenerate the reference study and print the table above
 npm run golden-path:evidence:verify # run the full 370,728-row structural acceptance path
 npm run bench:stage2:verify # run model-free T1-T5 enforcement and honest-task preflights
+npm run bench:stage3:verify # verify the Pi surface and cold Stage 3 loop without a model
+npm run bench:evaluate -- --profile veil ... # run the diagnostic model-enabled Veil profile
+npm run release:verify # verify v0.1 package and Pi resource manifests without publishing
 ```
 
 ## License

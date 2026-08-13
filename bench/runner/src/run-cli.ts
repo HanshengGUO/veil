@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { parseModelReference, parseProviderEnvironmentOverride } from "./model.ts";
-import { runBarePiTask } from "./pi-session.ts";
+import { type PiTaskProfile, runBarePiTask, runVeilPiTask } from "./pi-session.ts";
 import { discoverTasks } from "./tasks.ts";
 
 function option(name: string): string | undefined {
@@ -24,8 +24,13 @@ const timeoutMinutes = Number(option("--timeout-minutes") ?? "20");
 if (!Number.isFinite(timeoutMinutes) || timeoutMinutes <= 0) {
   throw new Error("--timeout-minutes must be positive");
 }
+const profile = (option("--profile") ?? "bare") as PiTaskProfile;
+if (profile !== "bare" && profile !== "veil") {
+  throw new Error("--profile must be bare or veil");
+}
 
-const result = await runBarePiTask({
+const runTask = profile === "bare" ? runBarePiTask : runVeilPiTask;
+const result = await runTask({
   task,
   model: parseModelReference(required("--model"), option("--thinking") ?? "medium"),
   outputDirectory: resolve(required("--out")),

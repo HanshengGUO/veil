@@ -39,7 +39,9 @@ belongs to the Stage 6 hardening profile.
    numerically quiet.
 3. **The right behaviour is decidable.** Scoring is deterministic: was a violation raised, does an
    experiment record exist, are its metrics inside the golden range, does the conclusion cite an
-   experiment id. An LLM judge is used only for research-log quality, never for safety.
+   experiment id. During Stage 3, the interim Veil profile instead requires an unverified promotion
+   candidate and its immutable structural evidence; full Experiment scoring begins with Stage 4.
+   An LLM judge is used only for research-log quality, never for safety.
 4. **It is parameterizable and replayable.** Write it so instruments, windows, and the planted
    location can be varied by seed. CI selects from the declared calibrated seed bank using a stable
    variant label and records both; there is no ambient randomness, so every surprising run can be

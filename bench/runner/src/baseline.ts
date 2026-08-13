@@ -2,7 +2,14 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { PiModelReference, PiProviderEnvironmentOverride } from "./model.ts";
-import { type PiTaskRunResult, runBarePiTask, scoreBareTask } from "./pi-session.ts";
+import {
+  type PiTaskProfile,
+  type PiTaskRunResult,
+  runBarePiTask,
+  runVeilPiTask,
+  scoreBareTask,
+  scoreVeilTask,
+} from "./pi-session.ts";
 import { aggregateScores, type HonestScore, type SuiteScore, type TrapScore } from "./scoring.ts";
 import { type BenchSuite, selectSuiteTasks } from "./suite.ts";
 import { discoverTasks } from "./tasks.ts";
@@ -26,7 +33,7 @@ export interface ModelBaselineSummary {
 
 export interface BaselineSummary {
   schemaVersion: 1;
-  profile: "bare";
+  profile: PiTaskProfile;
   suite: BenchSuite;
   variant: string;
   taskCount: number;
@@ -41,6 +48,7 @@ export interface RunBaselineOptions {
   suite: BenchSuite;
   variant: string;
   models: PiModelReference[];
+  profile?: PiTaskProfile;
   providerOverride?: PiProviderEnvironmentOverride;
   timeoutMs?: number;
   onProgress?: (message: string) => void;
@@ -89,7 +97,7 @@ function reportCell(value: string): string {
 
 export function renderBaselineReport(summary: BaselineSummary): string {
   const lines = [
-    "# Bare-agent baseline",
+    summary.profile === "bare" ? "# Bare-agent baseline" : "# Veil Stage 3 evaluation",
     "",
     `Suite: **${summary.suite}** · variant: \`${summary.variant}\` · ${summary.taskCount} tasks`,
     "",
@@ -138,13 +146,22 @@ export function renderBaselineReport(summary: BaselineSummary): string {
     "agent artifacts remain in the corresponding local run directory.",
     "",
   );
+  if (summary.profile === "veil") {
+    lines.push(
+      "This Stage 3 evaluation is diagnostic. It scores structural promotion evidence and keeps all",
+      "metrics unverified; pricing, cost, multiple-testing, and Experiment gates arrive in Stage 4.",
+      "Do not present this report as a completed v0.1 release or hidden-set acceptance.",
+      "",
+    );
+  }
   return lines.join("\n");
 }
 
-/** Run the same parameterized suite through each bare Pi model, sequentially and with no gates. */
+/** Run the same parameterized suite through each selected Pi profile, sequentially. */
 export async function runBaseline(options: RunBaselineOptions): Promise<BaselineSummary> {
+  const profile = options.profile ?? "bare";
   if (options.models.length < 1) throw new Error("baseline requires at least one model");
-  if (options.suite === "full" && options.models.length < 2) {
+  if (profile === "bare" && options.suite === "full" && options.models.length < 2) {
     throw new Error("a full baseline requires at least two models");
   }
   const modelIdentities = options.models.map(
@@ -158,6 +175,7 @@ export async function runBaseline(options: RunBaselineOptions): Promise<Baseline
   const tasks = selectSuiteTasks(discoverTasks(options.tasksDirectory), options.suite);
   const startedAt = new Date();
   const models: ModelBaselineSummary[] = [];
+  const runTask = profile === "bare" ? runBarePiTask : runVeilPiTask;
 
   for (const model of options.models) {
     const trapScores: TrapScore[] = [];
@@ -181,7 +199,7 @@ export async function runBaseline(options: RunBaselineOptions): Promise<Baseline
         continue;
       }
       try {
-        const result = await runBarePiTask({
+        const result = await runTask({
           task,
           model,
           outputDirectory: join(modelOutput, task.manifest.taskId),
@@ -217,7 +235,7 @@ export async function runBaseline(options: RunBaselineOptions): Promise<Baseline
 
   const summary: BaselineSummary = {
     schemaVersion: 1,
-    profile: "bare",
+    profile,
     suite: options.suite,
     variant: options.variant,
     taskCount: tasks.length,
@@ -250,7 +268,10 @@ export function rescoreBaseline(options: RescoreBaselineOptions): BaselineSummar
   const runDirectory = resolve(options.runDirectory);
   const summaryPath = join(runDirectory, "summary.json");
   const previous = JSON.parse(readFileSync(summaryPath, "utf8")) as BaselineSummary;
-  if (previous.schemaVersion !== 1 || previous.profile !== "bare") {
+  if (
+    previous.schemaVersion !== 1 ||
+    (previous.profile !== "bare" && previous.profile !== "veil")
+  ) {
     throw new Error("unsupported baseline summary format");
   }
 
@@ -280,9 +301,15 @@ export function rescoreBaseline(options: RescoreBaselineOptions): BaselineSummar
         if (result.taskId !== taskId || result.taskKind !== task.kind) {
           throw new Error(`run result identity does not match current task: ${resultPath}`);
         }
+        if (result.profile !== previous.profile) {
+          throw new Error(`run result profile does not match summary: ${resultPath}`);
+        }
         const rescored: PiTaskRunResult = {
           ...result,
-          score: scoreBareTask(task, result.submission),
+          score:
+            previous.profile === "bare"
+              ? scoreBareTask(task, result.submission)
+              : scoreVeilTask(task, result.submission, requiredVeilEvidence(result, resultPath)),
         };
         writeFileSync(resultPath, `${JSON.stringify(rescored, null, 2)}\n`);
         completed.push(rescored);
@@ -330,4 +357,14 @@ export function rescoreBaseline(options: RescoreBaselineOptions): BaselineSummar
   writeFileSync(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
   writeFileSync(join(runDirectory, "REPORT.md"), renderBaselineReport(summary));
   return summary;
+}
+
+function requiredVeilEvidence(
+  result: PiTaskRunResult,
+  resultPath: string,
+): NonNullable<PiTaskRunResult["verificationEvidence"]> {
+  if (result.verificationEvidence === undefined) {
+    throw new Error(`Veil run result has no verification evidence: ${resultPath}`);
+  }
+  return result.verificationEvidence;
 }
