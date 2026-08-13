@@ -75,6 +75,7 @@ for (const reference of [
   "packages/veil-agent/src/extension.ts",
   "packages/veil-agent/runtime/node-runner.mjs",
   "packages/veil-agent/skills/research-loop/SKILL.md",
+  "packages/veil-agent/skills/research-loop/assets/factor.mjs",
   "packages/veil-agent/skills/research-loop/assets/promotion-request.yaml",
   "packages/veil-agent/prompts/veil-research-plan.md",
   "packages/veil-agent/prompts/veil-research-log.md",

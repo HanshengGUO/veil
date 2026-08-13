@@ -263,11 +263,41 @@ trap/golden answers. Do not use the network or install packages.
 
 Use the registered Veil tools to complete the loop. Begin with veil-memory status, use veil-data
 with an explicit as_of, explore with the ordinary local coding tools, package one deterministic
-artifact, and call veil-backtest through a strict promotion request. Fix structured C1-C6 failures;
-do not replace a rejected promotion with an exploratory claim. Stage 3 candidates are structurally
-verified but performance metrics remain unverified and no Experiment id exists. Write research.md
-and a valid submission.json; cite an immutable .veil/runs/ evidence file returned by a successful
-promotion and preserve that claim boundary.`,
+artifact, and call veil-backtest through a strict promotion request. Apply a structured remedy only
+when it preserves the immutable inputs and brief. If the brief's own protocol or a registered data
+guarantee conflicts with C1-C4, preserve that rejection and submit invalid; do not silently replace
+the research question with a safer one merely to obtain a candidate. Stage 3 candidates are
+structurally verified but performance metrics remain unverified and no Experiment id exists. Write
+research.md and a valid submission.json. For a successful promotion, cite its immutable .veil/runs/
+evidence file; for a terminal rejection, cite the diagnostic-bearing project artifacts without
+inventing a candidate.
+
+Treat data/, adapters/, brief.md, manifest.yaml, SUBMISSION.md, submission.schema.json, and
+.veil/project.yaml as immutable benchmark inputs. Before promotion, verify that exploration follows
+the brief's historical universe, label horizon, rebalance cadence, holding period, execution lag,
+masks, and return convention exactly. Do not let artifact packaging replace the primary research.
+
+The veil-node runtime decodes guarded Arrow before calling compute(table, context). The factor must
+not parse IPC or import packages; use table.numRows and table.getChild(name), then return
+{ rowIndices, columns }. Immutable inputs are context.paramsLocked and context.declaredLiterals;
+rowIndices must stay in source-table order, and derived values may be null when no signal exists.
+decision_schedule contains every ordered session, with exact length
+train_days + purge_days + embargo_days + folds * oos_days; these are schedule entries, not calendar
+days or one timestamp per fold. Stage 3 issues no performance metric, so use a bounded structural
+topology such as 2 folds with 20 OOS sessions (42 artifact executions), not a full performance-scale
+replay. A promotion request names one registered dataset. development_read_sets may contain only
+ids returned by veil-data for that same dataset. Other datasets may inform exploration, but the
+candidate then covers only the selected structural slice and does not verify a multi-source metric;
+do not modify inputs or register a derived dataset during the benchmark to work around this Stage 3
+boundary. If the selected dataset lacks a truthful declared tradability mask, use another already
+registered dataset for the structural slice or remain exploratory; never add a guarantee or an
+unknown request field. cost_model is a portable logical id, not a filesystem path or locator URI; use
+stage4-not-issued when no Stage 4 method has been issued.
+
+Completion rule: after the first successful promotion, or after a terminal truthful structural
+rejection, write the required research.md and submission.json and end the session immediately. Do
+not repeat veil-backtest, manually replay the artifact, recompute a finished metric, run redundant
+schema checks, or keep polishing valid output.`,
   });
   await loader.reload();
   const extensionErrors = loader.getExtensions().errors;

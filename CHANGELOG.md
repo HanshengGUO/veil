@@ -35,6 +35,12 @@ Contract v1.0 review rulings, applied to the specification:
   until v1.0, since the statistical gates that exercise them arrive in Stage 4. Identifiers `C1`-`C6`
   are stable from v0.1 regardless, and moving an enforcement point earlier counts as strengthening
   rather than a semantic change.
+- **Stage 3 research-loop guidance now converges on the public contract**: the skill ships a minimal
+  runtime-decoded Arrow factor, gives the exact decision-schedule topology, keeps development read
+  sets on one registered dataset, rejects filesystem cost-model references with an actionable
+  logical-id remedy, and treats immutable C1-C4 conflicts as terminal rather than silently changing
+  the research question. Successful promotion and truthful terminal rejection now have explicit
+  stop conditions, while missing-mask diagnostics forbid inventing adapter guarantees.
 
 ### Added
 

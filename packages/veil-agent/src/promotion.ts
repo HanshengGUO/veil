@@ -313,7 +313,7 @@ export function assertPromotionDataSemantics(declaration: AdapterDeclaration): v
       dataset: declaration.dataset,
       context: { degradations: degradations.join(",") },
       remedy:
-        "Register a point-in-time, survivorship-free dataset declaration or keep the result exploratory.",
+        "Use an already registered point-in-time, survivorship-free dataset, or preserve the C1 rejection and report the result invalid or exploratory; never edit guarantees without source evidence.",
     },
   );
 }
@@ -452,7 +452,7 @@ async function loadPromotionRequest(path: string): Promise<PromotionRequest> {
     protocol,
     decisionSchedule,
     columns,
-    costModel: portableReference(root.cost_model, "cost model"),
+    costModel: costModelReference(root.cost_model),
   });
 }
 
@@ -496,12 +496,24 @@ function requireObservedDevelopmentReads(
       .map((entry) => entry.data.readSetId),
   );
   for (const readSetId of request.developmentReadSets) {
-    if (!observed.has(readSetId)) {
+    if (observed.has(readSetId)) continue;
+    const otherDatasets = [
+      ...new Set(
+        ledger.dataReads
+          .filter((entry) => entry.data.readSetId === readSetId)
+          .map((entry) => entry.data.dataset),
+      ),
+    ].sort();
+    if (otherDatasets.length > 0) {
       throw invalidRequest(
-        "promotion references a development read-set absent from the active session branch",
-        "Read the dataset through veil-data in this branch and copy its readSetId into the request.",
+        `promotion development read-set is recorded for dataset ${otherDatasets.join(", ")}, not request dataset ${request.dataset}`,
+        "development_read_sets may contain only readSetId values returned by veil-data for request.dataset. Keep other dataset reads exploratory or prepare a separate registered dataset before the research session.",
       );
     }
+    throw invalidRequest(
+      "promotion references a development read-set absent from the active session branch",
+      "Read request.dataset through veil-data on this active branch and copy that call's readSetId into the request.",
+    );
   }
 }
 
@@ -664,6 +676,16 @@ function boundedText(input: unknown, label: string, maximum: number): string {
 function portableReference(input: unknown, label: string): string {
   if (typeof input !== "string" || !PORTABLE_REFERENCE.test(input)) {
     throw invalidRequest(`${label} is not a portable reference`);
+  }
+  return input;
+}
+
+function costModelReference(input: unknown): string {
+  if (typeof input !== "string" || !PORTABLE_REFERENCE.test(input)) {
+    throw invalidRequest(
+      "cost model must be a portable logical reference",
+      "Use a logical id such as stage4-not-issued. Filesystem paths and locator URIs are invalid; Stage 3 records the future method reference but does not apply a cost model.",
+    );
   }
   return input;
 }

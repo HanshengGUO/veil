@@ -26,9 +26,12 @@ protocol:
   embargo_days: 5
   hold_days: 5
   execution_lag_days: 1
-decision_schedule:
-  - "2026-01-02T00:00:00.000Z"
+# Supply every ordered UTC session, not one timestamp per fold. The protocol above requires exactly
+# 60 + 5 + 5 + (2 * 20) = 110 entries. Replace the empty list after choosing an honest protocol.
+decision_schedule: []
 columns:
   - ticker
   - close
-cost_model: replace-with-stage-4-cost-model-reference
+# This is a portable logical id, not a filesystem path or locator URI. Replace it when Stage 4 issues a
+# registered method reference; Stage 3 does not apply costs.
+cost_model: stage4-not-issued

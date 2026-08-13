@@ -165,7 +165,8 @@ tool success. Label every exploratory metric `unverified`.
 The built-in `veil-node` runner calls a deterministic module as `compute(table, context)`. `table` is
 the guarded Arrow table for exactly one train cutoff or OOS decision. `context` contains the locked
 parameters, declared literals, dataset identity, decision time, and content hashes—no source binding,
-path, credential, or future block.
+path, credential, or future block. The exact immutable maps are `context.paramsLocked` and
+`context.declaredLiterals`.
 
 The callable may return Arrow IPC bytes, an Arrow `Table`, or a dependency-free row selection plus
 derived columns:
@@ -190,6 +191,9 @@ The runner preserves source columns for the selected rows and adds the declared 
 The parent process independently rejects output that reintroduces an entity/event pair absent from
 the mask-first input or presents historical rows as the current OOS signal.
 
+`rowIndices` must remain strictly increasing in source-table order. When a source row has no signal,
+prefer a `null` derived value over regrouping or reordering the source rows.
+
 ## 7. Prepare and promote
 
 Copy the complete request shape from
@@ -202,7 +206,30 @@ to `.veil/promotion.yaml`, then replace every placeholder. Important fields are:
 - `params_locked`, `declared_literals`, and `trials_declared`: the exact searched artifact identity;
 - `decision_schedule`: unique ordered sessions, not a guessed calendar;
 - `protocol`: rolling/expanding folds with purge, embargo, holding, and execution-lag semantics;
-- `cost_model`: a future method reference, not evidence that costs were already applied.
+- `cost_model`: a portable logical id such as `stage4-not-issued`, never a filesystem path or locator
+  URI. It is a future method reference, not evidence that costs were already applied.
+
+A Stage 3 request names exactly one registered dataset. Every `development_read_sets` id must come
+from a `veil-data` call for that same dataset. Other datasets may inform exploration, but they are
+not listed in this request; until a composite source is registered before the session, the resulting
+candidate covers only the selected structural slice and does not verify a multi-source metric. Never
+change adapter guarantees merely to make promotion pass.
+
+If the selected dataset has no truthful declared tradability mask, choose another already registered
+dataset for the structural slice or keep the result exploratory. Do not add a mask guarantee without
+source evidence.
+
+The schedule length is exact:
+`train_days + purge_days + embargo_days + folds * oos_days`. Every `*days` value counts schedule
+entries, not calendar days. Stage 3 promotion issues structural evidence rather than a performance
+metric, so start with a bounded honest topology; the packaged 2-fold, 20-session-OOS template makes
+42 artifact executions.
+
+Apply a structured remedy only when it preserves the registered inputs and the research brief. If a
+brief-specified protocol or an existing dataset guarantee intrinsically conflicts with C1-C4, keep
+the rejection and report the result as invalid or exploratory instead of silently changing the
+research question. A successful promotion—or a terminal truthful rejection—ends this Stage 3 loop;
+record the evidence and limitations once, then stop rather than manually replaying the artifact.
 
 Then run:
 

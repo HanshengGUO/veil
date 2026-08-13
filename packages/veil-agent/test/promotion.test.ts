@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   executeVeilBacktestTool,
   VEIL_BRIEF_ENTRY,
+  VEIL_DATA_READ_ENTRY,
   VEIL_RUN_RESULT_ENTRY,
   VEIL_VERIFICATION_START_ENTRY,
   VEIL_VIOLATION_ENTRY,
@@ -101,6 +102,122 @@ describe("veil-backtest promotion preflight", () => {
     ]);
   });
 
+  it("names a development read-set's actual dataset instead of suggesting a redundant read", async () => {
+    const root = await mkdtemp(join(tmpdir(), "veil-agent-cross-dataset-promotion-"));
+    roots.push(root);
+    await mkdir(join(root, ".veil"), { recursive: true });
+    await mkdir(join(root, "artifact"), { recursive: true });
+    const readSetId = `sha256:${"1".repeat(64)}`;
+    await writeFile(
+      join(root, ".veil", "promotion.yaml"),
+      promotionRequest("safe-prices", readSetId),
+    );
+
+    const declaration = normalizeAdapterDeclaration({
+      dataset: "safe-prices",
+      version: "1",
+      entity_key: "ticker",
+      event_time: "date",
+      available_time: "date",
+      availability_basis: "observed",
+      guarantees: {
+        point_in_time: true,
+        survivorship_free: true,
+        tradability_mask: "tradable",
+      },
+      source: { type: "csv", locator: "prices.csv" },
+    });
+    const project = {
+      root,
+      projectReference: ".veil/project.yaml",
+      datasets: new Map([
+        [declaration.dataset, { dataset: declaration.dataset, declaration, binding: {} as never }],
+      ]),
+      backends: {} as never,
+      runtimes: {} as never,
+      promotionConcurrency: 1,
+    } satisfies VeilProjectRuntime;
+    const entries: Array<{
+      readonly type: "custom";
+      readonly id: string;
+      readonly parentId: string | null;
+      readonly timestamp: string;
+      readonly customType: string;
+      readonly data: unknown;
+    }> = [
+      {
+        type: "custom",
+        id: "other-dataset-read",
+        parentId: null,
+        timestamp: "2026-08-13T00:00:00.000Z",
+        customType: VEIL_DATA_READ_ENTRY,
+        data: {
+          format: VEIL_DATA_READ_ENTRY,
+          dataset: "fundamentals",
+          adapterVersion: "1",
+          mode: "point",
+          grade: "guarded",
+          asOf: "2026-08-12T00:00:00.000Z",
+          readSetId,
+          resultHash: `sha256:${"2".repeat(64)}`,
+          arrowHash: `sha256:${"3".repeat(64)}`,
+          exportReference: null,
+        },
+      },
+    ];
+    const appendEntry = <T>(customType: string, data: T): void => {
+      const previous = entries.at(-1);
+      entries.push({
+        type: "custom",
+        id: `entry-${entries.length + 1}`,
+        parentId: previous?.id ?? null,
+        timestamp: new Date(Date.UTC(2026, 7, 13, 0, 0, entries.length)).toISOString(),
+        customType,
+        data,
+      });
+    };
+
+    const result = await executeVeilBacktestTool(
+      { request: ".veil/promotion.yaml" },
+      { project, getBranch: () => entries, appendEntry },
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "INVALID_PROMOTION_REQUEST",
+      message:
+        "[INVALID_PROMOTION_REQUEST] promotion development read-set is recorded for dataset fundamentals, not request dataset safe-prices",
+      remedy:
+        "development_read_sets may contain only readSetId values returned by veil-data for request.dataset. Keep other dataset reads exploratory or prepare a separate registered dataset before the research session.",
+    });
+  });
+
+  it("explains that a cost model reference is a logical id rather than a path", async () => {
+    const root = await mkdtemp(join(tmpdir(), "veil-agent-cost-reference-promotion-"));
+    roots.push(root);
+    await mkdir(join(root, ".veil"), { recursive: true });
+    await writeFile(
+      join(root, ".veil", "promotion.yaml"),
+      promotionRequest("biased-prices", `sha256:${"0".repeat(64)}`, ".veil/costs/flat_10bps.yaml"),
+    );
+
+    await expect(
+      executeVeilBacktestTool(
+        { request: ".veil/promotion.yaml" },
+        {
+          project: { root } as never,
+          getBranch: () => [],
+          appendEntry: () => {},
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "INVALID_PROMOTION_REQUEST",
+      message: "[INVALID_PROMOTION_REQUEST] cost model must be a portable logical reference",
+      remedy:
+        "Use a logical id such as stage4-not-issued. Filesystem paths and locator URIs are invalid; Stage 3 records the future method reference but does not apply a cost model.",
+    });
+  });
+
   it("records a terminal C1 rejection for known survivorship-biased data", async () => {
     const root = await mkdtemp(join(tmpdir(), "veil-agent-promotion-"));
     roots.push(root);
@@ -168,9 +285,13 @@ describe("veil-backtest promotion preflight", () => {
   });
 });
 
-function promotionRequest(): string {
+function promotionRequest(
+  dataset = "biased-prices",
+  readSetId = `sha256:${"0".repeat(64)}`,
+  costModel = "stage4-placeholder",
+): string {
   return `format: veil.promotion-request.v0
-dataset: biased-prices
+dataset: ${dataset}
 hypothesis_ref: biased-v1
 factor:
   code_root: artifact
@@ -181,7 +302,7 @@ params_locked: {}
 declared_literals: {}
 trials_declared: 1
 development_read_sets:
-  - sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - ${readSetId}
 protocol:
   mode: rolling
   folds: 2
@@ -193,6 +314,6 @@ protocol:
   execution_lag_days: 1
 decision_schedule: ["2026-01-01T00:00:00.000Z"]
 columns: [ticker]
-cost_model: stage4-placeholder
+cost_model: ${costModel}
 `;
 }

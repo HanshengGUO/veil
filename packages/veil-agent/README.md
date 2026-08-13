@@ -23,7 +23,7 @@ Node 22.19 or newer.
 | `tool_call` | Fails safe for malformed calls entering Veil's data or promotion surfaces |
 | `tool_result` | Appends non-blocking full-sample, future-function, and survivorship advisories |
 | Commands | `/veil-brief`, `/veil-hypothesis`, `/veil-promote`, `/veil-reproduce` |
-| Resources | `veil-research-loop` skill and research-plan/log prompt templates |
+| Resources | `veil-research-loop` skill, factor/promotion templates, and research-plan/log prompts |
 
 The extension auto-captures the first brief and hypothesis with Pi's durable session entry id and
 timestamp. It restores only entries on the active branch, so Pi forks naturally become research

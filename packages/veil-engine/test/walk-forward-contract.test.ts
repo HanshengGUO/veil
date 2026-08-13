@@ -368,7 +368,13 @@ describe("walk-forward contract verification", () => {
 
     await expect(
       run(unmaskedArtifact, unmasked, unmaskedSource, runtime.registry),
-    ).rejects.toMatchObject({ invariant: "C4" });
+    ).rejects.toMatchObject({
+      invariant: "C4",
+      detail: {
+        remedy:
+          "Use a registered dataset whose adapter already declares a truthful guarantees.tradability_mask, or keep the result exploratory; never add a guarantee without source evidence.",
+      },
+    });
     expect(unmaskedSource.reads()).toBe(readsBefore);
     expect(runtime.launches()).toBe(0);
   });
@@ -421,9 +427,27 @@ describe("walk-forward contract verification", () => {
 
     const invalid = runtimes();
     const readsBefore = primary.reads();
-    await expect(
-      run(artifact, adapter, primary, invalid.registry, schedule.slice(0, -1)),
-    ).rejects.toMatchObject({ invariant: "C2" });
+    const topologyError: unknown = await run(
+      artifact,
+      adapter,
+      primary,
+      invalid.registry,
+      schedule.slice(0, -1),
+    ).then(
+      () => null,
+      (error: unknown) => error,
+    );
+    expect(topologyError).toBeInstanceOf(Error);
+    expect(topologyError).toMatchObject({
+      invariant: "C2",
+      detail: {
+        remedy:
+          "Use the artifact's rolling or expanding protocol and supply every required UTC session.",
+      },
+    });
+    expect((topologyError as Error).message).toBe(
+      "[C2] walk-forward topology is invalid: decision schedule must contain exactly 7 sessions for the declared protocol",
+    );
     expect(primary.reads()).toBe(readsBefore);
     expect(invalid.launches()).toBe(0);
   });

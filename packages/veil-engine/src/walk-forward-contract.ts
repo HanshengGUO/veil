@@ -452,9 +452,11 @@ function contractPlan(
     return createWalkForwardPlan({ protocol: artifact.protocol, decisionSchedule });
   } catch (cause) {
     if (cause instanceof EngineConfigurationError && cause.code === "INVALID_WALK_FORWARD_PLAN") {
-      throw new ContractViolation("C2", "walk-forward topology is invalid", {
-        context: { reason: cause.message },
-        remedy: "Use the artifact's rolling/expanding protocol and exact ordered UTC schedule.",
+      const reason = cause.message.replace(/^\[INVALID_WALK_FORWARD_PLAN\]\s*/u, "");
+      throw new ContractViolation("C2", `walk-forward topology is invalid: ${reason}`, {
+        context: { reason },
+        remedy:
+          "Use the artifact's rolling or expanding protocol and supply every required UTC session.",
       });
     }
     throw cause;
@@ -492,7 +494,8 @@ function requireDeclaration(
   if (maskColumn === null) {
     throw new ContractViolation("C4", "verification requires a declared tradability mask", {
       dataset: `${declaration.dataset}@${declaration.version}`,
-      remedy: "Declare guarantees.tradability_mask before requesting strategy verification.",
+      remedy:
+        "Use a registered dataset whose adapter already declares a truthful guarantees.tradability_mask, or keep the result exploratory; never add a guarantee without source evidence.",
     });
   }
   return maskColumn;

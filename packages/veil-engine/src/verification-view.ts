@@ -600,7 +600,8 @@ function takeRows(table: Table, rows: readonly number[]): Table {
 function missingMask(declaration: AdapterDeclaration): ContractViolation {
   return new ContractViolation("C4", "verification requires a declared tradability mask", {
     dataset: `${declaration.dataset}@${declaration.version}`,
-    remedy: "Declare guarantees.tradability_mask before requesting strategy verification.",
+    remedy:
+      "Use a registered dataset whose adapter already declares a truthful guarantees.tradability_mask, or keep the result exploratory; never add a guarantee without source evidence.",
   });
 }
 
