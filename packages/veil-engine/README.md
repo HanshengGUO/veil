@@ -230,7 +230,9 @@ and the clean child
 `ArtifactRuntimeRegistry` maps a manifest's logical runtime id/constraint to an opaque trusted
 provider. Only its path-free implementation name/version is public and bound into the request hash;
 the executable, argv, and explicit environment remain provider-private. The engine always spawns an
-absolute executable with `shell: false` and a clean environment.
+absolute executable with `shell: false` and a clean environment. On Windows, engine-owned values for
+libuv's required process variables prevent the parent path, temporary directory, and user profile
+from being restored implicitly.
 
 `executeArtifact()` verifies the artifact, code tree, read-set manifest, exact guarded Arrow, and
 declared dataset relationship. It refuses development evidence as a verification window, copies the

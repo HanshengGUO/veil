@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, win32 } from "node:path";
 import { normalizeDecisionTime } from "@veilquant/contract";
 import { tableFromIPC } from "apache-arrow";
 import { type ArtifactManifest, verifyArtifactManifest } from "./artifact.ts";
@@ -34,6 +34,22 @@ const DEFAULT_STDERR_BYTES = 64 * 1024;
 const MAX_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const PORTABLE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const WINDOWS_PROCESS_ENVIRONMENT_NAMES = new Set([
+  "COMSPEC",
+  "HOMEDRIVE",
+  "HOMEPATH",
+  "LOGONSERVER",
+  "PATH",
+  "PATHEXT",
+  "SYSTEMDRIVE",
+  "SYSTEMROOT",
+  "TEMP",
+  "TMP",
+  "USERDOMAIN",
+  "USERNAME",
+  "USERPROFILE",
+  "WINDIR",
+]);
 
 export interface ArtifactExecutionLimits {
   readonly timeoutMs?: number;
@@ -317,7 +333,7 @@ function runChild(
     try {
       child = spawn(launch.executable, [...(launch.arguments ?? [])], {
         cwd: codeRoot,
-        env: cleanEnvironment(launch.environment),
+        env: createArtifactProcessEnvironment(launch.environment, codeRoot),
         shell: false,
         stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true,
@@ -459,16 +475,66 @@ function requireMatchingResult(
   }
 }
 
-function cleanEnvironment(
+/** Engine-internal environment builder; omitted from index.ts. */
+export function createArtifactProcessEnvironment(
   providerEnvironment: Readonly<Record<string, string>> | undefined,
+  codeRoot: string,
+  options: {
+    readonly platform?: NodeJS.Platform;
+    readonly hostEnvironment?: NodeJS.ProcessEnv;
+  } = {},
 ): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = { ...(providerEnvironment ?? {}) };
-  if (process.platform === "win32") {
-    for (const name of ["SystemRoot", "WINDIR", "ComSpec", "PATHEXT"]) {
-      if (process.env[name] !== undefined) environment[name] = process.env[name];
-    }
+  if ((options.platform ?? process.platform) !== "win32") return environment;
+
+  // libuv restores a fixed set of missing Windows variables from the parent before CreateProcess.
+  // Supply isolated values explicitly so PATH, TEMP, and user-profile data cannot be re-inherited.
+  for (const name of Object.keys(environment)) {
+    if (WINDOWS_PROCESS_ENVIRONMENT_NAMES.has(name.toUpperCase())) delete environment[name];
   }
-  return environment;
+  const hostEnvironment = options.hostEnvironment ?? process.env;
+  const systemRoot =
+    windowsEnvironmentValue(hostEnvironment, "SYSTEMROOT") ??
+    windowsEnvironmentValue(hostEnvironment, "WINDIR");
+  if (systemRoot === undefined || systemRoot.length === 0) {
+    throw executionFailed("artifact runtime could not build an isolated Windows environment");
+  }
+  const runtimeRoot = win32.dirname(codeRoot);
+  const homeDrive = windowsVolume(runtimeRoot);
+  const systemDrive = windowsVolume(systemRoot);
+
+  return {
+    ...environment,
+    COMSPEC: win32.join(systemRoot, "System32", "cmd.exe"),
+    HOMEDRIVE: homeDrive,
+    HOMEPATH: runtimeRoot.slice(homeDrive.length) || "\\",
+    LOGONSERVER: "",
+    PATH: "",
+    PATHEXT: ".COM;.EXE;.BAT;.CMD",
+    SYSTEMDRIVE: systemDrive,
+    SYSTEMROOT: systemRoot,
+    TEMP: runtimeRoot,
+    TMP: runtimeRoot,
+    USERDOMAIN: "",
+    USERNAME: "veil-runtime",
+    USERPROFILE: runtimeRoot,
+    WINDIR: systemRoot,
+  };
+}
+
+function windowsEnvironmentValue(
+  environment: NodeJS.ProcessEnv,
+  expectedName: string,
+): string | undefined {
+  const name = Object.keys(environment).find(
+    (candidate) => candidate.toUpperCase() === expectedName,
+  );
+  return name === undefined ? undefined : environment[name];
+}
+
+function windowsVolume(input: string): string {
+  const root = win32.parse(input).root;
+  return root.endsWith("\\") ? root.slice(0, -1) : root;
 }
 
 function validateInputArrow(

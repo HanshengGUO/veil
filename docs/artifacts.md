@@ -117,7 +117,9 @@ dataset declaration, and code tree. Development read-sets cannot be reused as ve
 It copies only declared code files into a fresh temporary root, re-hashes the copy before and after
 provider preparation, and executes that copy with an absolute executable and `shell: false`. The
 developer environment is not inherited; common credential- and developer-path-bearing provider
-variables are rejected.
+variables are rejected. Windows process creation requires a small OS baseline, so the engine
+supplies isolated values explicitly—including an empty search path and per-execution temporary and
+profile directories—instead of allowing libuv to restore the parent's values.
 
 Stdin contains one versioned frame: fixed magic, bounded canonical-JSON control, and exact guarded
 Arrow. The request hash binds the artifact, code tree, concrete runtime identity, entrypoint,

@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { dirname, normalize } from "node:path";
 import { tableFromArrays, tableToIPC } from "apache-arrow";
 import {
   createArtifactExecutionResult,
@@ -42,15 +43,27 @@ if (mode === "timeout") {
     // Expected for a frozen ESM object.
   }
   if (locked.lookbackDays !== 20) throw new Error("child changed locked parameters");
+  const runtimeRoot = dirname(process.cwd());
+  const windowsEnvironmentIsIsolated =
+    process.platform !== "win32" ||
+    ((process.env.PATH === undefined || process.env.PATH === "") &&
+      samePath(process.env.TEMP, runtimeRoot) &&
+      samePath(process.env.TMP, runtimeRoot) &&
+      samePath(process.env.USERPROFILE, runtimeRoot) &&
+      process.env.USERNAME === "veil-runtime");
+  const portableEnvironmentIsIsolated =
+    process.platform === "win32" ||
+    (process.env.PATH === undefined &&
+      process.env.TEMP === undefined &&
+      process.env.TMP === undefined &&
+      process.env.USERPROFILE === undefined);
   if (
     process.env.VEIL_TEST_SECRET !== undefined ||
     process.env.HOME !== undefined ||
-    process.env.PATH !== undefined ||
     process.env.PWD !== undefined ||
     process.env.INIT_CWD !== undefined ||
-    process.env.TEMP !== undefined ||
-    process.env.TMP !== undefined ||
-    process.env.USERPROFILE !== undefined ||
+    !windowsEnvironmentIsIsolated ||
+    !portableEnvironmentIsIsolated ||
     process.cwd().includes("veil-artifact-exec-source-")
   ) {
     throw new Error("developer environment or source root crossed the child boundary");
@@ -96,4 +109,10 @@ if (mode === "timeout") {
     if (mode === "stderr-small") process.stderr.write("private runtime diagnostic\n");
     process.stdout.write(encoded);
   }
+}
+
+function samePath(input: string | undefined, expected: string): boolean {
+  return (
+    input !== undefined && normalize(input).toLowerCase() === normalize(expected).toLowerCase()
+  );
 }

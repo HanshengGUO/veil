@@ -8,7 +8,10 @@ import { inspect } from "node:util";
 import { normalizeAdapterDeclaration } from "@veilquant/contract";
 import { tableFromArrays, tableFromIPC, tableToIPC } from "apache-arrow";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { executeArtifactWithEvidence } from "../src/artifact-execution.ts";
+import {
+  createArtifactProcessEnvironment,
+  executeArtifactWithEvidence,
+} from "../src/artifact-execution.ts";
 import {
   type ArtifactManifest,
   ArtifactRuntimeRegistry,
@@ -168,6 +171,45 @@ function run(mode = "success", limits?: Parameters<typeof executeArtifact>[0]["l
 }
 
 describe("artifact execution protocol", () => {
+  it("replaces libuv-required Windows variables with an isolated runtime baseline", () => {
+    const environment = createArtifactProcessEnvironment(
+      {
+        VEIL_MODE: "strict",
+        Path: "C:\\developer\\bin",
+        Temp: "C:\\developer\\temp",
+      },
+      "D:\\veil-artifact-run-123\\code",
+      {
+        platform: "win32",
+        hostEnvironment: {
+          SystemRoot: "C:\\Windows",
+          PATH: "C:\\developer\\bin",
+          TEMP: "C:\\developer\\temp",
+          USERNAME: "developer",
+          USERPROFILE: "C:\\Users\\developer",
+        },
+      },
+    );
+
+    expect(environment).toEqual({
+      VEIL_MODE: "strict",
+      COMSPEC: "C:\\Windows\\System32\\cmd.exe",
+      HOMEDRIVE: "D:",
+      HOMEPATH: "\\veil-artifact-run-123",
+      LOGONSERVER: "",
+      PATH: "",
+      PATHEXT: ".COM;.EXE;.BAT;.CMD",
+      SYSTEMDRIVE: "C:",
+      SYSTEMROOT: "C:\\Windows",
+      TEMP: "D:\\veil-artifact-run-123",
+      TMP: "D:\\veil-artifact-run-123",
+      USERDOMAIN: "",
+      USERNAME: "veil-runtime",
+      USERPROFILE: "D:\\veil-artifact-run-123",
+      WINDIR: "C:\\Windows",
+    });
+  });
+
   it("round-trips one canonical request and rejects duplicate JSON or trailing frames", () => {
     const request = createArtifactExecutionRequest({
       artifactHash: artifact.artifactHash,
