@@ -30,6 +30,9 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
 
+      - name: Verify lockfile sources
+        run: npm run lockfile:verify
+
       - run: npm ci
 
       - name: Run the full repository gate

@@ -13,7 +13,8 @@
     "node": ">=20.10.0"
   },
   "scripts": {
-    "check": "npm run lint && npm run typecheck && npm run test && npm run engine:runtime:smoke && npm run csv-pit:verify && npm run parquet-pit:verify && npm run multi-file-pit:verify && npm run read-set:verify && npm run snapshot-recovery:verify && npm run veil-data:verify && npm run artifact:verify && npm run artifact-execution:verify && npm run walk-forward:verify && npm run walk-forward-contract:verify && npm run bench:stage3:verify && npm run release:verify && npm run bench:smoke && npm run golden-path:verify",
+    "check": "npm run lockfile:verify && npm run lint && npm run typecheck && npm run test && npm run engine:runtime:smoke && npm run csv-pit:verify && npm run parquet-pit:verify && npm run multi-file-pit:verify && npm run read-set:verify && npm run snapshot-recovery:verify && npm run veil-data:verify && npm run artifact:verify && npm run artifact-execution:verify && npm run walk-forward:verify && npm run walk-forward-contract:verify && npm run bench:stage3:verify && npm run release:verify && npm run bench:smoke && npm run golden-path:verify",
+    "lockfile:verify": "node scripts/verify-lockfile-sources.mjs",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "typecheck": "tsc -p tsconfig.json",

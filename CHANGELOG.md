@@ -42,6 +42,12 @@ Contract v1.0 review rulings, applied to the specification:
   the research question. Successful promotion and truthful terminal rejection now have explicit
   stop conditions, while missing-mask diagnostics forbid inventing adapter guarantees.
 
+### Fixed
+
+- **Portable npm installs no longer inherit a contributor's registry mirror into the lockfile**:
+  project defaults point at the HTTPS npm registry, and zero-dependency preinstall validation rejects
+  HTTP or third-party tarball URLs before CI or release jobs call `npm ci`.
+
 ### Added
 
 - **Stage 3 single-agent Pi loop**: the publishable `veil-quant` package registers `veil-data`,
