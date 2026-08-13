@@ -20,7 +20,8 @@ const PORTABLE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const DEFAULT_NODE_RUNTIME_ID = "veil-node";
 const DEFAULT_NODE_RUNTIME_CONSTRAINT = ">=20.10.0,<30";
 const NODE_RUNNER = fileURLToPath(new URL("../runtime/node-runner.mjs", import.meta.url));
-const TSX_LOADER = fileURLToPath(import.meta.resolve("tsx"));
+// Keep this as a file URL: Windows drive paths are not valid Node --import specifiers.
+const TSX_IMPORT_URL = import.meta.resolve("tsx");
 
 export interface VeilProjectDataset {
   readonly dataset: string;
@@ -104,7 +105,7 @@ export async function loadVeilProject(cwdInput: string): Promise<VeilProjectRunt
         supports: (constraint) => runtime.constraints.includes(constraint),
         launch: () => ({
           executable: process.execPath,
-          arguments: ["--import", TSX_LOADER, NODE_RUNNER],
+          arguments: ["--import", TSX_IMPORT_URL, NODE_RUNNER],
         }),
       }),
     );

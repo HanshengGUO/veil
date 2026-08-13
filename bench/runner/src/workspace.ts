@@ -39,10 +39,10 @@ function inside(root: string, taskRelative: string): string {
 
 function defaultGenerator(generatorPath: string, dataDirectory: string, seed: number): void {
   mkdirSync(dataDirectory, { recursive: true });
-  const tsxLoader = import.meta.resolve("tsx");
+  const tsxImportUrl = import.meta.resolve("tsx");
   const result = spawnSync(
     process.execPath,
-    ["--import", tsxLoader, generatorPath, "--out", dataDirectory, "--seed", String(seed)],
+    ["--import", tsxImportUrl, generatorPath, "--out", dataDirectory, "--seed", String(seed)],
     {
       cwd: dirname(generatorPath),
       encoding: "utf8",

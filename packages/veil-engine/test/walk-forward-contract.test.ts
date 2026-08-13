@@ -28,7 +28,7 @@ import {
 const childEntrypoint = fileURLToPath(
   new URL("fixtures/artifact-runtime-child.ts", import.meta.url),
 );
-const tsxLoader = fileURLToPath(import.meta.resolve("tsx"));
+const tsxImportUrl = import.meta.resolve("tsx");
 const roots: string[] = [];
 const schedule = Array.from({ length: 7 }, (_, index) =>
   new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
@@ -176,7 +176,7 @@ function runtimes(mode: string | ((launch: number) => string) = "success") {
         const childMode = typeof mode === "string" ? mode : mode(launches);
         return {
           executable: process.execPath,
-          arguments: ["--import", tsxLoader, childEntrypoint, childMode],
+          arguments: ["--import", tsxImportUrl, childEntrypoint, childMode],
         };
       },
     }),

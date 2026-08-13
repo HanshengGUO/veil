@@ -19,7 +19,7 @@ import {
 
 const codeRoot = fileURLToPath(new URL(".", import.meta.url));
 const runner = fileURLToPath(new URL("runner.ts", import.meta.url));
-const tsxLoader = fileURLToPath(import.meta.resolve("tsx"));
+const tsxImportUrl = import.meta.resolve("tsx");
 const backendId = "contract-example-memory";
 const schedule = Array.from({ length: 7 }, (_, index) =>
   new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
@@ -109,7 +109,7 @@ runtimes.register(
     supports: (constraint) => constraint === ">=20,<30",
     launch: () => ({
       executable: process.execPath,
-      arguments: ["--import", tsxLoader, runner],
+      arguments: ["--import", tsxImportUrl, runner],
     }),
   }),
 );

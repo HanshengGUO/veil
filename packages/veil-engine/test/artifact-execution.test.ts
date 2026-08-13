@@ -29,7 +29,7 @@ import {
 const childEntrypoint = fileURLToPath(
   new URL("fixtures/artifact-runtime-child.ts", import.meta.url),
 );
-const tsxLoader = fileURLToPath(import.meta.resolve("tsx"));
+const tsxImportUrl = import.meta.resolve("tsx");
 const temporaryRoots: string[] = [];
 
 let codeRoot: string;
@@ -147,7 +147,7 @@ function runtimes(
       hooks.launch?.(materializedRoot);
       return {
         executable: process.execPath,
-        arguments: ["--import", tsxLoader, childEntrypoint, mode],
+        arguments: ["--import", tsxImportUrl, childEntrypoint, mode],
       };
     },
   });

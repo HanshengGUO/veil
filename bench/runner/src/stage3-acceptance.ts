@@ -1,6 +1,5 @@
 import { execFile } from "node:child_process";
 import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { ContractViolation, deriveDataSemantics } from "@veilquant/contract";
@@ -22,7 +21,7 @@ import {
 import { discoverTasks } from "./tasks.ts";
 
 const execFileAsync = promisify(execFile);
-const TSX_LOADER = fileURLToPath(import.meta.resolve("tsx"));
+const TSX_IMPORT_URL = import.meta.resolve("tsx");
 
 export interface Stage3ExtensionAcceptance {
   readonly tools: readonly ["veil-data", "veil-backtest", "veil-memory"];
@@ -296,7 +295,7 @@ async function verifyAgentLoop(repositoryRoot: string): Promise<Stage3AgentLoopA
   const entrypoint = resolve(repositoryRoot, "examples/agent-loop/run.ts");
   const { stdout, stderr } = await execFileAsync(
     process.execPath,
-    ["--import", TSX_LOADER, entrypoint],
+    ["--import", TSX_IMPORT_URL, entrypoint],
     {
       cwd: repositoryRoot,
       windowsHide: true,

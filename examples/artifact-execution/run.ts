@@ -17,7 +17,7 @@ import {
 const codeRoot = fileURLToPath(new URL(".", import.meta.url));
 const sourceRoot = fileURLToPath(new URL("../csv-pit/", import.meta.url));
 const runner = fileURLToPath(new URL("runner.ts", import.meta.url));
-const tsxLoader = fileURLToPath(import.meta.resolve("tsx"));
+const tsxImportUrl = import.meta.resolve("tsx");
 const declaration = await loadAdapterFile(new URL("../csv-pit/adapter.yaml", import.meta.url));
 
 const backends = new BackendRegistry();
@@ -73,7 +73,7 @@ runtimes.register(
     supports: (constraint) => constraint === ">=20,<30",
     launch: () => ({
       executable: process.execPath,
-      arguments: ["--import", tsxLoader, runner],
+      arguments: ["--import", tsxImportUrl, runner],
     }),
   }),
 );

@@ -44,6 +44,10 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Fixed
 
+- **Node artifact runtimes now start portably on Windows**: TypeScript loader arguments remain
+  `file://` module specifiers for Node's `--import` flag instead of becoming drive-letter paths that
+  Node interprets as unsupported URL schemes. The default agent runtime, public examples, Stage 3
+  acceptance, and subprocess fixtures all use the same portable form.
 - **Portable npm installs no longer inherit a contributor's registry mirror into the lockfile**:
   project defaults point at the HTTPS npm registry, and zero-dependency preinstall validation rejects
   HTTP or third-party tarball URLs before CI or release jobs call `npm ci`.
