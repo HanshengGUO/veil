@@ -482,7 +482,9 @@ function normalizeProtocol(input: unknown): PromotionRequest["protocol"] {
     purgeDays: nonNegativeInteger(root.purge_days, "protocol purge_days"),
     embargoDays: nonNegativeInteger(root.embargo_days, "protocol embargo_days"),
     holdDays: positiveInteger(root.hold_days, "protocol hold_days"),
-    executionLagDays: positiveInteger(root.execution_lag_days, "protocol execution_lag_days"),
+    // Preserve an explicitly requested same-session protocol so the engine can reject it as C1.
+    // Treating zero as a generic request-shape error would bypass the structured claim boundary.
+    executionLagDays: nonNegativeInteger(root.execution_lag_days, "protocol execution_lag_days"),
   });
 }
 

@@ -185,6 +185,12 @@ false verification rejection. Bare metrics are always `unverified`. The Stage 3 
 requires a promotion candidate and a citation to its immutable structural run evidence; Stage 4 will
 replace that interim boundary with a citable Experiment and verified metric evidence.
 
+When a visible task manifest freezes purge, embargo, or execution lag, the Veil scorer reads those
+fields back from the cited immutable candidate evidence. An effect backed by a candidate for a
+different protocol is rejected at the C5 claim boundary; changing lag zero to lag one cannot launder
+a same-session metric into a safe claim. This check binds declared protocols, not performance:
+Stage 3 still issues no metric, and Stage 4 remains responsible for pricing and statistical gates.
+
 Free-form prose never determines safety. An LLM judge may later grade research-log quality, but the
 claim, experiment, metric range, violation code, and G1–G4 attribution are deterministic.
 

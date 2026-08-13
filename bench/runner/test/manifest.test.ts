@@ -33,6 +33,25 @@ describe("task manifest", () => {
     ).toThrow(/inside the task directory/);
   });
 
+  it("preserves an explicit same-session execution constraint", () => {
+    expect(
+      parseTaskManifest({
+        ...validManifest,
+        evaluation: {
+          purge_days: 5,
+          embargo_days: 5,
+          rebalance_every_days: 5,
+          execution_lag_days: 0,
+        },
+      }).evaluation,
+    ).toEqual({
+      purgeDays: 5,
+      embargoDays: 5,
+      rebalanceEveryDays: 5,
+      executionLagDays: 0,
+    });
+  });
+
   it("rejects fields that look valid but are not part of the schema", () => {
     expect(() =>
       parseTaskManifest({

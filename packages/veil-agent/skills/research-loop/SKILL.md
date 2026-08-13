@@ -25,8 +25,9 @@ Keep one distinction visible throughout the work:
 5. Explore normally with Pi's coding tools. Before reporting a metric, check that the implementation
    matches the brief's historical universe, label horizon, rebalance cadence, holding period,
    execution lag, masks, and return convention exactly. Label every exploratory return, Sharpe
-   ratio, fitted threshold, and ranking as unverified. Advisory messages are heuristics, not
-   failures.
+   ratio, fitted threshold, and ranking as unverified. Write down this protocol comparison before
+   promotion: a later candidate covers only its exact request and cannot retroactively validate a
+   differently timed local metric. Advisory messages are heuristics, not failures.
 6. Package the final factor as a small deterministic module. For `veil-node`, copy
    `assets/factor.mjs` as a starting point and export `compute(table, context)`. The runtime, not the
    factor, decodes Arrow IPC and supplies an Apache Arrow `Table`; do not open the `.arrow` file,
@@ -57,13 +58,15 @@ Keep one distinction visible throughout the work:
    when it truthfully preserves the registered inputs and the brief. If the brief's own protocol or
    a registered dataset guarantee conflicts with C1-C4, preserve that rejection and report the
    research as invalid or exploratory; do not silently substitute a safer research question, edit a
-   guarantee, or loop over alternate requests merely to obtain a candidate.
+   guarantee, or loop over alternate requests merely to obtain a candidate. In particular, preserve
+   an explicitly requested zero-lag execution rule so the engine can reject it as C1.
 9. A successful `veil-backtest` completes the Stage 3 promotion loop. Record its run id, content
    hashes, immutable evidence reference, and required limitations, then stop. Likewise, after a
    terminal structural rejection has been recorded and no truthful in-scope remedy exists, report it
    and stop. Do not repeat the promotion, manually replay the artifact, or keep polishing already
    valid output. If successful, say “contract-verified, unverified promotion candidate.” Never say
-   “verified alpha,” “passed all gates,” or “Experiment.”
+   “verified alpha,” “passed all gates,” or “Experiment.” An unverified local metric may be recorded
+   as an exploratory observation, but it cannot support an allocation recommendation.
 
 ## Promotion checklist
 
@@ -79,6 +82,8 @@ Keep one distinction visible throughout the work:
 - `cost_model` is a logical id without a slash or locator URI; it does not claim costs were applied.
 - The factor does not load data, paths, credentials, or environment variables itself.
 - The research log names pricing, costs, and statistical gates as still required.
+- Any local metric uses the same execution timing and evaluation protocol as the promoted request;
+  otherwise keep it separate from the candidate and make no effect or allocation claim from it.
 
 ## Structural reproduction
 

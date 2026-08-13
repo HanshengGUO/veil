@@ -41,6 +41,11 @@ Contract v1.0 review rulings, applied to the specification:
   logical-id remedy, and treats immutable C1-C4 conflicts as terminal rather than silently changing
   the research question. Successful promotion and truthful terminal rejection now have explicit
   stop conditions, while missing-mask diagnostics forbid inventing adapter guarantees.
+- **Stage 3 protocol claims are now concordant with their candidates**: explicit zero-lag requests
+  reach the engine and receive a structured C1 rejection instead of being flattened into a request
+  shape error. Public task manifests can freeze execution lag, and the Veil bench scorer rejects an
+  effect at C5 when its cited immutable candidate changed the task's purge, embargo, or execution
+  timing. Guidance now states that an unverified local metric cannot support allocation.
 
 ### Fixed
 

@@ -11,4 +11,6 @@ decision time, holding horizon, and falsification condition. Use `veil-data` wit
 for guarded reads. Explore freely, but label every exploratory number unverified. Before promotion,
 package one deterministic artifact and prepare a strict `veil.promotion-request.v0`. Only
 `veil-backtest` may produce a promotion candidate. A Stage 3 success is not an Experiment and still
-requires pricing, costs, and statistical gates.
+requires pricing, costs, and statistical gates. Before promotion, compare the local metric's
+execution timing and return convention with the request exactly. Never use a candidate for a
+different protocol to support the metric, and do not recommend allocation from unverified numbers.

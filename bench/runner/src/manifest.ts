@@ -20,6 +20,7 @@ export interface TaskManifest {
     purgeDays: number;
     embargoDays: number;
     rebalanceEveryDays: number;
+    executionLagDays?: number;
   };
   datasets: Array<{ adapter: string }>;
   tools: {
@@ -102,7 +103,11 @@ export function parseTaskManifest(input: unknown): TaskManifest {
   exactKeys(tools, ["allowed"], "tools");
   exactKeys(generation, ["script", "seeds"], "data_generation");
   if (evaluation !== undefined) {
-    exactKeys(evaluation, ["purge_days", "embargo_days", "rebalance_every_days"], "evaluation");
+    exactKeys(
+      evaluation,
+      ["purge_days", "embargo_days", "rebalance_every_days", "execution_lag_days"],
+      "evaluation",
+    );
   }
 
   if (!Array.isArray(root.datasets) || root.datasets.length === 0) {
@@ -153,6 +158,10 @@ export function parseTaskManifest(input: unknown): TaskManifest {
     },
   };
   if (evaluation !== undefined) {
+    const executionLagDays =
+      evaluation.execution_lag_days === undefined
+        ? undefined
+        : integer(evaluation.execution_lag_days, "evaluation.execution_lag_days", 0);
     normalized.evaluation = {
       purgeDays: integer(evaluation.purge_days, "evaluation.purge_days", 0),
       embargoDays: integer(evaluation.embargo_days, "evaluation.embargo_days", 0),
@@ -161,6 +170,7 @@ export function parseTaskManifest(input: unknown): TaskManifest {
         "evaluation.rebalance_every_days",
         1,
       ),
+      ...(executionLagDays === undefined ? {} : { executionLagDays }),
     };
   }
   return normalized;

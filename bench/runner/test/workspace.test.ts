@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -35,6 +43,7 @@ describe("agent task workspace", () => {
 universe: { source: data/universe_history.csv, size: 20 }
 period: { research_start: 2020-01-01, research_end: 2021-12-31 }
 label: { horizon_days: 5, definition: forward return }
+evaluation: { purge_days: 5, embargo_days: 5, rebalance_every_days: 5, execution_lag_days: 0 }
 datasets:
   - { adapter: adapters/prices.yaml }
 tools: { allowed: [veil-data, veil-backtest, veil-memory] }
@@ -64,5 +73,8 @@ data_generation: { script: generate.ts, seeds: [7, 8, 9] }
     expect(existsSync(join(workspace, "trap.yaml"))).toBe(false);
     expect(existsSync(join(workspace, "golden.yaml"))).toBe(false);
     expect(existsSync(join(workspace, "generate.ts"))).toBe(false);
+    expect(readFileSync(join(workspace, "manifest.yaml"), "utf8")).toContain(
+      "execution_lag_days: 0",
+    );
   });
 });

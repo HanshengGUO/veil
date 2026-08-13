@@ -283,6 +283,101 @@ describe("veil-backtest promotion preflight", () => {
       "No promotion candidate or Experiment was issued.",
     );
   });
+
+  it("preserves zero execution lag until the engine records a terminal C1 rejection", async () => {
+    const root = await mkdtemp(join(tmpdir(), "veil-agent-same-session-promotion-"));
+    roots.push(root);
+    await mkdir(join(root, ".veil"), { recursive: true });
+    await mkdir(join(root, "artifact"), { recursive: true });
+    const readSetId = `sha256:${"4".repeat(64)}`;
+    await writeFile(
+      join(root, ".veil", "promotion.yaml"),
+      promotionRequest("safe-prices", readSetId).replace(
+        "execution_lag_days: 1",
+        "execution_lag_days: 0",
+      ),
+    );
+    await writeFile(
+      join(root, "artifact", "factor.mjs"),
+      "export function compute() { return { rowIndices: [], columns: {} }; }\n",
+    );
+
+    const declaration = normalizeAdapterDeclaration({
+      dataset: "safe-prices",
+      version: "1",
+      entity_key: "ticker",
+      event_time: "date",
+      available_time: "date",
+      availability_basis: "observed",
+      guarantees: {
+        point_in_time: true,
+        survivorship_free: true,
+        tradability_mask: "tradable",
+      },
+      source: { type: "csv", locator: "prices.csv" },
+    });
+    const project = {
+      root,
+      projectReference: ".veil/project.yaml",
+      datasets: new Map([
+        [declaration.dataset, { dataset: declaration.dataset, declaration, binding: {} as never }],
+      ]),
+      backends: {} as never,
+      runtimes: {} as never,
+      promotionConcurrency: 1,
+    } satisfies VeilProjectRuntime;
+    const entries: Array<{
+      readonly type: "custom";
+      readonly id: string;
+      readonly parentId: string | null;
+      readonly timestamp: string;
+      readonly customType: string;
+      readonly data: unknown;
+    }> = [
+      {
+        type: "custom",
+        id: "same-session-read",
+        parentId: null,
+        timestamp: "2026-08-13T00:00:00.000Z",
+        customType: VEIL_DATA_READ_ENTRY,
+        data: {
+          format: VEIL_DATA_READ_ENTRY,
+          dataset: "safe-prices",
+          adapterVersion: "1",
+          mode: "point",
+          grade: "guarded",
+          asOf: "2026-08-12T00:00:00.000Z",
+          readSetId,
+          resultHash: `sha256:${"5".repeat(64)}`,
+          arrowHash: `sha256:${"6".repeat(64)}`,
+          exportReference: null,
+        },
+      },
+    ];
+    const appendEntry = <T>(customType: string, data: T): void => {
+      const previous = entries.at(-1);
+      entries.push({
+        type: "custom",
+        id: `entry-${entries.length + 1}`,
+        parentId: previous?.id ?? null,
+        timestamp: new Date(Date.UTC(2026, 7, 13, 0, 0, entries.length)).toISOString(),
+        customType,
+        data,
+      });
+    };
+
+    const result = await executeVeilBacktestTool(
+      { request: ".veil/promotion.yaml" },
+      { project, getBranch: () => entries, appendEntry },
+    );
+
+    expect(result).toMatchObject({ ok: false, code: "C1", invariant: "C1" });
+    expect(entries.slice(-3).map((entry) => entry.customType)).toEqual([
+      VEIL_VERIFICATION_START_ENTRY,
+      VEIL_VIOLATION_ENTRY,
+      VEIL_RUN_RESULT_ENTRY,
+    ]);
+  });
 });
 
 function promotionRequest(

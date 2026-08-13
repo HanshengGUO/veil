@@ -77,7 +77,11 @@ const VEIL_TURN_INSTRUCTIONS = `Veil keeps exploration free and enforces claims 
 - Use veil-data with an explicit as_of for guarded reads; panel exports remain exploration-grade.
 - Treat numbers produced by ordinary shell or code exploration as unverified.
 - Use veil-backtest for promotion. A Stage 3 success is a contract-verified, unverified candidate,
-  not an Experiment; pricing, costs, and statistical gates remain required.`;
+  not an Experiment; pricing, costs, and statistical gates remain required.
+- A candidate covers only its exact declared protocol; it does not validate a local metric computed
+  with different timing, universe, returns, or costs. Preserve an unsafe requested protocol's
+  structured rejection instead of silently substituting a safer question.
+- An unverified local metric cannot support an allocation recommendation.`;
 
 export interface VeilExtensionOptions {
   readonly projectLoader?: VeilProjectLoader;
@@ -147,6 +151,8 @@ function registerVeilExtension(
       "If that dataset lacks a truthful declared tradability mask, select another registered structural slice or stay exploratory; never invent a guarantee.",
       "cost_model is a portable logical id, not a filesystem path or locator URI; use stage4-not-issued when no Stage 4 method exists.",
       "If the brief or registered inputs intrinsically violate C1-C4, preserve the rejection and report invalid instead of changing the research question.",
+      "Before promotion, make the local metric protocol and promotion request agree exactly; a candidate cannot validate a differently timed exploratory metric.",
+      "Do not recommend allocation from a Stage 3 local metric; pricing, costs, and statistical gates have not issued a claim.",
       "After a successful promotion or terminal truthful rejection, record the evidence, deliver the requested report, and stop without replaying or revalidating it.",
     ],
     parameters: BACKTEST_PARAMETERS,

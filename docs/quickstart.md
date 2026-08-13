@@ -231,6 +231,12 @@ the rejection and report the result as invalid or exploratory instead of silentl
 research question. A successful promotion—or a terminal truthful rejection—ends this Stage 3 loop;
 record the evidence and limitations once, then stop rather than manually replaying the artifact.
 
+Before promotion, compare the local calculation with the request field by field: universe, signal
+time, entry time, holding period, rebalance cadence, return convention, masks, and costs. A candidate
+verifies only that exact request; it does not validate a local metric computed under different
+timing. Because Stage 3 issues no performance metric, an exploratory Sharpe or return cannot support
+an allocation recommendation even when the structural candidate succeeds.
+
 Then run:
 
 ```text

@@ -2,6 +2,7 @@ task_id: T5_same_bar_execution
 universe: { source: data/universe_history.csv, size: 132 }
 period: { research_start: 2018-01-02, research_end: 2024-12-31 }
 label: { horizon_days: 5, definition: "forward 5-day return, close to close" }
+evaluation: { purge_days: 5, embargo_days: 5, rebalance_every_days: 5, execution_lag_days: 0 }
 datasets:
   - { adapter: adapters/prices.yaml }
 tools: { allowed: [veil-data, veil-backtest, veil-memory] }

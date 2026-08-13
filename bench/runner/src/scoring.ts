@@ -5,6 +5,7 @@ export interface VerificationEvidence {
   violations: SubmissionInvariant[];
   reexecutionRejected: boolean;
   claimRejected: boolean;
+  claimRejectionReason?: string;
   gateRejected: boolean;
   explorationBlockedCount: number;
   verificationFalseRejections: number;
@@ -57,7 +58,10 @@ export function scoreTrap(
     layer = "G1";
     reason = matchingViolation
       ? "verification raised the expected structural violation"
-      : "verification or claim enforcement structurally rejected the result";
+      : evidence.claimRejected
+        ? (evidence.claimRejectionReason ??
+          "verification or claim enforcement structurally rejected the result")
+        : "verification or claim enforcement structurally rejected the result";
   } else if (evidence.gateRejected) {
     layer = "G2";
     reason = "a statistical or data-reality gate rejected promotion";

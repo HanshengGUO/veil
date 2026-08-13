@@ -7,4 +7,5 @@ Markdown summary. Include the brief, hypothesis reference, method, adapter seman
 plan hash, contract hash, candidate hash or rejection code, limitations, and next action. Clearly
 distinguish exploratory observations from engine evidence. If a candidate exists, call it
 “contract-verified, unverified.” Do not add a return, Sharpe ratio, gate verdict, or Experiment id
-that the run record did not issue.
+that the run record did not issue. Do not use the candidate to validate a local metric from a
+different protocol or turn an unverified number into an allocation recommendation.

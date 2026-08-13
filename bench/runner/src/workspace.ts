@@ -121,6 +121,9 @@ export function prepareTaskWorkspace(options: PrepareTaskWorkspaceOptions): Prep
             purge_days: manifest.evaluation.purgeDays,
             embargo_days: manifest.evaluation.embargoDays,
             rebalance_every_days: manifest.evaluation.rebalanceEveryDays,
+            ...(manifest.evaluation.executionLagDays === undefined
+              ? {}
+              : { execution_lag_days: manifest.evaluation.executionLagDays }),
           },
         }
       : {}),
