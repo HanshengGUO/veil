@@ -5,10 +5,16 @@ import type { AdapterDeclaration } from "@veilquant/contract";
 import {
   ArtifactRuntimeRegistry,
   BackendRegistry,
+  CostModelRegistry,
   createArtifactRuntimeProvider,
+  createCenteredBlockBootstrapNullGenerator,
+  createCryptoFuturesCostModel,
+  createHongKongEquityCostModel,
+  createLinearBpsCostModel,
   createSourceBinding,
   DuckDbFileBackend,
   loadAdapterFile,
+  NullGeneratorRegistry,
   type SourceBinding,
 } from "@veilquant/engine";
 import { parseDocument } from "yaml";
@@ -36,6 +42,8 @@ export interface VeilProjectRuntime {
   readonly backends: BackendRegistry;
   readonly runtimes: ArtifactRuntimeRegistry;
   readonly promotionConcurrency: number;
+  readonly costModels?: CostModelRegistry;
+  readonly nullGenerators?: NullGeneratorRegistry;
 }
 
 export type VeilProjectLoader = (cwd: string) => Promise<VeilProjectRuntime>;
@@ -57,6 +65,41 @@ interface ProjectConfig {
   readonly datasets: readonly ProjectDatasetConfig[];
   readonly runtimes: readonly ProjectRuntimeConfig[];
   readonly promotionConcurrency: number;
+  readonly stage4: Stage4ProjectConfig;
+}
+
+type Stage4CostModelConfig =
+  | {
+      readonly kind: "linear-bps";
+      readonly reference: string;
+      readonly basisPoints: number;
+    }
+  | {
+      readonly kind: "hong-kong-equity";
+      readonly reference: string;
+      readonly commissionBps: number;
+      readonly tradingFeeBps: number;
+      readonly transactionLevyBps: number;
+      readonly stampDutyBps: number;
+    }
+  | {
+      readonly kind: "crypto-futures";
+      readonly reference: string;
+      readonly takerFeeBps: number;
+      readonly slippageBps: number;
+    };
+
+interface Stage4NullGeneratorConfig {
+  readonly kind: "centered-block-bootstrap";
+  readonly reference: string;
+  readonly replications: number;
+  readonly blockLength: number;
+  readonly seed: number;
+}
+
+interface Stage4ProjectConfig {
+  readonly costModels: readonly Stage4CostModelConfig[];
+  readonly nullGenerators: readonly Stage4NullGeneratorConfig[];
 }
 
 /** Loads the conservative CSV/Parquet project profile shipped with the v0.1 Pi package. */
@@ -111,6 +154,47 @@ export async function loadVeilProject(cwdInput: string): Promise<VeilProjectRunt
     );
   }
 
+  const costModels = new CostModelRegistry();
+  for (const modelConfig of config.stage4.costModels) {
+    if (modelConfig.kind === "linear-bps") {
+      costModels.register(
+        createLinearBpsCostModel({
+          reference: modelConfig.reference,
+          basisPoints: modelConfig.basisPoints,
+        }),
+      );
+    } else if (modelConfig.kind === "hong-kong-equity") {
+      costModels.register(
+        createHongKongEquityCostModel({
+          reference: modelConfig.reference,
+          commissionBps: modelConfig.commissionBps,
+          tradingFeeBps: modelConfig.tradingFeeBps,
+          transactionLevyBps: modelConfig.transactionLevyBps,
+          stampDutyBps: modelConfig.stampDutyBps,
+        }),
+      );
+    } else {
+      costModels.register(
+        createCryptoFuturesCostModel({
+          reference: modelConfig.reference,
+          takerFeeBps: modelConfig.takerFeeBps,
+          slippageBps: modelConfig.slippageBps,
+        }),
+      );
+    }
+  }
+  const nullGenerators = new NullGeneratorRegistry();
+  for (const nullGenerator of config.stage4.nullGenerators) {
+    nullGenerators.register(
+      createCenteredBlockBootstrapNullGenerator({
+        reference: nullGenerator.reference,
+        replications: nullGenerator.replications,
+        blockLength: nullGenerator.blockLength,
+        seed: nullGenerator.seed,
+      }),
+    );
+  }
+
   return Object.freeze({
     root,
     projectReference: VEIL_PROJECT_REFERENCE,
@@ -118,6 +202,8 @@ export async function loadVeilProject(cwdInput: string): Promise<VeilProjectRunt
     backends,
     runtimes,
     promotionConcurrency: config.promotionConcurrency,
+    costModels,
+    nullGenerators,
   });
 }
 
@@ -205,8 +291,9 @@ async function loadProjectConfig(path: string): Promise<ProjectConfig> {
   }
   const root = exactRecord(
     input,
-    ["format", "datasets", "runtimes", "promotion_concurrency"],
+    ["format", "datasets", "runtimes", "promotion_concurrency", "stage4"],
     "project configuration",
+    true,
   );
   if (root.format !== VEIL_PROJECT_FORMAT) {
     throw invalidProject("project configuration uses an unsupported format");
@@ -232,11 +319,113 @@ async function loadProjectConfig(path: string): Promise<ProjectConfig> {
     "promotion_concurrency",
     16,
   );
+  const stage4 = normalizeStage4Config(root.stage4);
   return Object.freeze({
     format: VEIL_PROJECT_FORMAT,
     datasets: Object.freeze(datasets),
     runtimes: Object.freeze(runtimes),
     promotionConcurrency,
+    stage4,
+  });
+}
+
+function normalizeStage4Config(input: unknown): Stage4ProjectConfig {
+  if (input === undefined) {
+    return Object.freeze({
+      costModels: Object.freeze([]),
+      nullGenerators: Object.freeze([]),
+    });
+  }
+  const root = exactRecord(
+    input,
+    ["cost_models", "null_generators"],
+    "Stage 4 project configuration",
+  );
+  if (!Array.isArray(root.cost_models) || !Array.isArray(root.null_generators)) {
+    throw invalidProject("Stage 4 cost_models and null_generators must be arrays");
+  }
+  const costModels = root.cost_models.map(normalizeStage4CostModel);
+  const nullGenerators = root.null_generators.map(normalizeStage4NullGenerator);
+  requireUnique(
+    costModels.map((model) => model.reference),
+    "Stage 4 cost-model references",
+  );
+  requireUnique(
+    nullGenerators.map((generator) => generator.reference),
+    "Stage 4 null-generator references",
+  );
+  return Object.freeze({
+    costModels: Object.freeze(costModels),
+    nullGenerators: Object.freeze(nullGenerators),
+  });
+}
+
+function normalizeStage4CostModel(input: unknown): Stage4CostModelConfig {
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    throw invalidProject("Stage 4 cost model must be an object");
+  }
+  const kind = (input as Record<string, unknown>).kind;
+  if (kind === "linear-bps") {
+    const root = exactRecord(input, ["kind", "reference", "basis_points"], "linear-bps cost model");
+    return Object.freeze({
+      kind,
+      reference: portableId(root.reference, "cost-model reference"),
+      basisPoints: boundedBps(root.basis_points, "linear cost"),
+    });
+  }
+  if (kind === "hong-kong-equity") {
+    const root = exactRecord(
+      input,
+      [
+        "kind",
+        "reference",
+        "commission_bps",
+        "trading_fee_bps",
+        "transaction_levy_bps",
+        "stamp_duty_bps",
+      ],
+      "Hong Kong equity cost model",
+    );
+    return Object.freeze({
+      kind,
+      reference: portableId(root.reference, "cost-model reference"),
+      commissionBps: boundedBps(root.commission_bps, "commission"),
+      tradingFeeBps: boundedBps(root.trading_fee_bps, "trading fee"),
+      transactionLevyBps: boundedBps(root.transaction_levy_bps, "transaction levy"),
+      stampDutyBps: boundedBps(root.stamp_duty_bps, "stamp duty"),
+    });
+  }
+  if (kind === "crypto-futures") {
+    const root = exactRecord(
+      input,
+      ["kind", "reference", "taker_fee_bps", "slippage_bps"],
+      "crypto futures cost model",
+    );
+    return Object.freeze({
+      kind,
+      reference: portableId(root.reference, "cost-model reference"),
+      takerFeeBps: boundedBps(root.taker_fee_bps, "taker fee"),
+      slippageBps: boundedBps(root.slippage_bps, "slippage"),
+    });
+  }
+  throw invalidProject("Stage 4 cost model kind is unsupported");
+}
+
+function normalizeStage4NullGenerator(input: unknown): Stage4NullGeneratorConfig {
+  const root = exactRecord(
+    input,
+    ["kind", "reference", "replications", "block_length", "seed"],
+    "Stage 4 null generator",
+  );
+  if (root.kind !== "centered-block-bootstrap") {
+    throw invalidProject("Stage 4 null generator kind is unsupported");
+  }
+  return Object.freeze({
+    kind: root.kind,
+    reference: portableId(root.reference, "null-generator reference"),
+    replications: boundedInteger(root.replications, "null replications", 32, 10_000),
+    blockLength: boundedInteger(root.block_length, "null block length", 1, 100_000),
+    seed: boundedInteger(root.seed, "null seed", 1, 0xffff_ffff),
   });
 }
 
@@ -321,6 +510,7 @@ function exactRecord(
   input: unknown,
   keys: readonly string[],
   label: string,
+  optional = false,
 ): Record<string, unknown> {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     throw invalidProject(`${label} must be an object`);
@@ -328,7 +518,11 @@ function exactRecord(
   const root = input as Record<string, unknown>;
   const actual = Object.keys(root).sort();
   const expected = [...keys].sort();
-  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+  if (
+    actual.some((key) => !expected.includes(key)) ||
+    (!optional &&
+      (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])))
+  ) {
     throw invalidProject(`${label} has missing or unknown fields`);
   }
   return root;
@@ -366,6 +560,25 @@ function positiveInteger(input: unknown, label: string, maximum: number): number
     throw invalidProject(`${label} must be an integer from 1 through ${maximum}`);
   }
   return input;
+}
+
+function boundedInteger(input: unknown, label: string, minimum: number, maximum: number): number {
+  if (
+    typeof input !== "number" ||
+    !Number.isSafeInteger(input) ||
+    input < minimum ||
+    input > maximum
+  ) {
+    throw invalidProject(`${label} must be an integer from ${minimum} through ${maximum}`);
+  }
+  return input;
+}
+
+function boundedBps(input: unknown, label: string): number {
+  if (typeof input !== "number" || !Number.isFinite(input) || input < 0 || input > 10_000) {
+    throw invalidProject(`${label} basis points must be between 0 and 10000`);
+  }
+  return input === 0 ? 0 : input;
 }
 
 function requireUnique(values: readonly string[], label: string): void {

@@ -13,6 +13,10 @@
 | [`artifact-execution/`](./artifact-execution) | Guarded Arrow → bounded framed child → identity-bound result. |
 | [`walk-forward-windows/`](./walk-forward-windows) | Explicit schedule → replayable training windows → deterministic executed record. |
 | [`walk-forward-contract/`](./walk-forward-contract) | Fresh per-decision PIT reads → mask-first child inputs → C1-C4 contract → unverified promotion candidate. |
+| [`agent-loop/`](./agent-loop) | Default structural-only Pi tool path and append-only research log. |
+| [`stage4-plugin/`](./stage4-plugin) | Public CostModel and NullGenerator contribution template plus conformance execution. |
+| [`stage4-claim/`](./stage4-claim) | Deterministic pricing → full gate policy → citable Experiment → metric reproduction. |
+| [`stage4-agent-loop/`](./stage4-agent-loop) | Default agent promotion → Experiment memory → archived read-set reproduction. |
 | [`golden-path/`](./golden-path) | An independent hand-written reference plus the real guard → composite evidence → artifact → contract → unverified-candidate acceptance path. |
 
 The golden path is the standard answer for the whole project. Its pricing implementation stays

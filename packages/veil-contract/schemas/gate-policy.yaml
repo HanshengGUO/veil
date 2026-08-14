@@ -1,0 +1,42 @@
+# gate-policy.yaml — normalized veil.gate-policy.v0 record
+#
+# A policy is the completeness boundary for one gate evaluation. The standard Stage 4 policy is
+# issued by the engine from the artifact lock; callers cannot remove gates or change thresholds.
+
+format: veil.gate-policy.v0
+policyId: veil.standard-stage4
+policyVersion: 0.1.0
+gates:
+  - gateId: capacity-sensitivity
+    gateVersion: 0.1.0
+    category: costs               # costs | statistical-gates
+    required: false               # absence degrades; invalid supplied capacity evidence fails
+  - gateId: cost-sensitivity
+    gateVersion: 0.1.0
+    category: costs               # costs | statistical-gates
+    required: true
+  - gateId: hypothesis-contamination
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: false
+  - gateId: null-falsification
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: false
+  - gateId: parameter-stability
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: true
+  - gateId: trial-budget
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: true
+  - gateId: trials-aware-deflated-sharpe
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: true
+  - gateId: walk-forward-stability
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: true
+policyHash: <sha256>

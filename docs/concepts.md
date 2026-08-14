@@ -22,7 +22,7 @@ moment are absent before the child starts.
 
 This is why leakage is structural here rather than a matter of review: whole-sample statistics cannot
 be computed from data that is not present, and a signal cannot use a bar the window does not contain.
-Stage 3 completes this structural surface; pricing and statistical claim gates follow in Stage 4.
+The structural surface feeds Stage 4 pricing, trial accounting, statistical gates, and archival.
 
 ## Artifact
 
@@ -49,13 +49,13 @@ plan, and contract hashes while independently replay-verifying the newly issued 
 
 ## Research run
 
-The append-only Stage 3 ledger entry around one promotion attempt. It has a durable Pi session start
-entry, a `researchRunId`, and either a structured rejection or an unverified candidate plus a
-content-addressed evidence reference. The active Pi branch defines its ancestry.
+The append-only ledger entry around one promotion attempt. It has a durable Pi session start entry,
+a `researchRunId`, and either a structured rejection or a replay-verified candidate. A complete
+Stage 4 request then appends a separate Experiment memory entry. The active Pi branch defines the
+run's ancestry.
 
-A research run is not an Experiment. Its Markdown log is an audit aid, not a source of citable
-performance. This distinction lets v0.1 close the complete agent workflow without pretending that
-the Stage 4 pricing and statistical system already exists.
+A structural research run is not an Experiment. Its Markdown log is an audit aid, not a source of
+citable performance.
 
 ## Experiment record
 
@@ -63,21 +63,21 @@ What the Stage 4 claim pipeline issues after structural verification, pricing, c
 gates: metrics, gate outcomes, the artifact hash, datasets and declared guarantees, the registered
 hypothesis, verdict, and reasoning.
 
-It is the only citable metric in the system. Stage 3 deliberately issues none. Once the Stage 4
-claim pipeline exists, a conclusion referring to a performance number without an experiment id is
+It is the only citable metric in the system. A conclusion referring to a performance number without
+an experiment id is
 rejected—not degraded. This single rule is what allows exploration to be free.
 
 ## Evaporation
 
 The difference between what exploration claimed and what verification issued.
 
-It is the number to watch once Stage 4 pricing is available: *your factor lost this much Sharpe when
+It is the number to watch after Stage 4 pricing: *your factor lost this much Sharpe when
 it was checked.* In the hand-written reference study it is 7.7—an honest 0.88 against a naive 8.61.
 Stage 3 candidates do not report evaporation because they contain no performance metric.
 
 ## Gates
 
-Checks a structurally promoted candidate passes before becoming an Experiment. Two kinds, and the
+Checks applied to a structurally promoted candidate before its Experiment receives a verdict. Two kinds, and the
 distinction matters:
 
 - **Mechanism** is enforced and not configurable: reads are point-in-time, evaluation is
@@ -86,9 +86,9 @@ distinction matters:
 - **Method** is yours: which statistic prices significance, which generator builds the null, which
   cost model applies. Registered as plugins, per asset class.
 
-When a Stage 4 method is unavailable for your data—no null generator or cost model—the result is
-marked and weakened, not silently accepted. Stage 3 records these methods only as required future
-evidence; it does not run or waive them.
+When an optional Stage 4 method is unavailable—such as capacity data or a null generator—the result
+is explicitly degraded, not silently accepted. Missing required cost or stability evidence rejects
+the Experiment.
 
 ---
 

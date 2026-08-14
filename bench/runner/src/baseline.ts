@@ -7,7 +7,9 @@ import {
   type PiTaskRunResult,
   runBarePiTask,
   runVeilPiTask,
+  runVeilStage4PiTask,
   scoreBareTask,
+  scoreVeilStage4Task,
   scoreVeilTask,
 } from "./pi-session.ts";
 import { aggregateScores, type HonestScore, type SuiteScore, type TrapScore } from "./scoring.ts";
@@ -97,7 +99,11 @@ function reportCell(value: string): string {
 
 export function renderBaselineReport(summary: BaselineSummary): string {
   const lines = [
-    summary.profile === "bare" ? "# Bare-agent baseline" : "# Veil Stage 3 evaluation",
+    summary.profile === "bare"
+      ? "# Bare-agent baseline"
+      : summary.profile === "veil-stage4"
+        ? "# Veil Stage 4 evaluation"
+        : "# Veil Stage 3 evaluation",
     "",
     `Suite: **${summary.suite}** · variant: \`${summary.variant}\` · ${summary.taskCount} tasks`,
     "",
@@ -154,6 +160,13 @@ export function renderBaselineReport(summary: BaselineSummary): string {
       "",
     );
   }
+  if (summary.profile === "veil-stage4") {
+    lines.push(
+      "This Stage 4 evaluation scores Experiment-backed public-task runs. It is not a hidden-set,",
+      "cross-platform, external-user, or publication acceptance report.",
+      "",
+    );
+  }
   return lines.join("\n");
 }
 
@@ -175,7 +188,12 @@ export async function runBaseline(options: RunBaselineOptions): Promise<Baseline
   const tasks = selectSuiteTasks(discoverTasks(options.tasksDirectory), options.suite);
   const startedAt = new Date();
   const models: ModelBaselineSummary[] = [];
-  const runTask = profile === "bare" ? runBarePiTask : runVeilPiTask;
+  const runTask =
+    profile === "bare"
+      ? runBarePiTask
+      : profile === "veil-stage4"
+        ? runVeilStage4PiTask
+        : runVeilPiTask;
 
   for (const model of options.models) {
     const trapScores: TrapScore[] = [];
@@ -270,7 +288,9 @@ export function rescoreBaseline(options: RescoreBaselineOptions): BaselineSummar
   const previous = JSON.parse(readFileSync(summaryPath, "utf8")) as BaselineSummary;
   if (
     previous.schemaVersion !== 1 ||
-    (previous.profile !== "bare" && previous.profile !== "veil")
+    (previous.profile !== "bare" &&
+      previous.profile !== "veil" &&
+      previous.profile !== "veil-stage4")
   ) {
     throw new Error("unsupported baseline summary format");
   }
@@ -309,7 +329,13 @@ export function rescoreBaseline(options: RescoreBaselineOptions): BaselineSummar
           score:
             previous.profile === "bare"
               ? scoreBareTask(task, result.submission)
-              : scoreVeilTask(task, result.submission, requiredVeilEvidence(result, resultPath)),
+              : previous.profile === "veil-stage4"
+                ? scoreVeilStage4Task(
+                    task,
+                    result.submission,
+                    requiredVeilEvidence(result, resultPath),
+                  )
+                : scoreVeilTask(task, result.submission, requiredVeilEvidence(result, resultPath)),
         };
         writeFileSync(resultPath, `${JSON.stringify(rescored, null, 2)}\n`);
         completed.push(rescored);

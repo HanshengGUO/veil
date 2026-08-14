@@ -49,6 +49,16 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Fixed
 
+- **Stage 4 pricing reapplies the declared tradability mask at the execution session**: a name that
+  becomes masked during the locked signal-to-fill lag is no longer filled at zero volume. Existing
+  masked positions are carried and the executable part of each side is rescaled within the locked
+  gross budget. The rule is part of the pricing-method implementation identity and has a retained
+  replay regression test.
+- **Stage 4 competence accepts an evidenced insignificant result on a clean weak-signal task**: a
+  null conclusion must cite a rejected Experiment whose deflated-Sharpe, null-falsification,
+  parameter-stability, or walk-forward-stability gate failed. Positive conclusions still require an
+  accepted verified Experiment and exact archived metrics; an unrelated rejection earns no credit.
+
 - **Node artifact runtimes now start portably on Windows**: TypeScript loader arguments remain
   `file://` module specifiers for Node's `--import` flag instead of becoming drive-letter paths that
   Node interprets as unsupported URL schemes. The engine also supplies isolated values for the
@@ -60,6 +70,44 @@ Contract v1.0 review rulings, applied to the specification:
   HTTP or third-party tarball URLs before CI or release jobs call `npm ci`.
 
 ### Added
+
+- **Complete Stage 4 statistical policy**: the engine derives an immutable eight-gate evaluation for
+  capacity, doubled costs, model-knowledge contamination, null falsification, parameter stability,
+  count budget, trials-aware deflated Sharpe, and walk-forward stability. Effective trials are the
+  maximum of the artifact declaration and observable active-session plus same-family identities;
+  standard and exploratory registrations use fixed 95% and 99% DSR confidence respectively.
+- **Stage 4 methods and contribution surface**: opaque `CostModel` and `NullGenerator` registries now
+  include linear-bps, Hong Kong equity, crypto-futures, and seeded centered-block-bootstrap methods.
+  Public conformance execution and `examples/stage4-plugin` let contributors run a custom cost/null
+  provider without reading engine internals.
+- **Experiment memory and metric-level reproduction**: complete accepted, degraded, and rejected
+  Experiments enter append-only family memory, are retrieved before later turns, and feed trial
+  accounting. Project archives retain content-addressed artifact bytes, exact guarded read-set
+  snapshots, pricing, and gate replay inputs. `/veil-reproduce <experimentId>` reruns the full chain,
+  requires exact identities, and fails with `READ_SET_UNAVAILABLE` instead of substituting current
+  data after retention deletion.
+- **Stage 4 agent and bench profiles**: the default `veil-backtest` path can issue and archive a
+  complete Experiment; `/veil-family` exposes active-fork history. The 15-task public catalog adds
+  T7 knowledge pollution, T6/T7 receive real G2 reason attribution, and `veil-stage4` suite scoring
+  requires append-only Experiment citations and exact submitted/archived Sharpe and drawdown values.
+
+- **Deterministic Stage 4 OOS pricing and typed cost models**: `executeOosPricing()` independently
+  replays retained contract executions, derives gross-one long-only or long/short quantile trades
+  with equal or locked positive artifact sizing under the artifact's execution lag and holding
+  horizon, reapplies execution-time tradability masks, preserves contribution-level gross returns,
+  runs the exact
+  candidate-bound `CostModel`, and issues immutable gross/cost/net series plus a real pricing record.
+  Cost-model callbacks and raw configuration remain opaque; portable evidence carries their version,
+  implementation identity, and configuration hash. A built-in linear-bps provider and fail-closed
+  registry make the extension point runnable without allowing callers to submit aggregate metrics.
+
+- **Stage 4 claim-evidence boundary**: strict content-addressed records now bind a replay-verified
+  candidate to pricing payload identities and net metrics, a complete cost-plus-statistical gate
+  policy, one result per policy entry, and a final Experiment. Upstream replay is required at every
+  verifier; policies cannot omit cost or statistical evidence; effective trials cannot undercut the
+  candidate declaration; and accepted, degraded, or rejected claim states are derived rather than
+  caller-selected. Raw record issuers remain internal; pricing is now available only through the
+  trusted executor. Annotated schemas and `docs/gates.md` document the complete execution path.
 
 - **Stage 3 single-agent Pi loop**: the publishable `veil-quant` package registers `veil-data`,
   `veil-backtest`, and `veil-memory`; captures the first brief/hypothesis and verification start in

@@ -18,10 +18,12 @@ import {
   createReadSetResultIdentity,
   type ReadSetManifest,
   type ReadSetResultIdentity,
+  verifyReadSetManifest,
 } from "./read-set.ts";
 import { SourceBinding } from "./source-binding.ts";
 import { readSetIdentityCacheForGuard, TemporalGuard } from "./temporal-guard.ts";
 import {
+  createVerificationView,
   createVerificationViewWithIdentityCache,
   type VerificationView,
   type VerificationViewRole,
@@ -30,10 +32,15 @@ import {
   createWalkForwardContractExecutionRecord,
   createWalkForwardContractRecord,
   parameterLockHashForArtifact,
+  verifyWalkForwardContractRecord,
   type WalkForwardContractExecutionRecord,
   type WalkForwardContractRecord,
 } from "./walk-forward-contract-record.ts";
-import { createWalkForwardPlan, type WalkForwardPlan } from "./walk-forward-plan.ts";
+import {
+  createWalkForwardPlan,
+  verifyWalkForwardPlan,
+  type WalkForwardPlan,
+} from "./walk-forward-plan.ts";
 
 export interface ExecuteWalkForwardContractInput {
   readonly artifact: unknown;
@@ -76,6 +83,24 @@ export interface WalkForwardContractResult {
   readonly executions: readonly WalkForwardContractExecution[];
   /** C1-C4 structural evidence only; pricing, metrics, gates, and experiment verdict are absent. */
   readonly record: WalkForwardContractRecord;
+}
+
+export interface WalkForwardSourceSnapshot {
+  readonly readSet: unknown;
+  readonly arrowIpc: Uint8Array;
+}
+
+export interface ReplayWalkForwardContractInput {
+  readonly artifact: unknown;
+  readonly codeRoot: string;
+  readonly plan: unknown;
+  readonly declaration: AdapterDeclaration;
+  readonly expectedContractRecord: unknown;
+  readonly sourceSnapshots: readonly WalkForwardSourceSnapshot[];
+  readonly runtimes: ArtifactRuntimeRegistry;
+  readonly limits?: ArtifactExecutionLimits;
+  readonly signal?: AbortSignal;
+  readonly concurrency?: number;
 }
 
 interface DecisionExecution {
@@ -203,7 +228,137 @@ export async function executeWalkForwardContract(
   });
 }
 
-function admitArtifactOutput(input: {
+/** Re-executes an archived artifact against exact guarded source snapshots and requires identity equality. */
+export async function replayWalkForwardContract(
+  input: ReplayWalkForwardContractInput,
+): Promise<WalkForwardContractResult> {
+  const artifact = verifyArtifactManifest(input.artifact);
+  const plan = verifyWalkForwardPlan(input.plan);
+  requireDeclaration(singleDataset(artifact), input.declaration);
+  const expected = verifyWalkForwardContractRecord(input.expectedContractRecord, {
+    artifact,
+    plan,
+    declaration: input.declaration,
+  });
+  if (!Array.isArray(input.sourceSnapshots) || input.sourceSnapshots.length === 0) {
+    throw invalidContract("contract replay requires archived guarded source snapshots");
+  }
+  const sources = new Map<
+    string,
+    { readonly readSet: ReadSetManifest; readonly arrowIpc: Uint8Array }
+  >();
+  for (const snapshot of input.sourceSnapshots) {
+    if (
+      typeof snapshot !== "object" ||
+      snapshot === null ||
+      !(snapshot.arrowIpc instanceof Uint8Array)
+    ) {
+      throw invalidContract("contract replay source snapshot is malformed");
+    }
+    const arrowIpc = Uint8Array.from(snapshot.arrowIpc);
+    const readSet = verifyReadSetManifest(snapshot.readSet, {
+      arrowIpc,
+      declaration: input.declaration,
+    });
+    const prior = sources.get(readSet.manifestHash);
+    if (prior !== undefined && prior.readSet.result.arrowHash !== readSet.result.arrowHash) {
+      throw invalidContract("contract replay source identity maps to different Arrow evidence");
+    }
+    sources.set(readSet.manifestHash, Object.freeze({ readSet, arrowIpc }));
+  }
+  const concurrency = input.concurrency ?? 1;
+  if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 64) {
+    throw invalidContract("contract replay concurrency must be between 1 and 64");
+  }
+  const executions = await mapWithConcurrency(
+    expected.executions,
+    concurrency,
+    async (expectedExecution) => {
+      throwIfAborted(input.signal);
+      const source = sources.get(expectedExecution.sourceReadSetId);
+      if (source === undefined) {
+        throw new EngineConfigurationError(
+          "READ_SET_UNAVAILABLE",
+          "archived contract source read set is unavailable",
+          "Restore the exact content-addressed snapshot; do not query the current source.",
+        );
+      }
+      const view = createVerificationView({
+        sourceReadSet: source.readSet,
+        sourceArrowIpc: source.arrowIpc,
+        declaration: input.declaration,
+        plan,
+        foldIndex: expectedExecution.foldIndex,
+        role: expectedExecution.role,
+        decisionIndex: expectedExecution.decisionIndex,
+      });
+      if (view.manifest.viewHash !== expectedExecution.viewHash) {
+        throw invalidContract("replayed verification view differs from the archived contract");
+      }
+      const execution = await executeArtifactWithEvidence({
+        artifact,
+        codeRoot: input.codeRoot,
+        evidence: {
+          readSetId: view.manifest.viewHash,
+          dataset: view.manifest.dataset,
+          version: view.manifest.adapterVersion,
+          declarationHash: view.manifest.declarationHash,
+          decisionTime: view.manifest.decisionTime,
+          inputArrowHash: view.manifest.result.arrowHash,
+          developmentReadSetIds: [view.manifest.sourceReadSetId, view.manifest.viewHash],
+        },
+        arrowIpc: view.arrowIpc,
+        runtimes: input.runtimes,
+        limits: input.limits,
+        signal: input.signal,
+      });
+      const admitted = admitArtifactOutput({
+        inputArrowIpc: view.arrowIpc,
+        outputArrowIpc: execution.arrowIpc,
+        declaration: input.declaration,
+        decisionTime: expectedExecution.decisionTime,
+        role: expectedExecution.role,
+      });
+      const record = createWalkForwardContractExecutionRecord({
+        artifact,
+        plan,
+        view: view.manifest,
+        execution,
+        admittedOutput: admitted.result,
+      });
+      if (record.executionHash !== expectedExecution.executionHash) {
+        throw invalidContract("replayed artifact execution differs from the archived contract");
+      }
+      return Object.freeze({
+        source,
+        view,
+        execution,
+        admitted: Object.freeze(admitted),
+        record,
+      });
+    },
+  );
+  const record = createWalkForwardContractRecord({
+    artifact,
+    plan,
+    declaration: input.declaration,
+    executions: executions.map((execution) => execution.record),
+  });
+  if (record.contractHash !== expected.contractHash) {
+    throw invalidContract("replayed walk-forward contract differs from the archived contract");
+  }
+  return Object.freeze({
+    plan,
+    parameterLockHash: parameterLockHashForArtifact(artifact),
+    executionCount: executions.length,
+    executionEvidence: "retained",
+    executions: Object.freeze(executions),
+    record,
+  });
+}
+
+/** Internal replay bridge used by trusted pricing; intentionally omitted from the package root. */
+export function admitArtifactOutput(input: {
   readonly inputArrowIpc: Uint8Array;
   readonly outputArrowIpc: Uint8Array;
   readonly declaration: AdapterDeclaration;

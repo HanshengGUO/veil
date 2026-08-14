@@ -10,20 +10,42 @@ import {
   type ArtifactProtocol,
   ArtifactRuntimeRegistry,
   BackendRegistry,
+  CostModelRegistry,
   captureArtifactCode,
   createArtifactManifest,
   createArtifactRuntimeProvider,
   createHypothesisRegistration,
+  createLinearBpsCostModel,
   createPromotionCandidate,
   createSourceBinding,
+  executeExperiment,
+  executeOosPricing,
+  executeStandardGateEvaluation,
   executeWalkForwardContract,
   type GuardedReadResult,
+  InMemoryExperimentStore,
+  LONG_SHORT_OOS_PRICING_METHOD,
+  type LongShortOosPricingConfiguration,
+  NullGeneratorRegistry,
+  reproduceExperiment,
   type TemporalBackend,
   TemporalGuard,
+  verifyExperimentExecution,
   verifyHypothesisRegistration,
+  verifyOosPricingResult,
   verifyPromotionCandidate,
   verifyWalkForwardContractRecord,
 } from "../src/index.ts";
+import {
+  createExperimentRecord,
+  createGateEvaluationRecord,
+  createGatePolicyRecord,
+  createPricingEvidenceRecord,
+  verifyExperimentRecord,
+  verifyGateEvaluationRecord,
+  verifyGatePolicyRecord,
+  verifyPricingEvidenceRecord,
+} from "../src/stage4-evidence.ts";
 
 const childEntrypoint = fileURLToPath(
   new URL("fixtures/artifact-runtime-child.ts", import.meta.url),
@@ -143,8 +165,27 @@ async function buildArtifact(
   selectedAdapter: AdapterDeclaration,
   developmentReadSetId: string,
   selectedProtocol: ArtifactProtocol = protocol,
+  oosPricing?: LongShortOosPricingConfiguration,
 ): Promise<ArtifactManifest> {
   const code = await captureArtifactCode({ root: codeRoot, files: ["src/factor.mjs"] });
+  const lockedPricing =
+    oosPricing ??
+    ({
+      pricingMethodIdentity: {
+        id: "close-to-close-v1",
+        version: "0.1.0",
+        implementationHash: hash("1"),
+      },
+      signalColumn: "value",
+      priceColumn: "value",
+      periodsPerYear: 252,
+      portfolio: { kind: "long-short-quantile", quantile: 0.5 },
+      costModelIdentity: {
+        version: "0.1.0",
+        implementationHash: hash("2"),
+        configurationHash: hash("3"),
+      },
+    } satisfies LongShortOosPricingConfiguration);
   return createArtifactManifest({
     factor: {
       runtime: { id: "node", constraint: ">=20,<30" },
@@ -152,7 +193,17 @@ async function buildArtifact(
       code,
     },
     paramsLocked: { lookbackDays: 20 },
-    declaredLiterals: { cutoff: 1.5 },
+    declaredLiterals: {
+      cutoff: 1.5,
+      gatePolicy: {
+        policyId: "veil.standard-stage4",
+        policyVersion: "0.1.0",
+        trialBudget: 16,
+        nullGeneratorIdentity: null,
+        knowledgeCutoff: null,
+      },
+      oosPricing: lockedPricing,
+    },
     trialsDeclared: 4,
     dataSemantics: {
       datasets: [{ declaration: selectedAdapter, developmentReadSets: [developmentReadSetId] }],
@@ -193,6 +244,7 @@ function run(
   executionOptions: {
     readonly concurrency?: number;
     readonly retainExecutionEvidence?: boolean;
+    readonly columns?: readonly string[];
   } = {},
 ) {
   return executeWalkForwardContract({
@@ -723,3 +775,718 @@ describe("promotion evidence boundary", () => {
     ).toThrowError(expect.objectContaining({ invariant: "C3" }));
   });
 });
+
+describe("Stage 4 claim evidence boundary", () => {
+  it("deterministically prices a long-only OOS portfolio through the cost model", async () => {
+    const pricingSchedule = Array.from({ length: 8 }, (_, index) =>
+      new Date(Date.UTC(2026, 2, index + 1)).toISOString(),
+    );
+    const eventTime = pricingSchedule.flatMap((time) => [time, time]);
+    const aaa = [10, 12, 16, 20, 24, 32, 40, 50];
+    const values = aaa.flatMap((price) => [price, 20]);
+    const source = backendHarness(
+      "contract-pricing",
+      tableFromArrays({
+        ticker: pricingSchedule.flatMap(() => ["AAA", "BBB"]),
+        event_time: eventTime,
+        available_time: eventTime,
+        tradable: eventTime.map(() => true),
+        value: values,
+      }),
+    );
+    const developmentRead = await source.guard.read(
+      adapter,
+      { asOf: "2025-12-31", columns: ["ticker", "value"] },
+      source.binding,
+    );
+    const costModel = createLinearBpsCostModel({
+      reference: "test-bps-v1",
+      basisPoints: 10,
+    });
+    const costModelDescriptor = costModel.toJSON();
+    const pricingArtifact = await buildArtifact(
+      adapter,
+      developmentRead.readSet.manifestHash,
+      {
+        mode: "rolling",
+        folds: 1,
+        trainDays: 3,
+        oosDays: 3,
+        purgeDays: 1,
+        embargoDays: 1,
+        holdDays: 1,
+        executionLagDays: 1,
+      },
+      {
+        pricingMethodIdentity: LONG_SHORT_OOS_PRICING_METHOD,
+        signalColumn: "value",
+        priceColumn: "value",
+        periodsPerYear: 252,
+        portfolio: { kind: "long-only-quantile", quantile: 0.5 },
+        costModelIdentity: {
+          version: costModelDescriptor.version,
+          implementationHash: costModelDescriptor.implementationHash,
+          configurationHash: costModelDescriptor.configurationHash,
+        },
+      },
+    );
+    const contractResult = await run(
+      pricingArtifact,
+      adapter,
+      source,
+      runtimes().registry,
+      pricingSchedule,
+    );
+    const registration = createHypothesisRegistration({
+      hypothesisRef: pricingArtifact.hypothesisRef,
+      statement: "The higher-valued eligible instrument outperforms after costs.",
+      ideaAvailableAt: "2025-01-01T00:00:00.000Z",
+      registeredAt: "2025-12-01T00:00:00.000Z",
+      source: { kind: "brief", reference: "session-entry-pricing" },
+    });
+    const candidateEvidence = {
+      artifact: pricingArtifact,
+      plan: contractResult.plan,
+      declaration: adapter,
+      contractRecord: contractResult.record,
+      registration,
+      verification: verificationStart,
+    };
+    const candidate = createPromotionCandidate({
+      artifact: pricingArtifact,
+      plan: contractResult.plan,
+      declaration: adapter,
+      contractRecord: contractResult.record,
+      registration,
+      verification: verificationStart,
+    });
+    const costModels = new CostModelRegistry();
+    costModels.register(costModel);
+    const input = {
+      candidate,
+      candidateEvidence,
+      contractResult,
+      costModels,
+    };
+    const first = await executeOosPricing(input);
+    const second = await executeOosPricing(input);
+
+    expect(first).toEqual(second);
+    expect(first.record.status).toBe("priced");
+    expect(first.record.costModel.reference).toBe(pricingArtifact.costModel);
+    expect(first.record.costModel.configurationHash).toBe(costModels.list()[0]?.configurationHash);
+    expect(first.record.sample).toEqual({ observations: 3, periodsPerYear: 252 });
+    expect(first.payloads.trades.trades).toHaveLength(1);
+    expect(first.payloads.grossReturns.observations.map((row) => row.value)).toEqual([
+      0, 0.25, 0.25,
+    ]);
+    expect(first.payloads.costs.observations.map((row) => row.value)).toEqual([0, 0.001, 0]);
+    expect(first.payloads.netReturns.observations.map((row) => row.value)).toEqual([
+      0, 0.249, 0.25,
+    ]);
+    expect(first.record.series).toEqual({
+      tradesHash: first.payloads.trades.tradesHash,
+      grossReturnsHash: first.payloads.grossReturns.grossReturnsHash,
+      costsHash: first.payloads.costs.costsHash,
+      netReturnsHash: first.payloads.netReturns.netReturnsHash,
+    });
+    expect(verifyPricingEvidenceRecord(first.record, { candidate, candidateEvidence })).toEqual(
+      first.record,
+    );
+    expect(
+      verifyOosPricingResult({
+        result: JSON.parse(JSON.stringify(first)),
+        pricingVerification: { candidate, candidateEvidence },
+      }),
+    ).toEqual(first);
+    expect(Object.isFrozen(first.payloads.netReturns.observations)).toBe(true);
+
+    const gates = await executeStandardGateEvaluation({
+      pricing: first,
+      pricingVerification: { candidate, candidateEvidence },
+      trialEvidence: {
+        sessionLedgerHash: hash("e"),
+        sessionAttemptIds: ["verification-run-001"],
+        memorySnapshotHash: hash("f"),
+        familyExperimentIds: [],
+      },
+      nullGenerators: new NullGeneratorRegistry(),
+    });
+    expect(gates.trialAudit.effectiveTrials).toBe(pricingArtifact.trialsDeclared);
+    expect(gates.evaluation.verdict).toBe("rejected");
+    expect(gates.methods).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          gateId: "cost-sensitivity",
+          outcome: "passed",
+        }),
+        expect.objectContaining({
+          gateId: "trials-aware-deflated-sharpe",
+          outcome: "failed",
+          reasonCode: "insufficient-oos-observations",
+        }),
+        expect.objectContaining({
+          gateId: "walk-forward-stability",
+          outcome: "failed",
+          reasonCode: "insufficient-walk-forward-folds",
+        }),
+      ]),
+    );
+
+    const experimentInput = {
+      pricing: first,
+      pricingVerification: { candidate, candidateEvidence },
+      gates,
+      issuedAt: "2026-08-13T00:00:00.000Z",
+      rationale: "The complete policy rejected a statistically incomplete short sample.",
+      lessons: ["Collect enough OOS folds and parameter-neighbor evidence before claiming."],
+    } as const;
+    const experiment = executeExperiment(experimentInput);
+    expect(experiment.experiment.verdict).toBe("rejected");
+    expect(experiment.experiment.claimStatus).toBe("rejected");
+    expect(
+      verifyExperimentExecution(JSON.parse(JSON.stringify(experiment)), {
+        pricingVerification: { candidate, candidateEvidence },
+        expectedExperimentId: experiment.experiment.experimentId,
+      }),
+    ).toEqual(experiment);
+
+    const store = new InMemoryExperimentStore();
+    const memory = await store.append(experiment);
+    expect(await store.get(experiment.experiment.experimentId)).toEqual(memory);
+    expect(await store.snapshot(candidate.hypothesis.hypothesisRef)).toMatchObject({
+      experimentIds: [experiment.experiment.experimentId],
+    });
+    const reproduction = await reproduceExperiment({
+      expected: JSON.parse(JSON.stringify(experiment)),
+      verification: {
+        pricingVerification: { candidate, candidateEvidence },
+        expectedExperimentId: experiment.experiment.experimentId,
+      },
+      readSet: { status: "available", tombstoneHash: null, reason: null },
+      rerun: () => executeExperiment(experimentInput),
+    });
+    expect(reproduction.status).toBe("matched");
+    await expect(
+      reproduceExperiment({
+        expected: experiment,
+        verification: { pricingVerification: { candidate, candidateEvidence } },
+        readSet: {
+          status: "retention-deleted",
+          tombstoneHash: hash("0"),
+          reason: "Vendor retention policy",
+        },
+        rerun: () => executeExperiment(experimentInput),
+      }),
+    ).rejects.toMatchObject({ code: "READ_SET_UNAVAILABLE" });
+
+    const tamperedPricing = JSON.parse(JSON.stringify(first)) as {
+      payloads: { netReturns: { observations: Array<{ value: number }> } };
+    };
+    const firstNet = tamperedPricing.payloads.netReturns.observations[0];
+    if (firstNet === undefined) throw new Error("test pricing result lacks observations");
+    firstNet.value = 0.01;
+    expect(() =>
+      verifyOosPricingResult({
+        result: tamperedPricing,
+        pricingVerification: { candidate, candidateEvidence },
+      }),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_OOS_PRICING" }));
+
+    const missing = new CostModelRegistry();
+    await expect(executeOosPricing({ ...input, costModels: missing })).rejects.toMatchObject({
+      code: "COST_MODEL_NOT_FOUND",
+    });
+    const substituted = new CostModelRegistry();
+    substituted.register(
+      createLinearBpsCostModel({ reference: pricingArtifact.costModel, basisPoints: 0 }),
+    );
+    await expect(executeOosPricing({ ...input, costModels: substituted })).rejects.toMatchObject({
+      code: "INVALID_OOS_PRICING",
+    });
+    await expect(
+      executeOosPricing({
+        ...input,
+        contractResult: {
+          ...contractResult,
+          executionEvidence: "discarded",
+          executions: [],
+        },
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_OOS_PRICING" });
+  });
+
+  it("applies the declared tradability mask again at execution time", async () => {
+    const pricingAdapter = normalizeAdapterDeclaration({
+      dataset: "contract-prices",
+      version: "2026-08-12",
+      entity_key: "ticker",
+      event_time: "event_time",
+      available_time: "available_time",
+      availability_basis: "observed",
+      guarantees: { point_in_time: true, tradability_mask: "tradable" },
+      payload_schema: { value: "float64", volume: "float64" },
+      source: { type: "custom", locator: "logical/contract-prices" },
+    });
+    const pricingSchedule = Array.from({ length: 8 }, (_, index) =>
+      new Date(Date.UTC(2026, 3, index + 1)).toISOString(),
+    );
+    const tickers = ["AAA", "BBB", "CCC", "DDD"];
+    const aaa = [10, 12, 16, 20, 24, 32, 40, 50];
+    const eventTime = pricingSchedule.flatMap((time) => tickers.map(() => time));
+    const tradable = pricingSchedule.flatMap((_, dateIndex) =>
+      tickers.map((ticker) => !(dateIndex === 6 && ticker === "AAA")),
+    );
+    const source = backendHarness(
+      "contract-pricing-mask",
+      tableFromArrays({
+        ticker: pricingSchedule.flatMap(() => tickers),
+        event_time: eventTime,
+        available_time: eventTime,
+        tradable,
+        value: pricingSchedule.flatMap((_, dateIndex) => [aaa[dateIndex], 20, 10, 30]),
+        volume: tradable.map((eligible) => (eligible ? 1_000 : 0)),
+      }),
+    );
+    const developmentRead = await source.guard.read(
+      pricingAdapter,
+      { asOf: "2025-12-31", columns: ["ticker", "value"] },
+      source.binding,
+    );
+    const costModel = createLinearBpsCostModel({
+      reference: "test-bps-v1",
+      basisPoints: 10,
+    });
+    const descriptor = costModel.toJSON();
+    const pricingArtifact = await buildArtifact(
+      pricingAdapter,
+      developmentRead.readSet.manifestHash,
+      {
+        mode: "rolling",
+        folds: 1,
+        trainDays: 3,
+        oosDays: 3,
+        purgeDays: 1,
+        embargoDays: 1,
+        holdDays: 1,
+        executionLagDays: 1,
+      },
+      {
+        pricingMethodIdentity: LONG_SHORT_OOS_PRICING_METHOD,
+        signalColumn: "value",
+        priceColumn: "value",
+        marketColumns: ["volume"],
+        periodsPerYear: 252,
+        portfolio: {
+          kind: "long-short-quantile",
+          quantile: 0.5,
+          weightColumn: "volume",
+        },
+        capacity: {
+          portfolioNav: 100,
+          volumeColumn: "volume",
+          maximumParticipationRate: 0.1,
+        },
+        costModelIdentity: {
+          version: descriptor.version,
+          implementationHash: descriptor.implementationHash,
+          configurationHash: descriptor.configurationHash,
+        },
+      },
+    );
+    const contractResult = await run(
+      pricingArtifact,
+      pricingAdapter,
+      source,
+      runtimes().registry,
+      pricingSchedule,
+      { columns: ["ticker", "value", "volume"] },
+    );
+    const registration = createHypothesisRegistration({
+      hypothesisRef: pricingArtifact.hypothesisRef,
+      statement: "Execution-time masks prevent impossible fills.",
+      ideaAvailableAt: "2025-01-01T00:00:00.000Z",
+      registeredAt: "2025-12-01T00:00:00.000Z",
+      source: { kind: "brief", reference: "session-entry-pricing-mask" },
+    });
+    const candidateEvidence = {
+      artifact: pricingArtifact,
+      plan: contractResult.plan,
+      declaration: pricingAdapter,
+      contractRecord: contractResult.record,
+      registration,
+      verification: verificationStart,
+    };
+    const candidate = createPromotionCandidate({
+      artifact: pricingArtifact,
+      plan: contractResult.plan,
+      declaration: pricingAdapter,
+      contractRecord: contractResult.record,
+      registration,
+      verification: verificationStart,
+    });
+    const costModels = new CostModelRegistry();
+    costModels.register(costModel);
+    const pricing = await executeOosPricing({
+      candidate,
+      candidateEvidence,
+      contractResult,
+      costModels,
+    });
+
+    expect(pricing.payloads.trades.trades).toHaveLength(2);
+    expect(pricing.payloads.trades.marketData.every((row) => Number(row.fields.volume) > 0)).toBe(
+      true,
+    );
+    expect(pricing.payloads.trades.trades.map((trade) => trade.entityKey)).toEqual([
+      'string:"CCC"',
+      'string:"DDD"',
+    ]);
+    const gates = await executeStandardGateEvaluation({
+      pricing,
+      pricingVerification: { candidate, candidateEvidence },
+      trialEvidence: {
+        sessionLedgerHash: hash("7"),
+        sessionAttemptIds: ["verification-run-mask"],
+        memorySnapshotHash: hash("8"),
+        familyExperimentIds: [],
+      },
+      nullGenerators: new NullGeneratorRegistry(),
+    });
+    expect(gates.methods).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          gateId: "capacity-sensitivity",
+          outcome: "passed",
+          reasonCode: "capacity-stress-passed",
+        }),
+      ]),
+    );
+  });
+
+  it("binds pricing and a complete gate policy into a citable content-addressed Experiment", async () => {
+    const evidence = await stage4Evidence();
+
+    expect(evidence.pricing.status).toBe("priced");
+    expect(evidence.pricing.candidateHash).toBe(evidence.candidate.candidateHash);
+    expect(evidence.pricing.costModel.reference).toBe(artifact.costModel);
+    expect(evidence.pricing.metrics.some((metric) => metric.basis === "net")).toBe(true);
+    expect(
+      verifyPricingEvidenceRecord(JSON.parse(JSON.stringify(evidence.pricing)), {
+        ...evidence.pricingVerification,
+        expectedPricingHash: evidence.pricing.pricingHash,
+      }),
+    ).toEqual(evidence.pricing);
+    expect(verifyGatePolicyRecord(JSON.parse(JSON.stringify(evidence.policy)))).toEqual(
+      evidence.policy,
+    );
+    expect(
+      verifyGateEvaluationRecord(JSON.parse(JSON.stringify(evidence.evaluation)), {
+        ...evidence.gateVerification,
+        expectedGateEvaluationHash: evidence.evaluation.gateEvaluationHash,
+      }),
+    ).toEqual(evidence.evaluation);
+    expect(evidence.evaluation.verdict).toBe("accepted");
+    expect(evidence.experiment.claimStatus).toBe("verified");
+    expect(evidence.experiment.verdict).toBe("accepted");
+    expect(evidence.experiment.evaporation).toMatchObject({
+      exploration: { status: "unverified", value: 1.5 },
+      verifiedValue: 0.7,
+      delta: 0.8,
+    });
+    expect(
+      verifyExperimentRecord(JSON.parse(JSON.stringify(evidence.experiment)), {
+        gateEvaluation: evidence.evaluation,
+        gateEvaluationVerification: evidence.gateVerification,
+        expectedExperimentId: evidence.experiment.experimentId,
+      }),
+    ).toEqual(evidence.experiment);
+    expect(Object.isFrozen(evidence.experiment)).toBe(true);
+    expect(evidence.candidate.claimStatus).toBe("unverified");
+
+    const serialized = JSON.stringify(evidence.experiment);
+    expect(serialized).not.toContain(codeRoot);
+    expect(serialized).not.toContain(primary.binding.id);
+    expect(serialized).not.toContain("credential");
+  });
+
+  it("fails closed on incomplete policies, undercounted trials, and altered evidence", async () => {
+    const evidence = await stage4Evidence();
+
+    expect(() =>
+      createGatePolicyRecord({
+        policyId: "incomplete-policy",
+        policyVersion: "0.1.0",
+        gates: [
+          {
+            gateId: "trials-aware-significance",
+            gateVersion: "0.1.0",
+            category: "statistical-gates",
+            required: true,
+          },
+        ],
+      }),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_GATE_POLICY" }));
+    expect(() =>
+      createGateEvaluationRecord({
+        pricingEvidence: evidence.pricing,
+        pricingVerification: evidence.pricingVerification,
+        policy: evidence.policy,
+        effectiveTrials: artifact.trialsDeclared - 1,
+        results: gateInputs("passed", "passed"),
+      }),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_GATE_EVALUATION" }));
+    expect(() =>
+      createGateEvaluationRecord({
+        pricingEvidence: evidence.pricing,
+        pricingVerification: evidence.pricingVerification,
+        policy: evidence.policy,
+        effectiveTrials: artifact.trialsDeclared,
+        results: gateInputs("passed", "passed").slice(1),
+      }),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_GATE_EVALUATION" }));
+
+    const changedPricing = JSON.parse(JSON.stringify(evidence.pricing)) as {
+      series: { netReturnsHash: string };
+    };
+    changedPricing.series.netReturnsHash = hash("f");
+    expect(() =>
+      verifyPricingEvidenceRecord(changedPricing, evidence.pricingVerification),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_PRICING_EVIDENCE" }));
+
+    const changedGate = JSON.parse(JSON.stringify(evidence.evaluation)) as {
+      results: Array<{ outcome: string }>;
+    };
+    const firstGate = changedGate.results[0];
+    if (firstGate === undefined) throw new Error("test gate result missing");
+    firstGate.outcome = "failed";
+    expect(() => verifyGateEvaluationRecord(changedGate, evidence.gateVerification)).toThrowError(
+      expect.objectContaining({ code: "INVALID_GATE_EVALUATION" }),
+    );
+
+    const changedExperiment = JSON.parse(JSON.stringify(evidence.experiment)) as {
+      metrics: Array<{ value: number }>;
+    };
+    const firstMetric = changedExperiment.metrics[0];
+    if (firstMetric === undefined) throw new Error("test metric missing");
+    firstMetric.value += 1;
+    expect(() =>
+      verifyExperimentRecord(changedExperiment, {
+        gateEvaluation: evidence.evaluation,
+        gateEvaluationVerification: evidence.gateVerification,
+      }),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_EXPERIMENT" }));
+  });
+
+  it("derives degraded and rejected claim states from the immutable policy", async () => {
+    const evidence = await stage4Evidence();
+    const degradedEvaluation = createGateEvaluationRecord({
+      pricingEvidence: evidence.pricing,
+      pricingVerification: evidence.pricingVerification,
+      policy: evidence.policy,
+      effectiveTrials: artifact.trialsDeclared,
+      results: gateInputs("passed", "unavailable"),
+    });
+    const degradedVerification = {
+      ...evidence.gateVerification,
+      expectedGateEvaluationHash: degradedEvaluation.gateEvaluationHash,
+    };
+    const degraded = createExperimentRecord({
+      gateEvaluation: degradedEvaluation,
+      gateEvaluationVerification: degradedVerification,
+      issuedAt: "2026-08-12T13:00:00.000Z",
+      rationale: "Required gates passed, but optional null evidence was unavailable.",
+      lessons: ["Keep the result qualified until a registered null method is available."],
+    });
+    expect(degraded.verdict).toBe("degraded");
+    expect(degraded.claimStatus).toBe("degraded");
+
+    const optionalFailure = createGateEvaluationRecord({
+      pricingEvidence: evidence.pricing,
+      pricingVerification: evidence.pricingVerification,
+      policy: evidence.policy,
+      effectiveTrials: artifact.trialsDeclared,
+      results: gateInputs("passed", "failed"),
+    });
+    expect(optionalFailure.verdict).toBe("rejected");
+
+    const rejectedEvaluation = createGateEvaluationRecord({
+      pricingEvidence: evidence.pricing,
+      pricingVerification: evidence.pricingVerification,
+      policy: evidence.policy,
+      effectiveTrials: artifact.trialsDeclared,
+      results: gateInputs("failed", "passed"),
+    });
+    const rejected = createExperimentRecord({
+      gateEvaluation: rejectedEvaluation,
+      gateEvaluationVerification: {
+        ...evidence.gateVerification,
+        expectedGateEvaluationHash: rejectedEvaluation.gateEvaluationHash,
+      },
+      issuedAt: "2026-08-12T13:00:00.000Z",
+      rationale: "The required trials-aware significance gate failed.",
+      lessons: ["Do not promote the effect claim."],
+    });
+    expect(rejected.verdict).toBe("rejected");
+    expect(rejected.claimStatus).toBe("rejected");
+    expect(rejected.metrics).toEqual(evidence.pricing.metrics);
+  });
+});
+
+async function stage4Evidence() {
+  const result = await run();
+  const registration = createHypothesisRegistration({
+    hypothesisRef: artifact.hypothesisRef,
+    statement: "Tradable short-horizon winners outperform after costs.",
+    ideaAvailableAt: "2025-01-01T00:00:00.000Z",
+    registeredAt: "2025-12-01T00:00:00.000Z",
+    source: { kind: "brief", reference: "session-entry-stage4" },
+  });
+  const candidateEvidence = {
+    artifact,
+    plan: result.plan,
+    declaration: adapter,
+    contractRecord: result.record,
+    registration,
+    verification: verificationStart,
+  };
+  const candidate = createPromotionCandidate({
+    artifact,
+    plan: result.plan,
+    declaration: adapter,
+    contractRecord: result.record,
+    registration,
+    verification: verificationStart,
+  });
+  const pricingVerification = { candidate, candidateEvidence };
+  const pricing = createPricingEvidenceRecord({
+    candidate,
+    candidateEvidence,
+    pricingMethod: {
+      id: "close-to-close-v1",
+      version: "0.1.0",
+      implementationHash: hash("1"),
+    },
+    costModel: {
+      reference: artifact.costModel,
+      version: "0.1.0",
+      implementationHash: hash("2"),
+      configurationHash: hash("3"),
+    },
+    sample: { observations: 2, periodsPerYear: 252 },
+    series: {
+      tradesHash: hash("4"),
+      grossReturnsHash: hash("5"),
+      costsHash: hash("6"),
+      netReturnsHash: hash("7"),
+    },
+    metrics: [
+      {
+        name: "sharpe",
+        scope: "walk-forward-oos",
+        basis: "net",
+        unit: "ratio",
+        value: 0.7,
+      },
+      {
+        name: "sharpe",
+        scope: "walk-forward-oos",
+        basis: "gross",
+        unit: "ratio",
+        value: 1.1,
+      },
+    ],
+  });
+  const policy = createGatePolicyRecord({
+    policyId: "stage4-standard-v0",
+    policyVersion: "0.1.0",
+    gates: [
+      {
+        gateId: "trials-aware-significance",
+        gateVersion: "0.1.0",
+        category: "statistical-gates",
+        required: true,
+      },
+      {
+        gateId: "cost-sensitivity",
+        gateVersion: "0.1.0",
+        category: "costs",
+        required: true,
+      },
+      {
+        gateId: "null-falsification",
+        gateVersion: "0.1.0",
+        category: "statistical-gates",
+        required: false,
+      },
+    ],
+  });
+  const evaluation = createGateEvaluationRecord({
+    pricingEvidence: pricing,
+    pricingVerification,
+    policy,
+    effectiveTrials: artifact.trialsDeclared,
+    results: gateInputs("passed", "passed"),
+  });
+  const gateVerification = {
+    pricingEvidence: pricing,
+    pricingVerification,
+    policy,
+  };
+  const experiment = createExperimentRecord({
+    gateEvaluation: evaluation,
+    gateEvaluationVerification: gateVerification,
+    issuedAt: "2026-08-12T13:00:00.000Z",
+    rationale: "Pricing and every required gate completed against one immutable candidate.",
+    lessons: ["Keep the candidate, pricing, policy, and gate identities together."],
+    explorationMetric: {
+      name: "sharpe",
+      basis: "net",
+      unit: "ratio",
+      value: 1.5,
+    },
+  });
+  return {
+    candidate,
+    candidateEvidence,
+    pricing,
+    pricingVerification,
+    policy,
+    evaluation,
+    gateVerification,
+    experiment,
+  };
+}
+
+function gateInputs(
+  requiredStatistical: "failed" | "passed",
+  optionalNull: "failed" | "passed" | "unavailable",
+) {
+  return [
+    {
+      gateId: "cost-sensitivity",
+      outcome: "passed" as const,
+      implementationHash: hash("8"),
+      evidenceHash: hash("9"),
+      reasonCode: "within-cost-envelope",
+    },
+    {
+      gateId: "trials-aware-significance",
+      outcome: requiredStatistical,
+      implementationHash: hash("a"),
+      evidenceHash: hash("b"),
+      reasonCode: requiredStatistical === "passed" ? "threshold-passed" : "threshold-not-met",
+    },
+    {
+      gateId: "null-falsification",
+      outcome: optionalNull,
+      implementationHash: hash("c"),
+      evidenceHash: hash("d"),
+      reasonCode: optionalNull === "passed" ? "null-rejected" : "method-unavailable",
+    },
+  ];
+}
+
+function hash(character: string): string {
+  return `sha256:${character.repeat(64)}`;
+}

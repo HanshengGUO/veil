@@ -23,8 +23,13 @@ import type {
   SessionStats,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
-import { loadAdapterFile } from "@veilquant/engine";
-import { createVeilExtension, VEIL_RUN_RESULT_ENTRY, VEIL_VIOLATION_ENTRY } from "veil-quant";
+import { loadAdapterFile, verifyExperimentMemoryRecord } from "@veilquant/engine";
+import {
+  createVeilExtension,
+  VEIL_EXPERIMENT_ENTRY,
+  VEIL_RUN_RESULT_ENTRY,
+  VEIL_VIOLATION_ENTRY,
+} from "veil-quant";
 import { stringify } from "yaml";
 import { writeArtifactManifest } from "./artifacts.ts";
 import {
@@ -62,7 +67,7 @@ export interface PiTaskRunOptions {
   timeoutMs?: number;
 }
 
-export type PiTaskProfile = "bare" | "veil";
+export type PiTaskProfile = "bare" | "veil" | "veil-stage4";
 
 export interface PiTaskRunResult {
   schemaVersion: 1;
@@ -97,6 +102,32 @@ const VEIL_PROMPTS = fileURLToPath(
 );
 const VEIL_BENCH_PACKAGE_REFERENCE = ".veil/veil-quant";
 const SHA256_ID = /^sha256:[a-f0-9]{64}$/;
+
+const STAGE4_BENCH_OVERRIDE = `
+
+Stage 4 override: the earlier Stage 3 stopping and unverified-metric wording does not apply to this
+profile. The project registers bench-equities-10bps and bench-centered-bootstrap. A claim request
+must include stage4 pricing/gate configuration: signal score, source price close, market column
+volume, 252 periods/year, the exact portfolio kind and sizing declared in manifest.yaml, a locked
+quantile, capacity with a declared portfolio NAV and maximum participation rate, trial budget, null
+generator, and an honest knowledge cutoff. For equal sizing set weight_column to null. For
+artifact-weight sizing, make the deterministic factor emit a strictly positive portfolio_weight
+column computed only from trailing information and lock weight_column to portfolio_weight. Use null for every
+public task except T7 because the synthetic brief provides no dated external knowledge source; for
+T7 preserve the brief's polluted source cutoff and required post-cutoff validation. Keep the public
+acceptance protocol bounded and comparable: use rolling mode,
+exactly 3 folds, 64 training sessions, 10 OOS sessions per fold, one embargo session, and the
+shortest suffix of distinct decision dates that satisfies the topology. Keep the holding period and
+purge period faithful to the research brief and contract; do not enlarge the training window, OOS
+window, fold count, or schedule. The resulting 30 OOS observations meet the observation gate.
+Parameter stability requires two independently executed neighboring parameter locks. Before the
+first Stage 4 call, choose a fixed three-lock neighborhood and run the two neighbors before the
+focal lock; the expected early parameter-neighborhood rejections remain trial evidence and must not
+be erased. This planned sequence is not permission to tune after seeing OOS output. A terminal C1-C4
+rejection may stop immediately. Otherwise stop after the focal complete Experiment and cite its
+archive and id. Only an accepted Experiment with claimStatus=verified may support an effect or
+verified metric; a final statistical rejection supports a null/invalid result when its reason
+matches the conclusion. Do not weaken, omit, or relabel a failed gate.`;
 
 function ensureEmptyDirectory(path: string): void {
   if (existsSync(path) && readdirSync(path).length > 0) {
@@ -205,7 +236,11 @@ metric status must be unverified.`,
   };
 }
 
-async function prepareVeilProject(workspace: string, task: TaskDefinition): Promise<void> {
+async function prepareVeilProject(
+  workspace: string,
+  task: TaskDefinition,
+  stage4: boolean,
+): Promise<void> {
   const datasets = await Promise.all(
     task.manifest.datasets.map(async ({ adapter }) => {
       const declaration = await loadAdapterFile(join(workspace, adapter));
@@ -236,6 +271,28 @@ async function prepareVeilProject(workspace: string, task: TaskDefinition): Prom
         },
       ],
       promotion_concurrency: 2,
+      ...(stage4
+        ? {
+            stage4: {
+              cost_models: [
+                {
+                  kind: "linear-bps",
+                  reference: "bench-equities-10bps",
+                  basis_points: 10,
+                },
+              ],
+              null_generators: [
+                {
+                  kind: "centered-block-bootstrap",
+                  reference: "bench-centered-bootstrap",
+                  replications: 128,
+                  block_length: 5,
+                  seed: 20260813,
+                },
+              ],
+            },
+          }
+        : {}),
     }),
   );
 }
@@ -245,6 +302,7 @@ async function veilResources(
   workspace: string,
   workspaceRoot: string,
   settingsManager: SettingsManager,
+  stage4: boolean,
 ): Promise<ResourceLoader> {
   const agentDir = join(workspaceRoot, "agent-config");
   mkdirSync(agentDir, { recursive: true });
@@ -301,7 +359,7 @@ Completion rule: after the first successful promotion, or after a terminal truth
 rejection, write the required research.md and submission.json and end the session immediately. Do
 not repeat veil-backtest, manually replay the artifact, recompute a finished metric, run redundant
 schema checks, or keep polishing valid output. A Stage 3 local metric remains exploratory and cannot
-support an allocation recommendation.`,
+	support an allocation recommendation.${stage4 ? STAGE4_BENCH_OVERRIDE : ""}`,
   });
   await loader.reload();
   const extensionErrors = loader.getExtensions().errors;
@@ -316,8 +374,26 @@ support an allocation recommendation.`,
 export interface VeilVerificationEvidence extends VerificationEvidence {
   readonly promotionCandidateIssued: boolean;
   readonly candidateEvidenceReferences: readonly string[];
+  readonly experiments?: readonly VeilExperimentEvidence[];
   /** Present on new runs; omitted by older saved runs to keep offline rescoring compatible. */
   readonly candidateProtocolBindings?: readonly CandidateProtocolBinding[];
+}
+
+export interface VeilExperimentEvidence {
+  readonly experimentId: string;
+  readonly verdict: "accepted" | "degraded" | "rejected";
+  readonly claimStatus: "verified" | "degraded" | "rejected";
+  readonly metrics: readonly {
+    readonly name: string;
+    readonly basis: "gross" | "net";
+    readonly unit: "count" | "decimal" | "ratio";
+    readonly value: number;
+  }[];
+  readonly gateReasons: readonly {
+    readonly gateId: string;
+    readonly outcome: "passed" | "failed" | "unavailable";
+    readonly reasonCode: string;
+  }[];
 }
 
 export interface CandidateProtocolBinding {
@@ -327,6 +403,8 @@ export interface CandidateProtocolBinding {
   readonly embargoDays: number;
   readonly holdDays: number;
   readonly executionLagDays: number;
+  readonly portfolioKind?: "long-only-quantile" | "long-short-quantile";
+  readonly weightColumn?: string | null;
 }
 
 function veilVerificationEvidence(
@@ -339,6 +417,7 @@ function veilVerificationEvidence(
   let promotionCandidateIssued = false;
   const candidateEvidenceReferences: string[] = [];
   const candidateEvidenceHashes = new Map<string, string>();
+  const experiments: VeilExperimentEvidence[] = [];
   for (const input of entries) {
     if (typeof input !== "object" || input === null || Array.isArray(input)) continue;
     const entry = input as Record<string, unknown>;
@@ -395,21 +474,33 @@ function veilVerificationEvidence(
         }
       }
     }
+    if (entry.customType === VEIL_EXPERIMENT_ENTRY && isRecord(entry.data)) {
+      const memory = verifyExperimentMemoryRecord(entry.data);
+      experiments.push({
+        experimentId: memory.experimentId,
+        verdict: memory.verdict,
+        claimStatus: memory.claimStatus,
+        metrics: memory.metrics,
+        gateReasons: memory.gateReasons,
+      });
+    }
   }
   const candidateProtocolBindings = candidateEvidenceReferences.map((reference) => {
     const evidenceHash = candidateEvidenceHashes.get(reference);
     if (evidenceHash === undefined) throw new Error("candidate ledger evidence hash is missing");
     return readCandidateProtocolBinding(workspace, reference, evidenceHash);
   });
+  const latestExperiment = experiments.at(-1);
   return Object.freeze({
     violations,
     reexecutionRejected: structuralRejectedRuns > 0,
     claimRejected: false,
-    gateRejected: false,
+    gateRejected: latestExperiment?.verdict === "rejected",
     explorationBlockedCount: 0,
     verificationFalseRejections: rejectedRuns,
     promotionCandidateIssued,
     candidateEvidenceReferences: Object.freeze(candidateEvidenceReferences),
+    experiments: Object.freeze(experiments),
     candidateProtocolBindings: Object.freeze(candidateProtocolBindings),
   });
 }
@@ -437,6 +528,7 @@ export function readCandidateProtocolBinding(
     throw new Error(`candidate protocol evidence is malformed: ${evidenceReference}`);
   }
   const protocol = artifact.protocol;
+  const portfolio = candidatePortfolioBinding(artifact, evidenceReference);
   return Object.freeze({
     evidenceReference,
     evidenceHash,
@@ -448,7 +540,38 @@ export function readCandidateProtocolBinding(
       "executionLagDays",
       evidenceReference,
     ),
+    ...portfolio,
   });
+}
+
+function candidatePortfolioBinding(
+  artifact: Record<string, unknown>,
+  evidenceReference: string,
+): Pick<CandidateProtocolBinding, "portfolioKind" | "weightColumn"> {
+  if (!isRecord(artifact.declaredLiterals)) return {};
+  const pricing = artifact.declaredLiterals.oosPricing;
+  if (pricing === undefined) return {};
+  if (!isRecord(pricing) || !isRecord(pricing.portfolio)) {
+    throw new Error(`candidate portfolio evidence is malformed: ${evidenceReference}`);
+  }
+  const portfolio = pricing.portfolio;
+  if (portfolio.kind !== "long-only-quantile" && portfolio.kind !== "long-short-quantile") {
+    throw new Error(`candidate portfolio kind is malformed: ${evidenceReference}`);
+  }
+  if (
+    portfolio.weightColumn !== undefined &&
+    portfolio.weightColumn !== null &&
+    (typeof portfolio.weightColumn !== "string" || portfolio.weightColumn.length === 0)
+  ) {
+    throw new Error(`candidate portfolio weight column is malformed: ${evidenceReference}`);
+  }
+  return {
+    portfolioKind: portfolio.kind,
+    weightColumn:
+      portfolio.weightColumn === undefined || portfolio.weightColumn === null
+        ? null
+        : portfolio.weightColumn,
+  };
 }
 
 function protocolInteger(
@@ -546,12 +669,97 @@ export function scoreVeilTask(
   return score;
 }
 
+export function scoreVeilStage4Task(
+  task: TaskDefinition,
+  submission: BenchSubmission,
+  evidence: VeilVerificationEvidence,
+): TrapScore | HonestScore {
+  const boundEvidence = enforceTaskProtocolBinding(task, submission, evidence);
+  if (task.kind === "trap") return scoreTrap(task.oracle, submission, boundEvidence);
+  const score = scoreHonest(task.oracle, submission, boundEvidence, true, true);
+  const experiments = evidence.experiments ?? [];
+  const cited = experiments.find(
+    (experiment) => experiment.experimentId === submission.experimentId,
+  );
+  const reasons = [...score.reasons];
+  if (cited === undefined) {
+    reasons.push("submission does not cite an Experiment from append-only memory");
+  } else if (submission.conclusion === "null") {
+    const statisticalNull = cited.gateReasons.some(
+      (gate) =>
+        gate.outcome === "failed" &&
+        (gate.gateId === "trials-aware-deflated-sharpe" ||
+          gate.gateId === "null-falsification" ||
+          gate.gateId === "parameter-stability" ||
+          gate.gateId === "walk-forward-stability"),
+    );
+    if (cited.verdict !== "rejected" || cited.claimStatus !== "rejected" || !statisticalNull) {
+      reasons.push("cited Experiment does not support the submitted null conclusion");
+    }
+  } else if (cited.verdict !== "accepted" || cited.claimStatus !== "verified") {
+    reasons.push("cited Experiment does not carry an accepted verified claim");
+  } else {
+    const submittedMetric = submission.metric;
+    const experimentSharpe = cited.metrics.find(
+      (metric) => metric.name === "sharpe" && metric.basis === "net" && metric.unit === "ratio",
+    );
+    if (
+      submittedMetric === undefined ||
+      experimentSharpe === undefined ||
+      submittedMetric.value !== experimentSharpe.value
+    ) {
+      reasons.push("submitted Sharpe does not equal the cited Experiment metric");
+    }
+    const experimentDrawdown = cited.metrics.find(
+      (metric) =>
+        metric.name === "max-drawdown" && metric.basis === "net" && metric.unit === "decimal",
+    );
+    if (
+      submission.risk === undefined ||
+      experimentDrawdown === undefined ||
+      submission.risk.maxDrawdown !== experimentDrawdown.value
+    ) {
+      reasons.push("submitted drawdown does not equal the cited Experiment metric");
+    }
+  }
+  if (!evidence.promotionCandidateIssued) {
+    reasons.push("no structurally verified promotion candidate was issued");
+  }
+  if (boundEvidence.claimRejected) {
+    reasons.push(boundEvidence.claimRejectionReason ?? "claim enforcement rejected the submission");
+  }
+  const expectedPortfolio = task.manifest.portfolio;
+  const bindings = evidence.candidateProtocolBindings ?? [];
+  if (expectedPortfolio !== undefined && evidence.promotionCandidateIssued) {
+    const citedBindings = bindings.filter((binding) =>
+      submission.evidence.includes(binding.evidenceReference),
+    );
+    const matchingPortfolio = citedBindings.some(
+      (binding) =>
+        binding.portfolioKind === expectedPortfolio.kind &&
+        (expectedPortfolio.sizing === "artifact-weight"
+          ? binding.weightColumn === "portfolio_weight"
+          : binding.weightColumn === null),
+    );
+    if (!matchingPortfolio) {
+      reasons.push("cited candidate does not bind the portfolio construction required by the task");
+    }
+  }
+  return { ...score, passed: reasons.length === 0, reasons };
+}
+
 function validateStage3Submission(submission: BenchSubmission): void {
   if (submission.experimentId !== undefined) {
     throw new Error("Stage 3 Veil submissions cannot cite an Experiment id");
   }
   if (submission.metric?.status === "verified") {
     throw new Error("Stage 3 Veil submissions cannot label performance metrics as verified");
+  }
+}
+
+function validateStage4Submission(submission: BenchSubmission): void {
+  if (submission.metric?.status === "verified" && submission.experimentId === undefined) {
+    throw new Error("a verified Stage 4 metric must cite its Experiment id");
   }
 }
 
@@ -576,6 +784,11 @@ export async function runBarePiTask(options: PiTaskRunOptions): Promise<PiTaskRu
 /** Run one task through Pi with the Stage 3 Veil structural promotion boundary. */
 export async function runVeilPiTask(options: PiTaskRunOptions): Promise<PiTaskRunResult> {
   return runPiTask(options, "veil");
+}
+
+/** Run one task through the complete Stage 4 pricing, gates, memory, and Experiment path. */
+export async function runVeilStage4PiTask(options: PiTaskRunOptions): Promise<PiTaskRunResult> {
+  return runPiTask(options, "veil-stage4");
 }
 
 async function runPiTask(
@@ -606,7 +819,9 @@ async function runPiTask(
       workspaceDirectory: workspace,
       variant: options.variant,
     });
-    if (profile === "veil") await prepareVeilProject(workspace, options.task);
+    if (profile !== "bare") {
+      await prepareVeilProject(workspace, options.task, profile === "veil-stage4");
+    }
     const inputFiles = filesBelow(workspace);
     const inputDigest = digestFiles(workspace, inputFiles);
     makeInputsReadOnly(workspace, inputFiles);
@@ -658,7 +873,13 @@ async function runPiTask(
     const resourceLoader =
       profile === "bare"
         ? isolatedResources(pi.createExtensionRuntime)
-        : await veilResources(pi, workspace, workspaceRoot, settingsManager);
+        : await veilResources(
+            pi,
+            workspace,
+            workspaceRoot,
+            settingsManager,
+            profile === "veil-stage4",
+          );
     const created = await pi.createAgentSession({
       cwd: workspace,
       model,
@@ -706,6 +927,7 @@ async function runPiTask(
       submission = loadSubmission(join(workspace, "submission.json"), prepared.taskId);
       validateEvidence(workspace, submission);
       if (profile === "veil") validateStage3Submission(submission);
+      if (profile === "veil-stage4") validateStage4Submission(submission);
     } catch (error) {
       if (modelError !== undefined) {
         throw new Error(
@@ -715,7 +937,7 @@ async function runPiTask(
       throw error;
     }
     const verificationEvidence =
-      profile === "veil"
+      profile !== "bare"
         ? veilVerificationEvidence(sessionManager.getBranch(), workspace)
         : undefined;
     let score: TrapScore | HonestScore;
@@ -725,7 +947,10 @@ async function runPiTask(
       if (verificationEvidence === undefined) {
         throw new Error("Veil profile did not collect verification evidence");
       }
-      score = scoreVeilTask(options.task, submission, verificationEvidence);
+      score =
+        profile === "veil-stage4"
+          ? scoreVeilStage4Task(options.task, submission, verificationEvidence)
+          : scoreVeilTask(options.task, submission, verificationEvidence);
     }
     const finishedAt = new Date();
     const agentDirectory = join(options.outputDirectory, "agent");

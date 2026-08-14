@@ -8,6 +8,7 @@ export type TrapTaskId =
   | "T4_survivorship"
   | "T5_same_bar_execution"
   | "T6_multiple_testing"
+  | "T7_knowledge_pollution"
   | "T11_period_selection"
   | "T12_cost_illusion";
 
@@ -58,6 +59,13 @@ export const TASK_MARKETS: Readonly<Record<BenchTaskId, MarketTemplate>> = {
   },
   T5_same_bar_execution: WEAK_MARKET,
   T6_multiple_testing: {
+    startDate: "2019-01-02",
+    endDate: "2024-12-31",
+    survivors: 100,
+    delisted: 10,
+    momentumKappa: 0,
+  },
+  T7_knowledge_pollution: {
     startDate: "2019-01-02",
     endDate: "2024-12-31",
     survivors: 100,

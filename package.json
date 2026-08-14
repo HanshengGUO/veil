@@ -13,7 +13,7 @@
     "node": ">=20.10.0"
   },
   "scripts": {
-    "check": "npm run lockfile:verify && npm run lint && npm run typecheck && npm run test && npm run engine:runtime:smoke && npm run csv-pit:verify && npm run parquet-pit:verify && npm run multi-file-pit:verify && npm run read-set:verify && npm run snapshot-recovery:verify && npm run veil-data:verify && npm run artifact:verify && npm run artifact-execution:verify && npm run walk-forward:verify && npm run walk-forward-contract:verify && npm run bench:stage3:verify && npm run release:verify && npm run bench:smoke && npm run golden-path:verify",
+    "check": "npm run lockfile:verify && npm run lint && npm run typecheck && npm run test && npm run engine:runtime:smoke && npm run csv-pit:verify && npm run parquet-pit:verify && npm run multi-file-pit:verify && npm run read-set:verify && npm run snapshot-recovery:verify && npm run veil-data:verify && npm run artifact:verify && npm run artifact-execution:verify && npm run walk-forward:verify && npm run walk-forward-contract:verify && npm run bench:stage3:verify && npm run stage4-plugin:verify && npm run stage4-claim:verify && npm run bench:stage4:verify && npm run release:verify && npm run bench:smoke && npm run golden-path:verify",
     "lockfile:verify": "node scripts/verify-lockfile-sources.mjs",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
@@ -26,6 +26,7 @@
     "bench:tasks:verify": "tsx bench/runner/src/verify-cli.ts --suite full",
     "bench:stage2:verify": "tsx bench/runner/src/stage2-acceptance-cli.ts",
     "bench:stage3:verify": "tsx bench/runner/src/stage3-acceptance-cli.ts",
+    "bench:stage4:verify": "tsx bench/runner/src/stage4-acceptance-cli.ts",
     "bench:smoke": "tsx bench/runner/src/verify-cli.ts --suite smoke",
     "bench:models": "tsx bench/runner/src/models-cli.ts",
     "bench:run": "tsx bench/runner/src/run-cli.ts",
@@ -45,6 +46,9 @@
     "walk-forward:verify": "tsx examples/walk-forward-windows/run.ts",
     "walk-forward-contract:verify": "tsx examples/walk-forward-contract/run.ts",
     "agent-loop:verify": "tsx examples/agent-loop/run.ts",
+    "stage4-claim:verify": "tsx examples/stage4-claim/run.ts",
+    "stage4-agent:verify": "tsx examples/stage4-agent-loop/run.ts",
+    "stage4-plugin:verify": "tsx examples/stage4-plugin/run.ts",
     "golden-path": "tsx examples/golden-path/run.ts",
     "golden-path:evidence:verify": "tsx examples/golden-path/run.ts --evidence-only",
     "golden-path:verify": "tsx examples/golden-path/run.ts --verify"

@@ -25,8 +25,8 @@ if (!Number.isFinite(timeoutMinutes) || timeoutMinutes <= 0) {
   throw new Error("--timeout-minutes must be positive");
 }
 const profile = (option("--profile") ?? "bare") as PiTaskProfile;
-if (profile !== "bare" && profile !== "veil") {
-  throw new Error("--profile must be bare or veil");
+if (profile !== "bare" && profile !== "veil" && profile !== "veil-stage4") {
+  throw new Error("--profile must be bare, veil, or veil-stage4");
 }
 
 const summary = await runBaseline({

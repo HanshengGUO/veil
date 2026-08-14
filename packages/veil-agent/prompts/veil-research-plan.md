@@ -9,8 +9,8 @@ ${ARGUMENTS:-State the research question before continuing.}
 First inspect `veil-memory status` and `.veil/project.yaml`. State the hypothesis, universe,
 decision time, holding horizon, and falsification condition. Use `veil-data` with explicit `as_of`
 for guarded reads. Explore freely, but label every exploratory number unverified. Before promotion,
-package one deterministic artifact and prepare a strict `veil.promotion-request.v0`. Only
-`veil-backtest` may produce a promotion candidate. A Stage 3 success is not an Experiment and still
-requires pricing, costs, and statistical gates. Before promotion, compare the local metric's
-execution timing and return convention with the request exactly. Never use a candidate for a
-different protocol to support the metric, and do not recommend allocation from unverified numbers.
+package one deterministic artifact and prepare a strict `veil.promotion-request.v0`. Retrieve prior
+family Experiments, count every explored candidate, and plan at least two truthful neighboring
+parameter locks before the focal run. Only `veil-backtest` may issue an Experiment. Before promotion,
+compare the local metric's execution timing and return convention with the request exactly. Cite a
+positive metric only from an accepted verified Experiment, and reproduce its id before reporting it.

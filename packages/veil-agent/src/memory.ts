@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import type { TrialCountEvidence } from "@veilquant/engine";
 import {
   VEIL_AGENT_TOOL_RESULT_FORMAT,
   VEIL_HYPOTHESIS_ENTRY,
@@ -12,7 +14,15 @@ import {
   reconstructSessionLedger,
 } from "./ledger.ts";
 
-export type VeilMemoryAction = "status" | "register_hypothesis" | "list_runs" | "get_run";
+export type VeilMemoryAction =
+  | "status"
+  | "register_hypothesis"
+  | "list_runs"
+  | "get_run"
+  | "list_experiments"
+  | "get_experiment"
+  | "family"
+  | "trial_evidence";
 
 export interface VeilMemoryToolInput {
   readonly action: VeilMemoryAction;
@@ -20,6 +30,7 @@ export interface VeilMemoryToolInput {
   readonly statement?: string;
   readonly idea_available_at?: string;
   readonly run_id?: string;
+  readonly experiment_id?: string;
 }
 
 export interface VeilMemoryToolResult {
@@ -28,6 +39,36 @@ export interface VeilMemoryToolResult {
   readonly ok: true;
   readonly action: VeilMemoryAction;
   readonly result: unknown;
+}
+
+/** Compact, bounded retrieval injected before the next turn for the active hypothesis family. */
+export function experimentMemoryContext(entries: readonly unknown[]): string | null {
+  const ledger = reconstructSessionLedger(entries);
+  const hypothesisRef = ledger.hypotheses.at(-1)?.data.hypothesisRef;
+  if (hypothesisRef === undefined) return null;
+  const experiments = ledger.experiments
+    .filter((entry) => entry.data.hypothesisRef === hypothesisRef)
+    .slice(-5);
+  if (experiments.length === 0) return null;
+  const lines = experiments.map((entry) => {
+    const failed = entry.data.gateReasons
+      .filter((gate) => gate.outcome !== "passed")
+      .map((gate) => `${gate.gateId}:${gate.reasonCode}`)
+      .join(",");
+    return `- ${entry.data.experimentId} ${entry.data.verdict}; gates=${failed || "all-passed"}; lessons=${entry.data.lessons.join(" | ") || "none"}`;
+  });
+  return (
+    `Veil Experiment memory for hypothesis ${hypothesisRef} (latest ${experiments.length}):\n` +
+    `${lines.join("\n")}\n` +
+    "Count these family Experiments in trial_evidence and address prior gate reasons before another claim."
+  );
+}
+
+export function trialCountEvidence(
+  entries: readonly unknown[],
+  hypothesisRef: string,
+): TrialCountEvidence {
+  return trialEvidence(reconstructSessionLedger(entries), hypothesisRef);
 }
 
 export function executeVeilMemoryTool(
@@ -54,6 +95,29 @@ export function executeVeilMemoryTool(
         input.action,
         getRun(reconstructSessionLedger(context.getBranch()), required(input.run_id, "run_id")),
       );
+    case "list_experiments":
+      return result(input.action, experimentList(reconstructSessionLedger(context.getBranch())));
+    case "get_experiment":
+      return result(
+        input.action,
+        getExperiment(
+          reconstructSessionLedger(context.getBranch()),
+          required(input.experiment_id, "experiment_id"),
+        ),
+      );
+    case "family":
+      return result(
+        input.action,
+        researchFamily(reconstructSessionLedger(context.getBranch()), input.hypothesis_ref),
+      );
+    case "trial_evidence":
+      return result(
+        input.action,
+        trialEvidence(
+          reconstructSessionLedger(context.getBranch()),
+          required(input.hypothesis_ref, "hypothesis_ref"),
+        ),
+      );
   }
 }
 
@@ -66,6 +130,10 @@ function validateMemoryInput(input: VeilMemoryToolInput): void {
     register_hypothesis: new Set(["action", "hypothesis_ref", "statement", "idea_available_at"]),
     list_runs: new Set(["action"]),
     get_run: new Set(["action", "run_id"]),
+    list_experiments: new Set(["action"]),
+    get_experiment: new Set(["action", "experiment_id"]),
+    family: new Set(["action", "hypothesis_ref"]),
+    trial_evidence: new Set(["action", "hypothesis_ref"]),
   };
   const allowed = allowedByAction[input.action];
   if (allowed === undefined) throw invalidMemory("veil-memory action is unsupported");
@@ -169,9 +237,129 @@ function sessionStatus(ledger: ReturnType<typeof reconstructSessionLedger>): unk
       violations: ledger.violations.length,
       advisories: ledger.advisories.length,
     }),
-    experimentCount: 0,
-    note: "Stage 3 stores research runs and unverified candidates; it does not issue Experiments.",
+    experimentCount: ledger.experiments.length,
+    note:
+      ledger.experiments.length === 0
+        ? "No Stage 4 Experiment has been recorded on this branch."
+        : "Stage 4 Experiments are append-only; retrieve them before planning another family trial.",
   });
+}
+
+function experimentList(ledger: ReturnType<typeof reconstructSessionLedger>): unknown {
+  return Object.freeze(
+    ledger.experiments.slice(-20).map((entry) =>
+      Object.freeze({
+        experimentId: entry.data.experimentId,
+        timestamp: entry.timestamp,
+        hypothesisRef: entry.data.hypothesisRef,
+        verdict: entry.data.verdict,
+        claimStatus: entry.data.claimStatus,
+        gateReasons: entry.data.gateReasons,
+      }),
+    ),
+  );
+}
+
+function getExperiment(
+  ledger: ReturnType<typeof reconstructSessionLedger>,
+  experimentId: string,
+): unknown {
+  const entry = ledger.experiments.find(
+    (candidate) => candidate.data.experimentId === experimentId,
+  );
+  if (entry === undefined) {
+    throw new VeilAgentError(
+      "EXPERIMENT_NOT_FOUND",
+      "Experiment is absent from the active session branch",
+      "Use veil-memory list_experiments or inspect the appropriate Pi fork.",
+    );
+  }
+  return Object.freeze({ timestamp: entry.timestamp, ...entry.data });
+}
+
+function researchFamily(
+  ledger: ReturnType<typeof reconstructSessionLedger>,
+  hypothesisRefInput?: string,
+): unknown {
+  const hypothesisRef = hypothesisRefInput?.trim() || ledger.hypotheses.at(-1)?.data.hypothesisRef;
+  if (hypothesisRef === undefined) {
+    throw invalidMemory("family requires a hypothesis_ref when the branch has no hypothesis");
+  }
+  const starts = ledger.verificationStarts.filter(
+    (entry) => entry.data.hypothesisRef === hypothesisRef,
+  );
+  const runIds = new Set(starts.map((entry) => entry.data.runId));
+  return Object.freeze({
+    scope: "active-session-fork-lineage",
+    hypothesisRef,
+    hypotheses: Object.freeze(
+      ledger.hypotheses
+        .filter((entry) => entry.data.hypothesisRef === hypothesisRef)
+        .map((entry) => ({
+          entryId: entry.id,
+          timestamp: entry.timestamp,
+          statement: entry.data.statement,
+        })),
+    ),
+    runs: Object.freeze(
+      ledger.runResults
+        .filter((entry) => runIds.has(entry.data.runId))
+        .map((entry) => ({
+          runId: entry.data.runId,
+          timestamp: entry.timestamp,
+          outcome: entry.data.outcome,
+        })),
+    ),
+    experiments: Object.freeze(
+      ledger.experiments
+        .filter((entry) => entry.data.hypothesisRef === hypothesisRef)
+        .map((entry) => ({
+          experimentId: entry.data.experimentId,
+          timestamp: entry.timestamp,
+          verdict: entry.data.verdict,
+          lessons: entry.data.lessons,
+        })),
+    ),
+  });
+}
+
+function trialEvidence(
+  ledger: ReturnType<typeof reconstructSessionLedger>,
+  hypothesisRef: string,
+): TrialCountEvidence {
+  const starts = ledger.verificationStarts
+    .filter((entry) => entry.data.hypothesisRef === hypothesisRef)
+    .sort((left, right) => compareText(left.data.runId, right.data.runId));
+  const experiments = ledger.experiments
+    .filter((entry) => entry.data.hypothesisRef === hypothesisRef)
+    .sort((left, right) => compareText(left.data.experimentId, right.data.experimentId));
+  return Object.freeze({
+    sessionLedgerHash: contentHash(
+      "veil.session-trial-ledger.v0",
+      starts.map((entry) => ({
+        entryId: entry.id,
+        timestamp: entry.timestamp,
+        runId: entry.data.runId,
+      })),
+    ),
+    sessionAttemptIds: Object.freeze(starts.map((entry) => entry.data.runId)),
+    memorySnapshotHash: contentHash(
+      "veil.experiment-family-snapshot.v0",
+      experiments.map((entry) => ({
+        experimentId: entry.data.experimentId,
+        memoryHash: entry.data.memoryHash,
+      })),
+    ),
+    familyExperimentIds: Object.freeze(experiments.map((entry) => entry.data.experimentId)),
+  });
+}
+
+function contentHash(domain: string, input: unknown): string {
+  return `sha256:${createHash("sha256").update(domain).update("\0").update(JSON.stringify(input)).digest("hex")}`;
+}
+
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function runList(ledger: ReturnType<typeof reconstructSessionLedger>): unknown {

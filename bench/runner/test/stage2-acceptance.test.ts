@@ -8,8 +8,8 @@ describe("Stage 2 bench acceptance", () => {
       tasksDirectory: resolve("bench/tasks"),
     });
 
-    expect(report.publicTaskCount).toBe(14);
-    expect(report.catalogAdapterCount).toBe(16);
+    expect(report.publicTaskCount).toBe(15);
+    expect(report.catalogAdapterCount).toBe(17);
     expect(
       report.trapProbes.map((probe) => [probe.taskId, probe.outcome, probe.invariant]),
     ).toEqual([

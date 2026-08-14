@@ -16,6 +16,10 @@ label:
   horizon_days: 5           # the runner derives the minimum purge gap from this
   definition: "forward 5-day return, close to close"
 
+# Honest Stage 4 tasks can lock the intended construction. Use artifact-weight only when the brief
+# requires a strictly positive sizing column derived from trailing information.
+# portfolio: { kind: long-short-quantile, sizing: equal }
+
 datasets:
   # Every dataset the task exposes, with the adapter that declares it. An adapter that declares
   # available_time: null is a legitimate task ingredient, not an oversight.

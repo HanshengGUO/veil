@@ -1,0 +1,123 @@
+# experiment.yaml — normalized veil.experiment.v0 record
+#
+# This is the only Stage 4 record that can carry citable metrics. It is issued only after immutable
+# pricing and every gate in a cost-plus-statistical policy are complete. A rejected Experiment is
+# still durable negative evidence; only claimStatus: verified supports an unqualified positive claim.
+
+format: veil.experiment.v0
+status: complete
+candidateHash: <sha256>
+artifactHash: <sha256>
+planHash: <sha256>
+contractHash: <sha256>
+parameterLockHash: <sha256>
+pricingHash: <sha256>
+gateEvaluationHash: <sha256>
+policyHash: <sha256>
+pricing:
+  method:
+    id: close-to-close-v1
+    version: 0.1.0
+    implementationHash: <sha256>
+  costModel:
+    reference: equities-bps-v1
+    version: 0.1.0
+    implementationHash: <sha256>
+    configurationHash: <sha256>
+  sample:
+    observations: 504
+    periodsPerYear: 252
+  series:
+    tradesHash: <sha256>
+    grossReturnsHash: <sha256>
+    costsHash: <sha256>
+    netReturnsHash: <sha256>
+effectiveTrials: 7
+hypothesis:
+  hypothesisRef: momentum-v1
+  registrationHash: <sha256>
+  registrationStatus: preregistered
+dataset:
+  dataset: prices
+  version: "1"
+  declarationHash: <sha256>
+  degradations: [VINTAGE_UNAVAILABLE, PROVENANCE_UNCERTIFIED]
+metrics:
+  - name: sharpe
+    scope: walk-forward-oos
+    basis: net
+    unit: ratio
+    value: 0.71
+gates:
+  - gateId: capacity-sensitivity
+    gateVersion: 0.1.0
+    category: costs
+    required: false
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: capacity-stress-passed
+  - gateId: cost-sensitivity
+    gateVersion: 0.1.0
+    category: costs
+    required: true
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: cost-stress-passed
+  - gateId: hypothesis-contamination
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: false
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: base-oos-postdates-knowledge-cutoff
+  - gateId: null-falsification
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: false
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: null-falsification-passed
+  - gateId: parameter-stability
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: true
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: parameter-stability-passed
+  - gateId: trial-budget
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: true
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: trial-budget-available
+  - gateId: trials-aware-deflated-sharpe
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: true
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: deflated-sharpe-passed
+  - gateId: walk-forward-stability
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: true
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: walk-forward-stability-passed
+verdict: accepted                 # accepted | degraded | rejected
+claimStatus: verified             # verified | degraded | rejected; derived from verdict
+evaporation: null                 # or an unverified exploration metric minus its verified match
+issuedAt: 2026-08-13T12:00:00.000Z
+rationale: Pricing and every required gate completed against one immutable candidate.
+lessons:
+  - Keep candidate, pricing, policy, and gate identities together.
+experimentId: <sha256>            # content hash of every preceding field

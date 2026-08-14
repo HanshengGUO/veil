@@ -2,23 +2,18 @@
 
 This is the 30-minute path from a private CSV to a structurally verified promotion candidate inside
 [Pi](https://github.com/badlogic/pi-mono). You keep the normal coding-agent workflow: explore with
-files and scripts, then ask Veil to re-execute one packaged factor before it can become a claim.
+files and scripts, then ask Veil to re-execute, price, and gate one packaged factor before it can
+become a claim.
 
-One boundary matters from the start: v0.1 produces a **contract-verified, unverified promotion
-candidate**. It does not produce a return, Sharpe ratio, gate verdict, or citable Experiment. Pricing,
-costs, statistical gates, and Experiment issuance arrive in Stage 4.
+One boundary matters from the start: a request without a `stage4` block produces a
+**contract-verified, unverified promotion candidate**. A complete Stage 4 request additionally prices
+the retained OOS execution, audits trials, runs every gate, and archives a citable Experiment.
 
 ## 1. Install
 
 Veil's libraries require Node 20.10 or newer. Use a Pi release compatible with your Node version;
-the repository-pinned Pi 0.84.1 model runner requires Node 22.19 or newer. After the v0.1 npm
-release:
-
-```bash
-pi install npm:veil-quant@0.1.0
-```
-
-From a source checkout before the release tag, install dependencies and point Pi at the package:
+the repository-pinned Pi 0.84.1 model runner requires Node 22.19 or newer. Until a registry release is
+actually published, install from a source checkout and point Pi at the package:
 
 ```bash
 git clone https://github.com/HanshengGUO/veil.git
@@ -49,6 +44,7 @@ guarantees:
   tradability_mask: tradable
 payload_schema:
   close: float64
+  volume: float64
 source:
   type: csv
   locator: prices.csv
@@ -90,6 +86,17 @@ runtimes:
     constraints:
       - ">=20.10.0,<30"
 promotion_concurrency: 2
+stage4:
+  cost_models:
+    - kind: linear-bps
+      reference: equities-10bps
+      basis_points: 10
+  null_generators:
+    - kind: centered-block-bootstrap
+      reference: daily-centered-blocks
+      replications: 1024
+      block_length: 5
+      seed: 20260813
 ```
 
 Set the environment variable before starting Pi. Its value may point outside the project and is
@@ -102,7 +109,7 @@ pi
 
 For data beside the adapter, set `root: .` and `root_env: null`. For a narrower data directory beneath
 the project, use `root: relative/directory`. Exactly one of `root` and `root_env` must be selected.
-The v0.1 default profile supports CSV and Parquet through the file backend; custom backends use the
+The default profile supports CSV and Parquet through the file backend; custom backends use the
 exported project-loader interface rather than adding SQL or DSNs to the tool schema.
 
 Generated `.veil/views/`, `.veil/runs/`, and `.veil/research-log.md` may reveal research identities
@@ -145,7 +152,7 @@ Ask the agent to call `veil-data` with an explicit cutoff:
   "dataset": "my-prices",
   "mode": "panel",
   "as_of": "2026-08-12T00:00:00.000Z",
-  "columns": ["ticker", "date", "close"],
+  "columns": ["ticker", "date", "close", "volume"],
   "output": "arrow"
 }
 ```
@@ -206,10 +213,12 @@ to `.veil/promotion.yaml`, then replace every placeholder. Important fields are:
 - `params_locked`, `declared_literals`, and `trials_declared`: the exact searched artifact identity;
 - `decision_schedule`: unique ordered sessions, not a guessed calendar;
 - `protocol`: rolling/expanding folds with purge, embargo, holding, and execution-lag semantics;
-- `cost_model`: a portable logical id such as `stage4-not-issued`, never a filesystem path or locator
-  URI. It is a future method reference, not evidence that costs were already applied.
+- `cost_model`: a portable logical provider id, never a filesystem path or locator URI;
+- `stage4`: the locked pricing columns, long-only or long/short portfolio kind, equal or positive
+  trailing-information sizing, capacity assumptions, null method, trial budget, and model knowledge
+  cutoff. Omit the entire block only when you intentionally want a structural candidate.
 
-A Stage 3 request names exactly one registered dataset. Every `development_read_sets` id must come
+A promotion request names exactly one registered dataset. Every `development_read_sets` id must come
 from a `veil-data` call for that same dataset. Other datasets may inform exploration, but they are
 not listed in this request; until a composite source is registered before the session, the resulting
 candidate covers only the selected structural slice and does not verify a multi-source metric. Never
@@ -221,21 +230,21 @@ source evidence.
 
 The schedule length is exact:
 `train_days + purge_days + embargo_days + folds * oos_days`. Every `*days` value counts schedule
-entries, not calendar days. Stage 3 promotion issues structural evidence rather than a performance
-metric, so start with a bounded honest topology; the packaged 2-fold, 20-session-OOS template makes
-42 artifact executions.
+entries, not calendar days. The standard Stage 4 stability and significance gates require at least
+three OOS folds and 30 OOS observations. Start with the smallest topology that satisfies the actual
+research protocol; each train cutoff and OOS decision executes the artifact once.
 
 Apply a structured remedy only when it preserves the registered inputs and the research brief. If a
 brief-specified protocol or an existing dataset guarantee intrinsically conflicts with C1-C4, keep
 the rejection and report the result as invalid or exploratory instead of silently changing the
-research question. A successful promotion—or a terminal truthful rejection—ends this Stage 3 loop;
+research question. A successful promotion—or a terminal truthful rejection—ends this loop;
 record the evidence and limitations once, then stop rather than manually replaying the artifact.
 
 Before promotion, compare the local calculation with the request field by field: universe, signal
 time, entry time, holding period, rebalance cadence, return convention, masks, and costs. A candidate
 verifies only that exact request; it does not validate a local metric computed under different
-timing. Because Stage 3 issues no performance metric, an exploratory Sharpe or return cannot support
-an allocation recommendation even when the structural candidate succeeds.
+timing. An exploratory Sharpe or return cannot support an allocation recommendation even when the
+structural candidate succeeds. Only an accepted Experiment can verify its own exact metric.
 
 Then run:
 
@@ -251,7 +260,7 @@ verifies C1-C4, and applies C6 chronology. A missing or late matching registrati
 `exploratory`; a damaged registration or structural contract violation is rejected with a stable
 code and remedy.
 
-A success looks like this shape:
+A structural-only success looks like this shape:
 
 ```json
 {
@@ -265,14 +274,18 @@ A success looks like this shape:
 }
 ```
 
-The full portable C1-C6 evidence is written once under `.veil/runs/`; the Pi entry records its
-relative reference and content hash. `.veil/research-log.md` receives a corresponding append-only
-entry. Neither file contains the data root or an Experiment id.
+With a complete Stage 4 block, success instead has `status: "complete"`, an `experimentId`,
+`verdict: "accepted"`, `claimStatus: "verified"`, net OOS metrics, and one reason record per gate.
+Degraded and rejected complete Experiments are archived too; never hide them or call them verified.
 
-Use `/veil-reproduce <researchRunId>` to rerun the same promotion request and compare artifact, plan,
-and contract hashes. Each candidate is independently replay-verified, but its hash normally changes
-because it binds a new verification-start entry and timestamp. This is structural reproduction only.
-Metric-level reproduction arrives with Stage 4 Experiments.
+The full portable C1-C6 evidence is written once under `.veil/runs/`. Complete Stage 4 archives live
+under `.veil/experiments/`, while exact guarded inputs live under `.veil/snapshots/`. The Pi branch and
+`.veil/research-log.md` receive compact append-only Experiment memory without the private data root.
+
+Use `/veil-reproduce <experimentId>` for metric-level reproduction. Veil materializes the archived
+artifact, replays the exact snapshots, reprices it, reruns every gate, and requires the Experiment,
+metric, pricing, and gate identities to match. Missing retained data fails with
+`READ_SET_UNAVAILABLE`; current data is never substituted.
 
 ## Cold reference and 30-minute trial
 
@@ -280,6 +293,7 @@ From a source checkout, run the model-free reference loop:
 
 ```bash
 npm run agent-loop:verify
+npm run stage4-agent:verify
 ```
 
 It uses an isolated temporary project and emits path-free JSON. For the external usability trial,
@@ -291,8 +305,8 @@ use a person who did not implement this feature and a real private CSV:
 - [ ] Reach one successful `veil-data` read and explain every reported degradation.
 - [ ] Register a specific hypothesis and package one deterministic factor.
 - [ ] Run `/veil-promote`. Reach a candidate only with genuinely point-in-time, survivorship-safe
-      data; otherwise preserve and explain the expected C1 rejection. Use the cold fixture to inspect
-      the successful shape without relabelling private data.
+      data; otherwise preserve and explain the expected C1 rejection. With Stage 4 configured, explain
+      every gate outcome and reproduce any resulting Experiment by id.
 - [ ] Confirm tool output, session entries, run evidence, and the log contain no private root.
 - [ ] Finish within 30 minutes, or preserve the exact blocked step and public error.
 
@@ -304,7 +318,7 @@ OS / architecture:
 Node / npm / Pi:
 Approximate CSV shape:
 Minutes to first guarded read:
-Minutes to promotion candidate:
+Minutes to promotion candidate / Experiment:
 Unexpected public code and remedy:
 First unclear documentation step:
 Did any output expose a root or secret? yes/no

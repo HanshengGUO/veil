@@ -41,6 +41,8 @@ Run the four-task, model-free CI subset with `npm run bench:smoke`, or validate 
 and declaration mechanisms for T1-T5 and confirms that all seven honest tasks pass preflight.
 `npm run bench:stage3:verify` adds the packaged Pi surface, critical-data promotion policy, and cold
 brief-to-candidate loop without pretending to run a model, hidden set, or external user. The
+`npm run bench:stage4:verify` path adds real pricing/gates, T6/T7 G2 attribution, Experiment memory,
+archived snapshots, and exact reproduction while keeping model/hidden/external claims explicit. The
 complete runner and scoring guide is
 [`docs/bench.md`](../docs/bench.md).
 

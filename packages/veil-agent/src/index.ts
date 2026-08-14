@@ -10,6 +10,8 @@ export {
   VEIL_BRIEF_ENTRY,
   VEIL_DATA_READ_ENTRY,
   VEIL_DATA_TOOL,
+  VEIL_EXPERIMENT_ARCHIVE_FORMAT,
+  VEIL_EXPERIMENT_ENTRY,
   VEIL_HYPOTHESIS_ENTRY,
   VEIL_MEMORY_TOOL,
   VEIL_PROJECT_FORMAT,
@@ -31,9 +33,17 @@ export {
   VeilAgentError,
 } from "./errors.ts";
 export {
-  createVeilExtension,
-  type VeilExtensionOptions,
-} from "./extension.ts";
+  type ExperimentArchive,
+  loadProjectExperiment,
+  type PersistProjectExperimentInput,
+  type PersistProjectExperimentResult,
+  type ProjectReadSetTombstone,
+  persistProjectExperiment,
+  recordProjectReadSetRetentionDeletion,
+  reproduceProjectExperiment,
+  VEIL_READ_SET_TOMBSTONE_FORMAT,
+} from "./experiments.ts";
+export { createVeilExtension, type VeilExtensionOptions } from "./extension.ts";
 export {
   type AdvisoryCode,
   type AdvisoryEntryData,
@@ -45,6 +55,7 @@ export {
   createVerificationStartEntry,
   type DataReadEntryData,
   type DurableLedgerEntry,
+  experimentEntryData,
   findVerificationStart,
   type HypothesisEntryData,
   hypothesisRegistrationFromEntry,
@@ -58,6 +69,8 @@ export {
 } from "./ledger.ts";
 export {
   executeVeilMemoryTool,
+  experimentMemoryContext,
+  trialCountEvidence,
   type VeilMemoryAction,
   type VeilMemoryToolInput,
   type VeilMemoryToolResult,

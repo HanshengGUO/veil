@@ -1,0 +1,79 @@
+# gate-evaluation.yaml — normalized veil.gate-evaluation.v0 record
+#
+# Results cover every entry in the cited policy exactly once and in canonical policy order.
+# Any failed result rejects the claim. An unavailable required gate also rejects it; only an
+# unavailable optional gate degrades it. All passes produce an accepted verdict.
+
+format: veil.gate-evaluation.v0
+status: complete
+candidateHash: <sha256>
+pricingHash: <sha256>
+policyHash: <sha256>
+effectiveTrials: 7                # max(declared, active-session attempts + family memory)
+results:
+  - gateId: capacity-sensitivity
+    gateVersion: 0.1.0
+    category: costs
+    required: false
+    outcome: passed               # passed | failed | unavailable
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: capacity-stress-passed
+  - gateId: cost-sensitivity
+    gateVersion: 0.1.0
+    category: costs
+    required: true
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: cost-stress-passed
+  - gateId: hypothesis-contamination
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: false
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: base-oos-postdates-knowledge-cutoff
+  - gateId: null-falsification
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: false
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: null-falsification-passed
+  - gateId: parameter-stability
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: true
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: parameter-stability-passed
+  - gateId: trial-budget
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: true
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: trial-budget-available
+  - gateId: trials-aware-deflated-sharpe
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: true
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: deflated-sharpe-passed
+  - gateId: walk-forward-stability
+    gateVersion: 0.1.0
+    category: statistical-gates
+    required: true
+    outcome: passed
+    implementationHash: <sha256>
+    evidenceHash: <sha256>
+    reasonCode: walk-forward-stability-passed
+verdict: accepted                 # accepted | degraded | rejected; derived, never self-declared
+gateEvaluationHash: <sha256>

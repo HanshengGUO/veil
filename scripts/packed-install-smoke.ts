@@ -79,7 +79,7 @@ const extension = loaded.extensions[0];
 const tools = [...extension.tools.keys()].sort();
 const commands = [...extension.commands.keys()].sort();
 if (tools.join(",") !== "veil-backtest,veil-data,veil-memory") throw new Error("registered tools mismatch");
-if (commands.join(",") !== "veil-brief,veil-hypothesis,veil-promote,veil-reproduce") {
+if (commands.join(",") !== "veil-brief,veil-family,veil-hypothesis,veil-promote,veil-reproduce") {
   throw new Error("registered commands mismatch");
 }
 if (!loader.getSkills().skills.some((skill) => skill.name === "veil-research-loop")) {

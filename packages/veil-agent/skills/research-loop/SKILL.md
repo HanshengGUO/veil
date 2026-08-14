@@ -1,93 +1,77 @@
 ---
 name: veil-research-loop
-description: Run an honest Veil single-agent research loop from a brief through guarded exploration and structural promotion. Use when researching a factor, preparing a promotion request, interpreting a Veil rejection, or writing a Stage 3 research log.
+description: Run an honest Veil single-agent research loop from a brief through guarded exploration, structural promotion, Stage 4 gates, Experiment memory, and reproduction. Use when researching a factor, preparing a promotion request, interpreting a Veil rejection, or writing a research log.
 license: MIT
 compatibility: Requires Pi with the veil-quant package and a project-local .veil/project.yaml.
 ---
 
 # Veil research loop
 
-Keep one distinction visible throughout the work:
+Keep these boundaries visible:
 
 - exploration is free and its numbers are unverified;
-- promotion reruns a packaged artifact through the engine;
-- a Stage 3 promotion success is still an unverified candidate, not an Experiment.
+- a request without `stage4` ends at an unverified structural candidate;
+- only a complete accepted Experiment carries a verified metric;
+- degraded and rejected Experiments remain evidence and count toward later family trials.
 
 ## Workflow
 
-1. Call `veil-memory` with `action: "status"`. Reuse the current hypothesis reference, or use
-   `register_hypothesis` before verification when the brief needs a more specific falsifiable claim.
-2. Inspect `.veil/project.yaml` without copying private roots or environment values into notes.
-3. Call `veil-data` with a registered dataset and an explicit `as_of`. Use `mode: "point"` for a
-   guarded point query. Use `mode: "panel"` only as an exploration-grade panel.
-4. If code needs a durable guarded Arrow input, explicitly request `output: "arrow"`. Reads with
-   `output: "summary"` do not write a file.
-5. Explore normally with Pi's coding tools. Before reporting a metric, check that the implementation
-   matches the brief's historical universe, label horizon, rebalance cadence, holding period,
-   execution lag, masks, and return convention exactly. Label every exploratory return, Sharpe
-   ratio, fitted threshold, and ranking as unverified. Write down this protocol comparison before
-   promotion: a later candidate covers only its exact request and cannot retroactively validate a
-   differently timed local metric. Advisory messages are heuristics, not failures.
-6. Package the final factor as a small deterministic module. For `veil-node`, copy
-   `assets/factor.mjs` as a starting point and export `compute(table, context)`. The runtime, not the
-   factor, decodes Arrow IPC and supplies an Apache Arrow `Table`; do not open the `.arrow` file,
-   write an IPC decoder, import `apache-arrow`, or install a dependency inside the factor. Use
-   `table.numRows` and `table.getChild(name)`, then return `{ rowIndices, columns }` unless an
-   advanced runtime-specific output is genuinely needed. `context.paramsLocked` and
-   `context.declaredLiterals` are the immutable parameter maps. Keep `rowIndices` strictly
-   increasing in source-table order; a `null` derived value is safer than regrouping or reordering
-   source rows when a row has no signal.
-7. Copy `assets/promotion-request.yaml` into the project, then fill every field. A Stage 3 promotion
-   request names exactly one registered dataset. Include only development read-set ids returned by
-   `veil-data` for that same `dataset` on the active branch; reads from other datasets may inform
-   exploration but do not belong in this request. If the research metric uses multiple sources,
-   state that the single-dataset candidate covers only its structural slice and does not verify the
-   multi-source metric. Do not edit adapter guarantees or the project profile to force promotion.
-   If the selected dataset lacks a truthful declared tradability mask, choose another already
-   registered dataset for the structural slice or keep the result exploratory; never add a mask
-   guarantee without source evidence. The decision schedule contains every ordered UTC session,
-   not one timestamp per fold. Its exact length is
-   `train_days + purge_days + embargo_days + folds * oos_days`; every `*days` field counts schedule
-   entries rather than calendar days. Stage 3 promotion verifies structure but issues no performance
-   metric, so begin with a bounded honest topology such as the asset's 2 folds and 20-session OOS
-   blocks (42 artifact executions). Expand only when the structural question requires it.
-   `cost_model` is a portable logical id, never a filesystem path or locator URI. Use
-   `stage4-not-issued` until a later stage supplies a registered method reference; Stage 3 records
-   that boundary but does not apply costs.
-8. Call `veil-backtest` with the project-relative request file. Apply an exact structured remedy only
-   when it truthfully preserves the registered inputs and the brief. If the brief's own protocol or
-   a registered dataset guarantee conflicts with C1-C4, preserve that rejection and report the
-   research as invalid or exploratory; do not silently substitute a safer research question, edit a
-   guarantee, or loop over alternate requests merely to obtain a candidate. In particular, preserve
-   an explicitly requested zero-lag execution rule so the engine can reject it as C1.
-9. A successful `veil-backtest` completes the Stage 3 promotion loop. Record its run id, content
-   hashes, immutable evidence reference, and required limitations, then stop. Likewise, after a
-   terminal structural rejection has been recorded and no truthful in-scope remedy exists, report it
-   and stop. Do not repeat the promotion, manually replay the artifact, or keep polishing already
-   valid output. If successful, say “contract-verified, unverified promotion candidate.” Never say
-   “verified alpha,” “passed all gates,” or “Experiment.” An unverified local metric may be recorded
-   as an exploratory observation, but it cannot support an allocation recommendation.
+1. Call `veil-memory` with `action: "status"`, then `family` for the active hypothesis. Reuse the
+   reference only for the same falsifiable question; use `register_hypothesis` for a material change.
+2. Inspect `.veil/project.yaml` without copying roots or environment values into notes. Confirm the
+   requested cost model and null generator are registered before preparing a Stage 4 request.
+3. Use `veil-data` with an explicit `as_of`. Point mode is guarded; panel mode remains
+   exploration-grade. Request Arrow only when a durable local view is needed.
+4. Explore normally. Label every return, Sharpe, threshold, and ranking unverified. Compare universe,
+   label horizon, rebalance cadence, holding period, execution lag, masks, and return convention with
+   the brief before promotion. A candidate cannot retroactively verify a differently timed metric.
+5. Package a deterministic factor. For `veil-node`, start from `assets/factor.mjs` and export
+   `compute(table, context)`. Return source-ordered `rowIndices` and derived columns. Do not load data,
+   paths, credentials, environment variables, or future blocks inside the factor.
+6. Copy `assets/promotion-request.yaml` and fill every field. Use only development read-set ids from
+   the request's registered dataset. The decision schedule contains every ordered UTC session and has
+   exactly `train_days + purge_days + embargo_days + folds * oos_days` entries.
+7. Declare every explored candidate in `trials_declared`. Before the focal lock, plan and execute at
+   least two truthful neighboring parameter locks under the same hypothesis; the required stability
+   gate will reject incomplete neighborhoods. Do not manufacture neighbors after seeing the focal
+   OOS outcome or loop until one passes.
+8. In `stage4`, lock signal/price/market columns, annualization, portfolio kind, sizing, quantile,
+   capacity assumptions, null method, trial budget, and model knowledge cutoff. Match a long-only
+   brief with `long-only-quantile`. For equal sizing set `weight_column: null`; for trailing sizing,
+   emit a strictly positive artifact-output weight derived only from trailing information and name
+   it in `weight_column`. Use `null` for a method only when evidence is genuinely unavailable and
+   accept the resulting degraded claim. `cost_model` is a logical registered id, never a path or
+   locator.
+9. Call `veil-backtest`. Apply a structured remedy only when it preserves the brief. If the requested
+   protocol conflicts with C1-C4, preserve the rejection; never substitute a safer question or edit
+   adapter guarantees merely to obtain a result.
+10. Retrieve the resulting Experiment. `accepted / verified` may support only its exact net metric.
+    Qualify `degraded`; treat `rejected` as negative evidence. Address the specific gate reason in the
+    next preregistered trial, and remember that every complete attempt remains in the trial audit.
+11. Run `/veil-reproduce <experimentId>` before citing an accepted result. Reproduction must match
+    archived code, read-set, pricing, gate, and metric identities; it never falls back to current data.
 
 ## Promotion checklist
 
-- `as_of` was explicit for every Veil data read.
-- The hypothesis reference exists on the active session branch.
-- Data-derived constants are declared separately from locked parameters.
-- `trials_declared` counts explored candidates honestly.
-- The protocol uses positive purge, embargo, holding, and execution-lag semantics where required.
-- The decision schedule is chronological and has exactly
-  `train_days + purge_days + embargo_days + folds * oos_days` entries.
-- The adapter is genuinely point-in-time and survivorship-safe; do not edit guarantees to pass C1.
-- Every development read-set belongs to the request's single dataset.
-- `cost_model` is a logical id without a slash or locator URI; it does not claim costs were applied.
-- The factor does not load data, paths, credentials, or environment variables itself.
-- The research log names pricing, costs, and statistical gates as still required.
-- Any local metric uses the same execution timing and evaluation protocol as the promoted request;
-  otherwise keep it separate from the candidate and make no effect or allocation claim from it.
+- Every Veil read used an explicit decision time.
+- The hypothesis and idea-availability source predate verification.
+- Data-derived constants and locked parameters are complete.
+- `trials_declared` includes explored candidates, including unpromoted ones.
+- Purge, embargo, holding, execution lag, and schedule length match the research protocol.
+- Point-in-time, survivorship, and tradability guarantees are truthful.
+- Every development read-set belongs to the single request dataset.
+- Pricing columns exist; the portfolio kind matches the brief, an optional sizing column is positive
+  and trailing-only, and market columns cover cost and capacity requirements.
+- At least two distinct compatible parameter-lock Experiments exist for the required neighborhood.
+- Cost, null, trial-budget, capacity, and knowledge-cutoff choices were locked before OOS results.
+- The factor contains no data access or machine-local capabilities.
+- The final statement cites an accepted Experiment id or clearly says why the result is degraded,
+  rejected, or still unverified.
 
-## Structural reproduction
+## Memory and reproduction
 
-Stage 3 can rerun the same request and compare artifact, plan, and contract hashes. Verify both
-candidates independently; their hashes normally differ because each binds its own verification-start
-entry. Stage 3 cannot reproduce or cite a performance metric because pricing and statistical gates
-arrive in Stage 4. Preserve that limitation in every reproduction note.
+Use `veil-memory list_experiments`, `get_experiment`, `family`, and `trial_evidence` instead of relying
+on chat recollection. The extension injects only a bounded latest-family summary into agent context;
+the append-only Pi entries and project archives remain the source of truth. If reproduction reports
+`READ_SET_UNAVAILABLE`, preserve the retention failure and describe the result as attested rather
+than reproducible.

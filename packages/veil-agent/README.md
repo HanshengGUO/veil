@@ -3,11 +3,7 @@
 The Pi package that adds Veil's single-agent research loop without replacing Pi or blocking normal
 coding work.
 
-```bash
-pi install npm:veil-quant@0.1.0
-```
-
-The npm command becomes available when the v0.1 tag is published. During source development, run
+No registry release is documented as available until it is published. During source development, run
 `npm install` at the repository root and use `pi install ./packages/veil-agent`.
 
 Veil libraries support Node 20.10 through 29. The repository-pinned Pi 0.84.1 model runner requires
@@ -18,11 +14,11 @@ Node 22.19 or newer.
 | Surface | Behavior |
 | --- | --- |
 | `veil-data` | Requires `as_of`, reads registered CSV/Parquet through the mandatory temporal guard, and optionally exports guarded Arrow |
-| `veil-backtest` | Packages code and performs fresh per-decision WFA C1-C4 execution plus C6 chronology |
-| `veil-memory` | Registers hypotheses and inspects the active branch's append-only research-run ledger |
+| `veil-backtest` | Runs structural promotion and, when requested, pricing, the eight gates, and Experiment archival |
+| `veil-memory` | Registers hypotheses and retrieves runs, Experiments, families, and trial evidence |
 | `tool_call` | Fails safe for malformed calls entering Veil's data or promotion surfaces |
 | `tool_result` | Appends non-blocking full-sample, future-function, and survivorship advisories |
-| Commands | `/veil-brief`, `/veil-hypothesis`, `/veil-promote`, `/veil-reproduce` |
+| Commands | `/veil-brief`, `/veil-hypothesis`, `/veil-promote`, `/veil-reproduce`, `/veil-family` |
 | Resources | `veil-research-loop` skill, factor/promotion templates, and research-plan/log prompts |
 
 The extension auto-captures the first brief and hypothesis with Pi's durable session entry id and
@@ -45,6 +41,17 @@ runtimes:
     constraints:
       - ">=20.10.0,<30"
 promotion_concurrency: 2
+stage4:
+  cost_models:
+    - kind: linear-bps
+      reference: equities-10bps
+      basis_points: 10
+  null_generators:
+    - kind: centered-block-bootstrap
+      reference: daily-centered-blocks
+      replications: 1024
+      block_length: 5
+      seed: 20260813
 ```
 
 Physical roots remain local capabilities. Tool results, Pi entries, run evidence, and Markdown logs
@@ -54,9 +61,14 @@ Custom backends can supply a `VeilProjectLoader` without changing tool contracts
 
 ## Claim boundary
 
-v0.1 writes a `researchRunId`, complete structural evidence, and an explicitly `unverified`
-promotion candidate. It does **not** issue an Experiment, verified performance metric, pricing
-result, cost audit, gate verdict, or evaporation statistic. Those arrive with Stage 4.
+A request without `stage4` writes a `researchRunId`, complete structural evidence, and an explicitly
+`unverified` promotion candidate. A complete request additionally replays retained evidence, prices
+the locked method and cost model, audits trials, runs the standard policy, archives exact code and
+read sets, and appends accepted, degraded, or rejected Experiment memory.
+
+The Stage 4 request locks a long-only or long/short quantile portfolio. Equal sizing uses no weight
+column; trailing-information sizing names a strictly positive artifact-output column, so portfolio
+construction cannot be substituted after OOS results are visible.
 
 Known `PIT_UNSAFE`, unverified point-in-time, assumed-availability, and survivorship-biased or
 unknown declarations remain available for exploration but are rejected at promotion with C1. Do not
@@ -66,12 +78,13 @@ This is intentional. `@veilquant/engine` already freezes the trustworthy chain:
 
 ```text
 guarded read → artifact → per-decision contract → registration chronology
-             → unverified candidate → future pricing/gates → Experiment
+             → unverified candidate → pricing/gates → Experiment → exact reproduction
 ```
 
 See the repository
 [quickstart](https://github.com/HanshengGUO/veil/blob/master/docs/quickstart.md) and cold
-[single-agent example](https://github.com/HanshengGUO/veil/tree/master/examples/agent-loop).
+[single-agent example](https://github.com/HanshengGUO/veil/tree/master/examples/agent-loop), and
+[Stage 4 agent example](https://github.com/HanshengGUO/veil/tree/master/examples/stage4-agent-loop).
 
 ## Extension boundary
 

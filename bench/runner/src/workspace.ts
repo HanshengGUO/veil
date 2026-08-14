@@ -127,6 +127,7 @@ export function prepareTaskWorkspace(options: PrepareTaskWorkspaceOptions): Prep
           },
         }
       : {}),
+    ...(manifest.portfolio ? { portfolio: manifest.portfolio } : {}),
     datasets: manifest.datasets,
     tools: manifest.tools,
     data_generation: { seed, variant },

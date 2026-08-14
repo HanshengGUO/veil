@@ -26,8 +26,39 @@ factor:
 paramsLocked:                     # C3: immutable out of sample
   lookbackDays: 20
 
-declaredLiterals:                 # only data-derived numeric literals; also immutable under C3
+declaredLiterals:                 # immutable method/configuration declarations under C3
   selectedThreshold: 1.5
+  oosPricing:                     # required only when this artifact proceeds to Stage 4 pricing
+    pricingMethodIdentity:
+      id: veil.quantile-close-to-close
+      version: 0.1.0
+      implementationHash: <sha256>
+    signalColumn: score
+    priceColumn: close
+    marketColumns: [volume]
+    periodsPerYear: 252
+    portfolio:
+      kind: long-short-quantile
+      quantile: 0.2
+      weightColumn: null             # or a positive artifact-output sizing column
+    capacity:                     # null is allowed but makes the optional capacity gate unavailable
+      portfolioNav: 1000000
+      volumeColumn: volume
+      maximumParticipationRate: 0.05
+    costModelIdentity:            # descriptor of the provider selected before verification
+      version: 0.1.0
+      implementationHash: <sha256>
+      configurationHash: <sha256>
+  gatePolicy:                    # complete immutable Stage 4 gate configuration
+    policyId: veil.standard-stage4
+    policyVersion: 0.1.0
+    trialBudget: 12
+    nullGeneratorIdentity:       # null is allowed but makes null falsification unavailable
+      reference: equities-block-bootstrap-v1
+      version: 0.1.0
+      implementationHash: <sha256>
+      configurationHash: <sha256>
+    knowledgeCutoff: 2025-12-31T00:00:00.000Z # null explicitly records an unavailable cutoff
 
 trialsDeclared: 3                 # total explored candidates including this artifact
 

@@ -22,6 +22,10 @@ export interface TaskManifest {
     rebalanceEveryDays: number;
     executionLagDays?: number;
   };
+  portfolio?: {
+    kind: "long-only-quantile" | "long-short-quantile";
+    sizing: "equal" | "artifact-weight";
+  };
   datasets: Array<{ adapter: string }>;
   tools: {
     allowed: string[];
@@ -83,6 +87,7 @@ export function parseTaskManifest(input: unknown): TaskManifest {
   const generation = record(root.data_generation, "data_generation");
   const evaluation =
     root.evaluation === undefined ? undefined : record(root.evaluation, "evaluation");
+  const portfolio = root.portfolio === undefined ? undefined : record(root.portfolio, "portfolio");
   exactKeys(
     root,
     [
@@ -91,6 +96,7 @@ export function parseTaskManifest(input: unknown): TaskManifest {
       "period",
       "label",
       "evaluation",
+      "portfolio",
       "datasets",
       "tools",
       "data_generation",
@@ -109,6 +115,7 @@ export function parseTaskManifest(input: unknown): TaskManifest {
       "evaluation",
     );
   }
+  if (portfolio !== undefined) exactKeys(portfolio, ["kind", "sizing"], "portfolio");
 
   if (!Array.isArray(root.datasets) || root.datasets.length === 0) {
     throw new Error("datasets must be a non-empty sequence");
@@ -172,6 +179,15 @@ export function parseTaskManifest(input: unknown): TaskManifest {
       ),
       ...(executionLagDays === undefined ? {} : { executionLagDays }),
     };
+  }
+  if (portfolio !== undefined) {
+    if (portfolio.kind !== "long-only-quantile" && portfolio.kind !== "long-short-quantile") {
+      throw new Error("portfolio.kind must be long-only-quantile or long-short-quantile");
+    }
+    if (portfolio.sizing !== "equal" && portfolio.sizing !== "artifact-weight") {
+      throw new Error("portfolio.sizing must be equal or artifact-weight");
+    }
+    normalized.portfolio = { kind: portfolio.kind, sizing: portfolio.sizing };
   }
   return normalized;
 }

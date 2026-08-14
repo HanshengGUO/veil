@@ -1,0 +1,18 @@
+# trial-audit.yaml — normalized veil.trial-audit.v0 record
+#
+# Effective trials are derived from source identities, never accepted as a caller-supplied total.
+
+format: veil.trial-audit.v0
+candidateHash: <sha256>
+hypothesisRef: momentum-v1
+declaredTrials: 3
+session:
+  ledgerHash: <sha256>
+  attemptIds: [run:attempt-1, run:attempt-2]
+memory:
+  snapshotHash: <sha256>
+  familyExperimentIds: [<sha256>, <sha256>]
+observedTrials: 4                # len(attemptIds) + len(familyExperimentIds)
+effectiveTrials: 4               # max(declaredTrials, observedTrials)
+trialBudget: 12
+auditHash: <sha256>

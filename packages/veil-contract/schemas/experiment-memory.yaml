@@ -1,0 +1,26 @@
+# experiment-memory.yaml — normalized veil.experiment-memory.v0 record
+#
+# Compact append-only memory used for family retrieval and observable trial accounting. The full
+# immutable execution/archive remains the source of truth for reproduction.
+
+format: veil.experiment-memory.v0
+experimentId: <sha256>
+hypothesisRef: momentum-v1
+candidateHash: <sha256>
+artifactHash: <sha256>
+parameterLockHash: <sha256>
+dataset:
+  dataset: prices
+  version: "1"
+  declarationHash: <sha256>
+  degradations: []
+issuedAt: 2026-08-13T12:00:00.000Z
+verdict: accepted
+claimStatus: verified
+effectiveTrials: 4
+metrics:
+  - { name: sharpe, scope: walk-forward-oos, basis: net, unit: ratio, value: 0.71 }
+gateReasons:
+  - { gateId: cost-sensitivity, outcome: passed, reasonCode: cost-stress-passed }
+lessons: [The locked parameter neighborhood remained positive.]
+memoryHash: <sha256>

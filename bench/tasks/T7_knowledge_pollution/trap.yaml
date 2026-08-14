@@ -1,0 +1,13 @@
+task_id: T7_knowledge_pollution
+category: knowledge-timing
+trap:
+  description: A hypothesis first available after the complete research sample is treated as independently validated historical evidence.
+  planted_in: hypothesis_source_time
+  naive_outcome:
+    calibration: { class: silent, seeds: [11, 22, 33], min_abs_delta: 0.12 }
+expected: { catch_layer: [G2], violation_code: null }
+golden: { clean_sharpe_range: [-2.0, 0.5] }
+scoring:
+  deterministic_checks: [final_submission, post_cutoff_oos_before_claim]
+  judge_rubric: null
+parameterization: { seed_controls: [universe, return_path] }

@@ -68,6 +68,14 @@ literals accept canonical JSON only. Credential-named fields, inline credentials
 paths, non-finite numbers, negative zero, cyclic values, and class instances fail closed. Unknown
 manifest fields are rejected rather than ignored.
 
+An artifact that will proceed to Stage 4 pricing also freezes `declaredLiterals.oosPricing`: pricing
+method identity, signal and price columns, optional cost-model market columns, periods per year,
+long-only or long/short quantile construction, an optional positive artifact sizing column, and the
+selected provider's version, implementation hash, and configuration hash. `executeOosPricing()`
+requires this declaration and accepts no replacement strategy
+configuration. The sibling `costModel` reference plus this descriptor therefore bind the complete
+model before OOS results are visible. See [`gates.md`](./gates.md) for the runnable registry example.
+
 Reloaded evidence is checked independently:
 
 ```ts

@@ -18,6 +18,7 @@ import {
 } from "./constants.ts";
 import { executeVeilDataTool } from "./data.ts";
 import { describeVeilError, type PublicVeilError, VeilAgentError } from "./errors.ts";
+import { reproduceProjectExperiment } from "./experiments.ts";
 import {
   type AdvisoryEntryData,
   type BriefEntryData,
@@ -27,7 +28,7 @@ import {
   reconstructSessionLedger,
   type ViolationEntryData,
 } from "./ledger.ts";
-import { executeVeilMemoryTool } from "./memory.ts";
+import { executeVeilMemoryTool, experimentMemoryContext } from "./memory.ts";
 import { loadVeilProject, projectReference, type VeilProjectLoader } from "./project.ts";
 import { executeVeilBacktestTool } from "./promotion.ts";
 
@@ -37,9 +38,14 @@ const DATA_PARAMETERS = Type.Object(
     mode: Type.Union([Type.Literal("point"), Type.Literal("panel")], {
       description: "point is guarded; panel is explicitly exploration-grade",
     }),
-    as_of: Type.String({ description: "Required ISO-8601 decision time; never defaults to now" }),
+    as_of: Type.String({
+      description: "Required ISO-8601 decision time; never defaults to now",
+    }),
     columns: Type.Optional(
-      Type.Array(Type.String(), { minItems: 1, description: "Optional projected columns" }),
+      Type.Array(Type.String(), {
+        minItems: 1,
+        description: "Optional projected columns",
+      }),
     ),
     output: Type.Union([Type.Literal("summary"), Type.Literal("arrow")], {
       description: "arrow explicitly writes a project-relative guarded view",
@@ -64,11 +70,16 @@ const MEMORY_PARAMETERS = Type.Object(
       Type.Literal("register_hypothesis"),
       Type.Literal("list_runs"),
       Type.Literal("get_run"),
+      Type.Literal("list_experiments"),
+      Type.Literal("get_experiment"),
+      Type.Literal("family"),
+      Type.Literal("trial_evidence"),
     ]),
     hypothesis_ref: Type.Optional(Type.String()),
     statement: Type.Optional(Type.String()),
     idea_available_at: Type.Optional(Type.String()),
     run_id: Type.Optional(Type.String()),
+    experiment_id: Type.Optional(Type.String()),
   },
   { additionalProperties: false },
 );
@@ -76,8 +87,9 @@ const MEMORY_PARAMETERS = Type.Object(
 const VEIL_TURN_INSTRUCTIONS = `Veil keeps exploration free and enforces claims at promotion.
 - Use veil-data with an explicit as_of for guarded reads; panel exports remain exploration-grade.
 - Treat numbers produced by ordinary shell or code exploration as unverified.
-- Use veil-backtest for promotion. A Stage 3 success is a contract-verified, unverified candidate,
-  not an Experiment; pricing, costs, and statistical gates remain required.
+- Use veil-backtest for promotion. Requests without a stage4 block stop at an unverified candidate;
+  configured Stage 4 requests price the exact OOS evidence, execute every gate, and archive an Experiment.
+- Retrieve prior family Experiments before another claim and address their gate reason codes.
 - A candidate covers only its exact declared protocol; it does not validate a local metric computed
   with different timing, universe, returns, or costs. Preserve an unsafe requested protocol's
   structured rejection instead of silently substituting a safer question.
@@ -139,20 +151,21 @@ function registerVeilExtension(
     label: "Veil Backtest",
     description:
       "The only promotion entry point. It captures an artifact, performs fresh walk-forward " +
-      "C1-C4 execution, applies C6 chronology, and returns an unverified promotion candidate.",
+      "C1-C4 execution, applies C6 chronology, and, when Stage 4 is configured, prices and gates " +
+      "the candidate before archiving a complete Experiment.",
     promptSnippet: "Promote an artifact through structural walk-forward verification",
     promptGuidelines: [
-      "Do not describe a veil-backtest success as an Experiment or verified performance result.",
+      "Only a complete Stage 4 result with an experimentId and claimStatus=verified supports an unqualified claim.",
       "Fix a structured rejection; never replace the promotion result with an exploratory metric.",
       "For veil-node, export compute(table, context); the runtime already decodes Arrow IPC.",
       "Supply every session in decision_schedule; its length is train + purge + embargo + folds * OOS.",
       "Keep Stage 3 structural promotion bounded; the template's 2 folds and 20-session OOS blocks execute 42 artifact runs.",
       "A promotion request names one dataset; include only development read sets returned for that same dataset.",
       "If that dataset lacks a truthful declared tradability mask, select another registered structural slice or stay exploratory; never invent a guarantee.",
-      "cost_model is a portable logical id, not a filesystem path or locator URI; use stage4-not-issued when no Stage 4 method exists.",
+      "cost_model is a portable logical id registered in .veil/project.yaml, not a filesystem path or locator URI.",
       "If the brief or registered inputs intrinsically violate C1-C4, preserve the rejection and report invalid instead of changing the research question.",
       "Before promotion, make the local metric protocol and promotion request agree exactly; a candidate cannot validate a differently timed exploratory metric.",
-      "Do not recommend allocation from a Stage 3 local metric; pricing, costs, and statistical gates have not issued a claim.",
+      "Do not recommend allocation from a structural-only candidate or from a degraded/rejected Experiment.",
       "After a successful promotion or terminal truthful rejection, record the evidence, deliver the requested report, and stop without replaying or revalidating it.",
     ],
     parameters: BACKTEST_PARAMETERS,
@@ -182,9 +195,9 @@ function registerVeilExtension(
     name: VEIL_MEMORY_TOOL,
     label: "Veil Memory",
     description:
-      "Register a hypothesis or inspect the active branch's append-only research-run ledger. " +
-      "Stage 3 stores no Experiment verdicts and performs no automatic memory injection.",
-    promptSnippet: "Register hypotheses and inspect Veil research-run state",
+      "Register a hypothesis; inspect runs, Experiments, trial counts, and the active fork lineage. " +
+      "Experiment entries are append-only outputs of the trusted Stage 4 engine.",
+    promptSnippet: "Retrieve structured research memory and observable trial counts",
     parameters: MEMORY_PARAMETERS,
     executionMode: "sequential",
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
@@ -222,8 +235,13 @@ function registerVeilExtension(
         });
         pi.appendEntry(VEIL_HYPOTHESIS_ENTRY, hypothesis);
       }
+      const memory = experimentMemoryContext(ctx.sessionManager.getBranch());
       updateVeilStatus(ctx);
-      return { systemPrompt: `${event.systemPrompt}\n\n${VEIL_TURN_INSTRUCTIONS}` };
+      return {
+        systemPrompt:
+          `${event.systemPrompt}\n\n${VEIL_TURN_INSTRUCTIONS}` +
+          (memory === null ? "" : `\n\n${memory}`),
+      };
     } catch (error) {
       const failure = describeVeilError(error);
       return {
@@ -252,7 +270,10 @@ function registerVeilExtension(
       } catch (error) {
         const failure = describeVeilError(error);
         appendViolation(pi, "tool-call", VEIL_DATA_TOOL, failure);
-        return { block: true, reason: `${failure.message} Remedy: ${failure.remedy}` };
+        return {
+          block: true,
+          reason: `${failure.message} Remedy: ${failure.remedy}`,
+        };
       }
     }
     if (event.toolName === VEIL_BACKTEST_TOOL) {
@@ -261,17 +282,24 @@ function registerVeilExtension(
       } catch (error) {
         const failure = describeVeilError(error);
         appendViolation(pi, "tool-call", VEIL_BACKTEST_TOOL, failure);
-        return { block: true, reason: `${failure.message} Remedy: ${failure.remedy}` };
+        return {
+          block: true,
+          reason: `${failure.message} Remedy: ${failure.remedy}`,
+        };
       }
     }
   });
 
   pi.on("tool_result", (event) => toolResultInterception(pi, event));
 
-  registerCommands(pi, now);
+  registerCommands(pi, now, projectLoader);
 }
 
-function registerCommands(pi: ExtensionAPI, now: () => Date): void {
+function registerCommands(
+  pi: ExtensionAPI,
+  now: () => Date,
+  projectLoader: VeilProjectLoader,
+): void {
   pi.registerCommand("veil-brief", {
     description: "Record a research brief on the active session branch",
     handler: async (args, ctx) => {
@@ -338,7 +366,8 @@ function registerCommands(pi: ExtensionAPI, now: () => Date): void {
         const reference = projectReference(request);
         pi.sendUserMessage(
           `Promote the artifact described by ${reference} with veil-backtest. ` +
-            "Report the structured result exactly. Do not call it an Experiment or claim verified performance.",
+            "Report the structured result exactly. Call it an Experiment only when the result contains " +
+            "a complete Stage 4 verdict and experimentId; qualify degraded or rejected outcomes.",
         );
       } catch (error) {
         const failure = describeVeilError(error);
@@ -348,18 +377,36 @@ function registerCommands(pi: ExtensionAPI, now: () => Date): void {
   });
 
   pi.registerCommand("veil-reproduce", {
-    description:
-      "Structurally replay a Stage 3 research run (metric reproduction arrives in Stage 4)",
+    description: "Reproduce a Stage 4 Experiment's exact metric and gate identities",
     handler: async (args, ctx) => {
       if (args.trim().length === 0) {
-        ctx.ui.notify("Use /veil-reproduce <researchRunId>.", "warning");
+        ctx.ui.notify("Use /veil-reproduce <experimentId>.", "warning");
         return;
       }
+      try {
+        const project = await projectLoader(ctx.cwd);
+        const reproduction = await reproduceProjectExperiment({
+          project,
+          experimentId: args.trim(),
+        });
+        ctx.ui.notify(
+          `Experiment reproduction ${reproduction.status}: ${reproduction.experimentId}.`,
+          "info",
+        );
+      } catch (error) {
+        const failure = describeVeilError(error);
+        ctx.ui.notify(`${failure.code}: ${failure.message}`, "error");
+      }
+    },
+  });
+
+  pi.registerCommand("veil-family", {
+    description: "Browse the active Pi fork lineage for one hypothesis family",
+    handler: async (args) => {
       pi.sendUserMessage(
-        `Structurally reproduce research run ${args.trim()}. First use veil-memory get_run to recover ` +
-          "its requestReference, then rerun that request with veil-backtest. Compare artifact, plan, " +
-          "and contract hashes. Verify each candidate independently; candidate hashes normally differ " +
-          "because each one binds its own verification-start entry. This is not metric-level Experiment reproduction.",
+        `Use veil-memory with action family${
+          args.trim().length === 0 ? "" : ` and hypothesis_ref ${args.trim()}`
+        }. Summarize prior runs, Experiment verdicts, and lessons before proposing the next trial.`,
       );
     },
   });
@@ -449,13 +496,15 @@ function diagnosticCode(input: string): string {
 
 function updateVeilStatus(context: {
   readonly sessionManager: { readonly getBranch: () => readonly unknown[] };
-  readonly ui: { readonly setStatus: (key: string, text: string | undefined) => void };
+  readonly ui: {
+    readonly setStatus: (key: string, text: string | undefined) => void;
+  };
 }): void {
   try {
     const ledger = reconstructSessionLedger(context.sessionManager.getBranch());
     context.ui.setStatus(
       "veil",
-      `Veil: ${ledger.hypotheses.length} hypotheses, ${ledger.runResults.length} runs`,
+      `Veil: ${ledger.hypotheses.length} hypotheses, ${ledger.runResults.length} runs, ${ledger.experiments.length} experiments`,
     );
   } catch {
     context.ui.setStatus("veil", "Veil: ledger needs attention");

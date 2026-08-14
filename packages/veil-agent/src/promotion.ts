@@ -9,11 +9,18 @@ import {
   captureArtifactCode,
   createArtifactManifest,
   createPromotionCandidate,
+  executeExperiment,
+  executeOosPricing,
+  executeStandardGateEvaluation,
   executeWalkForwardContract,
   type HypothesisRegistrationRecord,
+  NullGeneratorRegistry,
   type PromotionCandidateRecord,
+  type PromotionCandidateVerificationEvidence,
+  QUANTILE_OOS_PRICING_METHOD,
   TemporalGuard,
   verifyPromotionCandidate,
+  type WalkForwardContractResult,
 } from "@veilquant/engine";
 import { parseDocument } from "yaml";
 import {
@@ -27,6 +34,7 @@ import {
   VEIL_VIOLATION_ENTRY,
 } from "./constants.ts";
 import { describeVeilError, type PublicVeilError, VeilAgentError } from "./errors.ts";
+import { loadProjectExperiment, persistProjectExperiment } from "./experiments.ts";
 import {
   candidateSummary,
   createVerificationStartEntry,
@@ -38,6 +46,7 @@ import {
   type VerificationStartEntryData,
   type ViolationEntryData,
 } from "./ledger.ts";
+import { trialCountEvidence } from "./memory.ts";
 import { existingProjectPath, projectReference, type VeilProjectRuntime } from "./project.ts";
 import {
   appendProjectLog,
@@ -58,18 +67,27 @@ export interface VeilBacktestSuccess {
   readonly tool: typeof VEIL_BACKTEST_TOOL;
   readonly ok: true;
   readonly researchRunId: string;
-  readonly status: "awaiting-pricing-and-gates";
+  readonly status: "awaiting-pricing-and-gates" | "complete";
   readonly structuralStatus: "contract-verified";
-  readonly claimStatus: "unverified";
+  readonly claimStatus: "unverified" | "verified" | "degraded" | "rejected";
   readonly registrationStatus: "preregistered" | "exploratory";
   readonly artifactHash: string;
   readonly planHash: string;
   readonly contractHash: string;
   readonly candidateHash: string;
   readonly executionCount: number;
-  readonly requiredEvidence: readonly ["pricing", "costs", "statistical-gates"];
+  readonly requiredEvidence: readonly ["pricing", "costs", "statistical-gates"] | readonly [];
   readonly evidenceReference: string;
   readonly researchLogReference: typeof VEIL_RESEARCH_LOG_REFERENCE;
+  readonly experimentId?: string;
+  readonly verdict?: "accepted" | "degraded" | "rejected";
+  readonly metrics?: readonly unknown[];
+  readonly gateReasons?: readonly {
+    readonly gateId: string;
+    readonly outcome: string;
+    readonly reasonCode: string;
+  }[];
+  readonly experimentArchiveReference?: string;
 }
 
 export interface VeilBacktestFailure extends PublicVeilError {
@@ -107,6 +125,23 @@ interface PromotionRequest {
   readonly decisionSchedule: readonly string[];
   readonly columns: readonly string[] | undefined;
   readonly costModel: string;
+  readonly stage4: {
+    readonly signalColumn: string;
+    readonly priceColumn: string;
+    readonly marketColumns: readonly string[];
+    readonly periodsPerYear: number;
+    readonly portfolioKind: "long-only-quantile" | "long-short-quantile";
+    readonly quantile: number;
+    readonly weightColumn: string | null;
+    readonly capacity: {
+      readonly portfolioNav: number;
+      readonly volumeColumn: string;
+      readonly maximumParticipationRate: number;
+    } | null;
+    readonly nullGenerator: string | null;
+    readonly trialBudget: number;
+    readonly knowledgeCutoff: string | null;
+  } | null;
 }
 
 interface RunEvidence {
@@ -169,10 +204,13 @@ export async function executeVeilBacktestTool(
       factor: {
         runtime: request.factor.runtime,
         entry: request.factor.entry,
-        code: await captureArtifactCode({ root: codeRoot, files: request.factor.files }),
+        code: await captureArtifactCode({
+          root: codeRoot,
+          files: request.factor.files,
+        }),
       },
       paramsLocked: request.paramsLocked,
-      declaredLiterals: request.declaredLiterals,
+      declaredLiterals: stage4DeclaredLiterals(request, context.project),
       trialsDeclared: request.trialsDeclared,
       dataSemantics: {
         datasets: [
@@ -200,7 +238,7 @@ export async function executeVeilBacktestTool(
       runtimes: context.project.runtimes,
       ...(request.columns === undefined ? {} : { columns: request.columns }),
       concurrency: context.project.promotionConcurrency,
-      retainExecutionEvidence: false,
+      retainExecutionEvidence: request.stage4 !== null,
       signal: context.signal,
     });
     const candidate = createPromotionCandidate({
@@ -258,6 +296,29 @@ export async function executeVeilBacktestTool(
       evidenceHash,
       researchLogReference: VEIL_RESEARCH_LOG_REFERENCE,
     });
+    if (request.stage4 !== null) {
+      const complete = await completeStage4({
+        request,
+        researchRunId: startData.runId,
+        codeRoot,
+        project: context.project,
+        candidate,
+        candidateEvidence: {
+          artifact,
+          plan: contract.plan,
+          declaration: dataset.declaration,
+          contractRecord: contract.record,
+          registration,
+          verification,
+        },
+        contract,
+        getBranch: context.getBranch,
+        appendEntry: context.appendEntry,
+        structuralEvidenceReference: evidenceReference,
+      });
+      context.appendEntry(VEIL_RUN_RESULT_ENTRY, resultData);
+      return complete;
+    }
     context.appendEntry(VEIL_RUN_RESULT_ENTRY, resultData);
     return Object.freeze({
       format: VEIL_AGENT_TOOL_RESULT_FORMAT,
@@ -280,6 +341,216 @@ export async function executeVeilBacktestTool(
   } catch (error) {
     return recordRejectedRun(error, startData, context);
   }
+}
+
+function stage4DeclaredLiterals(
+  request: PromotionRequest,
+  project: VeilProjectRuntime,
+): Readonly<Record<string, unknown>> {
+  const stage4 = request.stage4;
+  if (stage4 === null) return request.declaredLiterals;
+  if (
+    Object.hasOwn(request.declaredLiterals, "oosPricing") ||
+    Object.hasOwn(request.declaredLiterals, "gatePolicy")
+  ) {
+    throw invalidRequest(
+      "declared_literals cannot override engine-derived Stage 4 pricing or gate identities",
+      "Use the strict stage4 request block and the providers registered in .veil/project.yaml.",
+    );
+  }
+  const costModel = project.costModels
+    ?.list()
+    .find((descriptor) => descriptor.reference === request.costModel);
+  if (costModel === undefined) {
+    throw invalidRequest(
+      `Stage 4 cost model ${request.costModel} is not registered by the project`,
+      "Register the logical cost model under stage4.cost_models in .veil/project.yaml.",
+    );
+  }
+  const nullGenerator =
+    stage4.nullGenerator === null
+      ? null
+      : project.nullGenerators
+          ?.list()
+          .find((descriptor) => descriptor.reference === stage4.nullGenerator);
+  if (stage4.nullGenerator !== null && nullGenerator === undefined) {
+    throw invalidRequest(
+      `Stage 4 null generator ${stage4.nullGenerator} is not registered by the project`,
+      "Register the logical generator under stage4.null_generators or set null_generator to null and accept degradation.",
+    );
+  }
+  return Object.freeze({
+    ...request.declaredLiterals,
+    oosPricing: {
+      pricingMethodIdentity: QUANTILE_OOS_PRICING_METHOD,
+      signalColumn: stage4.signalColumn,
+      priceColumn: stage4.priceColumn,
+      marketColumns: stage4.marketColumns,
+      periodsPerYear: stage4.periodsPerYear,
+      portfolio: {
+        kind: stage4.portfolioKind,
+        quantile: stage4.quantile,
+        weightColumn: stage4.weightColumn,
+      },
+      capacity: stage4.capacity,
+      costModelIdentity: {
+        version: costModel.version,
+        implementationHash: costModel.implementationHash,
+        configurationHash: costModel.configurationHash,
+      },
+    },
+    gatePolicy: {
+      policyId: "veil.standard-stage4",
+      policyVersion: "0.1.0",
+      trialBudget: stage4.trialBudget,
+      nullGeneratorIdentity: nullGenerator ?? null,
+      knowledgeCutoff: stage4.knowledgeCutoff,
+    },
+  });
+}
+
+async function completeStage4(input: {
+  readonly request: PromotionRequest;
+  readonly researchRunId: string;
+  readonly codeRoot: string;
+  readonly project: VeilProjectRuntime;
+  readonly candidate: PromotionCandidateRecord;
+  readonly candidateEvidence: PromotionCandidateVerificationEvidence;
+  readonly contract: WalkForwardContractResult;
+  readonly getBranch: () => readonly unknown[];
+  readonly appendEntry: <T>(customType: string, data: T) => void;
+  readonly structuralEvidenceReference: string;
+}): Promise<VeilBacktestSuccess> {
+  const stage4 = input.request.stage4;
+  if (stage4 === null || input.project.costModels === undefined) {
+    throw invalidRequest("Stage 4 execution is not configured");
+  }
+  const pricingVerification = {
+    candidate: input.candidate,
+    candidateEvidence: input.candidateEvidence,
+  };
+  const pricing = await executeOosPricing({
+    candidate: input.candidate,
+    candidateEvidence: input.candidateEvidence,
+    contractResult: input.contract,
+    costModels: input.project.costModels,
+  });
+  const ledger = reconstructSessionLedger(input.getBranch());
+  const priorEntries = ledger.experiments.filter(
+    (entry) => entry.data.hypothesisRef === input.candidate.hypothesis.hypothesisRef,
+  );
+  const priorArchives = await Promise.all(
+    priorEntries.map((entry) => loadProjectExperiment(input.project.root, entry.data.experimentId)),
+  );
+  const compatible = priorArchives.filter((archive) => {
+    const prior = archive.execution.pricing.record;
+    return (
+      canonicalJson(prior.dataset) === canonicalJson(pricing.record.dataset) &&
+      canonicalJson(prior.pricingMethod) === canonicalJson(pricing.record.pricingMethod) &&
+      canonicalJson(prior.costModel) === canonicalJson(pricing.record.costModel) &&
+      prior.parameterLockHash !== pricing.record.parameterLockHash
+    );
+  });
+  const parameterNeighbors = compatible.slice(-8).map((archive) => ({
+    result: archive.execution.pricing,
+    pricingVerification: archive.pricingVerification,
+  }));
+  const postCutoffArchive =
+    stage4.knowledgeCutoff === null
+      ? undefined
+      : [...compatible]
+          .reverse()
+          .find((archive) =>
+            archive.execution.pricing.payloads.netReturns.observations.some(
+              (observation) =>
+                Date.parse(observation.decisionTime) > Date.parse(stage4.knowledgeCutoff ?? ""),
+            ),
+          );
+  const trialEvidence = trialCountEvidence(
+    input.getBranch(),
+    input.candidate.hypothesis.hypothesisRef,
+  );
+  const postCutoffValidation =
+    postCutoffArchive === undefined
+      ? null
+      : {
+          result: postCutoffArchive.execution.pricing,
+          pricingVerification: postCutoffArchive.pricingVerification,
+        };
+  const gates = await executeStandardGateEvaluation({
+    pricing,
+    pricingVerification,
+    trialEvidence,
+    nullGenerators: input.project.nullGenerators ?? new NullGeneratorRegistry(),
+    parameterNeighbors,
+    ...(postCutoffValidation === null
+      ? {}
+      : {
+          postCutoffValidation,
+        }),
+  });
+  const nonpassing = gates.methods.filter((method) => method.outcome !== "passed");
+  const issuedAt = new Date(
+    Math.max(Date.now(), Date.parse(input.candidate.verification.startedAt)),
+  ).toISOString();
+  const execution = executeExperiment({
+    pricing,
+    pricingVerification,
+    gates,
+    issuedAt,
+    rationale:
+      gates.evaluation.verdict === "accepted"
+        ? "The candidate passed the complete immutable Stage 4 policy."
+        : `The complete Stage 4 policy produced ${gates.evaluation.verdict}.`,
+    lessons:
+      nonpassing.length === 0
+        ? ["Preserve the exact read-set snapshot and method identities for reproduction."]
+        : nonpassing.map(
+            (method) =>
+              `${method.gateId} reported ${method.reasonCode}; address it before another claim.`,
+          ),
+  });
+  const persisted = await persistProjectExperiment({
+    projectRoot: input.project.root,
+    execution,
+    pricingVerification,
+    artifactCodeRoot: input.codeRoot,
+    contractResult: input.contract,
+    gateReplay: {
+      trialEvidence,
+      parameterNeighbors,
+      postCutoffValidation,
+    },
+    getBranch: input.getBranch,
+    appendEntry: (customType, data) => input.appendEntry(customType, data),
+  });
+  return Object.freeze({
+    format: VEIL_AGENT_TOOL_RESULT_FORMAT,
+    tool: VEIL_BACKTEST_TOOL,
+    ok: true,
+    researchRunId: input.researchRunId,
+    status: "complete",
+    structuralStatus: input.candidate.structuralStatus,
+    claimStatus: execution.experiment.claimStatus,
+    registrationStatus: input.candidate.hypothesis.registrationStatus,
+    artifactHash: input.candidate.artifactHash,
+    planHash: input.candidate.planHash,
+    contractHash: input.candidate.contractHash,
+    candidateHash: input.candidate.candidateHash,
+    executionCount: input.contract.executionCount,
+    requiredEvidence: Object.freeze([]) as readonly [],
+    evidenceReference: input.structuralEvidenceReference,
+    researchLogReference: VEIL_RESEARCH_LOG_REFERENCE,
+    experimentId: execution.experiment.experimentId,
+    verdict: execution.experiment.verdict,
+    metrics: execution.experiment.metrics,
+    gateReasons: execution.experiment.gates.map((gate) => ({
+      gateId: gate.gateId,
+      outcome: gate.outcome,
+      reasonCode: gate.reasonCode,
+    })),
+    experimentArchiveReference: persisted.archiveReference,
+  });
 }
 
 function validateBacktestInput(input: VeilBacktestToolInput): void {
@@ -414,8 +685,10 @@ async function loadPromotionRequest(path: string): Promise<PromotionRequest> {
       "decision_schedule",
       "columns",
       "cost_model",
+      "stage4",
     ],
     "promotion request",
+    true,
   );
   if (root.format !== VEIL_PROMOTION_REQUEST_FORMAT) {
     throw invalidRequest("promotion request uses an unsupported format");
@@ -453,6 +726,94 @@ async function loadPromotionRequest(path: string): Promise<PromotionRequest> {
     decisionSchedule,
     columns,
     costModel: costModelReference(root.cost_model),
+    stage4: normalizeStage4Request(root.stage4),
+  });
+}
+
+function normalizeStage4Request(input: unknown): PromotionRequest["stage4"] {
+  if (input === undefined || input === null) return null;
+  const root = exactRecord(
+    input,
+    [
+      "signal_column",
+      "price_column",
+      "market_columns",
+      "periods_per_year",
+      "portfolio_kind",
+      "quantile",
+      "weight_column",
+      "capacity",
+      "null_generator",
+      "trial_budget",
+      "knowledge_cutoff",
+    ],
+    "Stage 4 promotion configuration",
+  );
+  const quantile = finiteNumber(root.quantile, "Stage 4 quantile");
+  if (quantile <= 0 || quantile > 0.5) {
+    throw invalidRequest("Stage 4 quantile must be greater than zero and at most 0.5");
+  }
+  const capacity = normalizeStage4Capacity(root.capacity);
+  const marketColumns = Object.freeze(
+    stringArrayAllowEmpty(root.market_columns, "Stage 4 market columns"),
+  );
+  if (capacity !== null && !marketColumns.includes(capacity.volumeColumn)) {
+    throw invalidRequest("Stage 4 capacity volume_column must also appear in market_columns");
+  }
+  if (
+    root.portfolio_kind !== "long-only-quantile" &&
+    root.portfolio_kind !== "long-short-quantile"
+  ) {
+    throw invalidRequest(
+      "Stage 4 portfolio_kind must be long-only-quantile or long-short-quantile",
+    );
+  }
+  return Object.freeze({
+    signalColumn: fieldName(root.signal_column, "Stage 4 signal column"),
+    priceColumn: fieldName(root.price_column, "Stage 4 price column"),
+    marketColumns,
+    periodsPerYear: positiveInteger(root.periods_per_year, "Stage 4 periods_per_year"),
+    portfolioKind: root.portfolio_kind,
+    quantile,
+    weightColumn:
+      root.weight_column === null
+        ? null
+        : fieldName(root.weight_column, "Stage 4 portfolio weight column"),
+    capacity,
+    nullGenerator:
+      root.null_generator === null
+        ? null
+        : portableReference(root.null_generator, "Stage 4 null-generator reference"),
+    trialBudget: positiveInteger(root.trial_budget, "Stage 4 trial_budget"),
+    knowledgeCutoff:
+      root.knowledge_cutoff === null ? null : normalizeDecisionTime(root.knowledge_cutoff),
+  });
+}
+
+function normalizeStage4Capacity(
+  input: unknown,
+): NonNullable<PromotionRequest["stage4"]>["capacity"] {
+  if (input === null || input === undefined) return null;
+  const root = exactRecord(
+    input,
+    ["portfolio_nav", "volume_column", "maximum_participation_rate"],
+    "Stage 4 capacity configuration",
+  );
+  const portfolioNav = finiteNumber(root.portfolio_nav, "Stage 4 portfolio NAV");
+  const maximumParticipationRate = finiteNumber(
+    root.maximum_participation_rate,
+    "Stage 4 maximum participation rate",
+  );
+  if (portfolioNav <= 0) throw invalidRequest("Stage 4 portfolio_nav must be positive");
+  if (maximumParticipationRate <= 0 || maximumParticipationRate > 1) {
+    throw invalidRequest(
+      "Stage 4 maximum_participation_rate must be greater than zero and at most one",
+    );
+  }
+  return Object.freeze({
+    portfolioNav,
+    volumeColumn: fieldName(root.volume_column, "Stage 4 volume column"),
+    maximumParticipationRate,
   });
 }
 
@@ -616,6 +977,7 @@ function exactRecord(
   input: unknown,
   keys: readonly string[],
   label: string,
+  optional = false,
 ): Record<string, unknown> {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     throw invalidRequest(`${label} must be an object`);
@@ -623,10 +985,37 @@ function exactRecord(
   const root = input as Record<string, unknown>;
   const actual = Object.keys(root).sort();
   const expected = [...keys].sort();
-  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+  if (
+    actual.some((key) => !expected.includes(key)) ||
+    (!optional &&
+      (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])))
+  ) {
     throw invalidRequest(`${label} has missing or unknown fields`);
   }
   return root;
+}
+
+function stringArrayAllowEmpty(input: unknown, label: string): readonly string[] {
+  if (!Array.isArray(input) || input.length > 64) {
+    throw invalidRequest(`${label} must be an array of at most 64 values`);
+  }
+  const values = input.map((value) => fieldName(value, label));
+  if (new Set(values).size !== values.length) throw invalidRequest(`${label} contains duplicates`);
+  return Object.freeze(values);
+}
+
+function fieldName(input: unknown, label: string): string {
+  if (typeof input !== "string" || !/^[A-Za-z_][A-Za-z0-9._-]{0,127}$/.test(input)) {
+    throw invalidRequest(`${label} must be a portable field name`);
+  }
+  return input;
+}
+
+function finiteNumber(input: unknown, label: string): number {
+  if (typeof input !== "number" || !Number.isFinite(input) || Object.is(input, -0)) {
+    throw invalidRequest(`${label} must be a canonical finite number`);
+  }
+  return input;
 }
 
 function plainParameterMap(input: unknown, label: string): Readonly<Record<string, unknown>> {

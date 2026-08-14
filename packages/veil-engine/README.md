@@ -2,17 +2,57 @@
 
 The verification surface. Everything that makes a claim expensive lives here.
 
-Status: v0.1 / Stage 3 structural engine — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
+Status: Stage 4 engine implementation complete locally; release acceptance pending — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
 guard, strict adapter YAML loader, default single/multi-file DuckDB CSV/Parquet backend, source and
 read-set v0 identities, durable content-addressed snapshots, and the minimum `veil-data` point/panel
 surface are implemented and hardened with operator-controlled snapshot quarantine. Portable
 content-addressed artifact identity and runtime-provider-neutral framed execution are also
 implemented. Explicit-session rolling/expanding plans, replayable derived views, per-decision OOS
 mask-first execution, and complete C1-C4 contract records now feed a narrow promotion boundary.
-That boundary checks C5/C6 evidence and emits only an unverified candidate for later pricing and
-gates. The golden-path prices and point-in-time membership meet through replayable composite
+That boundary checks C5/C6 evidence and emits an unverified candidate for pricing and gates. The
+golden-path prices and point-in-time membership meet through replayable composite
 evidence before this contract path. `veil-quant` now supplies the Pi session timestamps and invokes
-this public library; Stage 4 will add pricing, gates, and citable Experiment issuance.
+this public library. Stage 4 adds deterministic OOS pricing, typed cost/null providers, observable
+trial accounting, the immutable eight-gate policy, safe Experiment issuance, append-only memory, and
+exact metric-level reproduction.
+
+## Stage 4 evidence boundary
+
+The engine publicly exposes verifiers for `veil.pricing-evidence.v0`, `veil.gate-policy.v0`,
+`veil.gate-evaluation.v0`, and `veil.experiment.v0`. Raw issuer functions remain internal: callers
+cannot use the package root to bless a local metric. Verification walks the complete chain back to
+the replayed promotion candidate and rejects changed identities, incomplete policies, undercounted
+trials, non-canonical values, and content-hash drift.
+
+A policy must require cost and statistical evidence. Its evaluation contains exactly one result per
+entry and derives `accepted`, `degraded`, or `rejected`; an Experiment copies that verdict and is the
+only record allowed to carry citable metrics. See
+[`docs/gates.md`](https://github.com/HanshengGUO/veil/blob/master/docs/gates.md). Record verifiers do
+not imply that pricing or gate execution occurred; only the safe executors can issue that evidence.
+
+`executeOosPricing()` is the only public pricing issuer. It replays the complete retained contract
+evidence before reading any signal or price, constructs a deterministic gross-one long-only or
+long/short quantile book with an optional locked positive artifact sizing column, applies the
+artifact's explicit execution lag and holding horizon, and calls the exact registered
+cost-model reference. The result contains immutable trade, gross-return, cost, and net-return
+payloads plus a real `veil.pricing-evidence.v0` record. A compact contract created with
+`retainExecutionEvidence: false` must be rerun with retained evidence before pricing; hashes alone do
+not recreate market data. Signal, price, portfolio, annualization, and full cost-model identities
+must already be frozen in `artifact.declaredLiterals.oosPricing`; the pricing call has no late-bound
+strategy parameters.
+
+Cost-model providers are opaque capabilities. Their callback and raw configuration never enter a
+portable record; version, implementation hash, and configuration hash do. The built-in
+`createLinearBpsCostModel()` is suitable for deterministic turnover costs, while
+`createCostModelProvider()` opens the typed `trades + market data -> charges` plugin boundary. See
+[`docs/gates.md`](https://github.com/HanshengGUO/veil/blob/master/docs/gates.md) for registration and
+failure semantics.
+
+`executeStandardGateEvaluation()` derives effective trials from declared, active-session, and
+same-family identities, then executes capacity, doubled-cost, knowledge-cutoff, null, parameter,
+budget, deflated-Sharpe, and fold-stability checks in a fixed order. `executeExperiment()` accepts
+only a gate bundle issued by that executor. `reproduceExperiment()` compares complete pricing, gate,
+metric, and Experiment identities and fails loudly when its read set was retention-deleted.
 
 ## The database is replaceable; the guard is not
 
@@ -325,8 +365,10 @@ contains a backend id, SQL, DSN, binding, or physical path.
 | Verification engine | 2 | Per-decision PIT/mask-first C1-C4 contract and replay verifier implemented |
 | Promotion boundary | 2 | Contract-only C5 admission plus C6 chronology/exploratory tier implemented; no metrics issued |
 | Artifact management | 2 | Explicit code identity, bounded child execution, and deterministic WFA evidence implemented |
-| Statistical gates | 4 | Trials-aware deflated Sharpe, parameter stability, null falsification, cost sensitivity |
-| Plugin interfaces | 4 | `CostModel`, `NullGenerator` |
+| OOS pricing | 4 | Retained-evidence replay, locked long/short semantics, immutable gross/cost/net series |
+| Statistical gates | 4 | Eight-gate standard policy, observable trial audit, fixed thresholds, full method evidence |
+| Plugin interfaces | 4 | Typed `CostModel` and `NullGenerator` registries, conformance execution, three built-in cost domains |
+| Experiment memory | 4 | Safe issuance, compact append-only records, exact rerun comparison and retention failure |
 
 ## Design constraints
 

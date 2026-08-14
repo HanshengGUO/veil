@@ -1,0 +1,42 @@
+# pricing-evidence.yaml — normalized veil.pricing-evidence.v0 record
+#
+# This record binds citable aggregate metrics to one replay-verified promotion candidate and to
+# immutable trade, gross-return, cost, and net-return payloads. The payload bytes remain in the
+# trusted evidence store; their lowercase SHA-256 identities travel with the portable record.
+
+format: veil.pricing-evidence.v0
+status: priced
+candidateHash: <sha256>
+artifactHash: <sha256>
+planHash: <sha256>
+contractHash: <sha256>
+parameterLockHash: <sha256>
+dataset:
+  dataset: prices
+  version: "1"
+  declarationHash: <sha256>
+  degradations: [VINTAGE_UNAVAILABLE, PROVENANCE_UNCERTIFIED]
+pricingMethod:
+  id: veil.long-short-quantile-close-to-close
+  version: 0.1.0
+  implementationHash: <sha256>
+costModel:
+  reference: equities-bps-v1       # must match the candidate's cost-model reference
+  version: 0.1.0
+  implementationHash: <sha256>
+  configurationHash: <sha256>
+sample:
+  observations: 504
+  periodsPerYear: 252
+series:
+  tradesHash: <sha256>
+  grossReturnsHash: <sha256>
+  costsHash: <sha256>
+  netReturnsHash: <sha256>
+metrics:
+  - name: sharpe
+    scope: walk-forward-oos
+    basis: net                    # gross | net
+    unit: ratio                   # count | decimal | ratio
+    value: 0.71
+pricingHash: <sha256>

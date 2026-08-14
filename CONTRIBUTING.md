@@ -7,7 +7,7 @@ open a pull request".
 | --- | --- | --- | --- |
 | 1 | **A bench task** — a research task with a planted flaw, or a clean one with a known answer | [`bench/tasks/_TEMPLATE`](./bench/tasks/_TEMPLATE) | now |
 | 2 | **An adapter** — teach Veil to read a data source or format | `packages/veil-engine` + a declaration | now |
-| 3 | **A plugin** — a cost model or a null generator for an asset class | typed interface, `docs/gates.md` | Stage 4 |
+| 3 | **A plugin** — a cost model or a null generator for an asset class | [`examples/stage4-plugin`](./examples/stage4-plugin), [`docs/gates.md`](./docs/gates.md) | now |
 
 ## The most valuable contribution
 
@@ -31,7 +31,7 @@ npm run check
 ```
 
 `npm run check` runs lint, typecheck, tests, the DuckDB/Arrow native-runtime probe, the cold data,
-snapshot, artifact, walk-forward, and agent-loop examples, model-free Stage 3 acceptance, release
+snapshot, artifact, walk-forward, Stage 3/4 agent examples, model-free gate acceptance, release
 manifest checks, the four-task bench smoke set, and exact golden-path reproduction. It must pass
 before a pull request, and it is what CI runs on Linux, macOS and Windows.
 
@@ -48,6 +48,9 @@ npm run parquet-pit:verify
 npm run read-set:verify
 npm run agent-loop:verify
 npm run bench:stage3:verify # model-free extension and promotion acceptance
+npm run stage4-plugin:verify # execute the public provider contribution template
+npm run stage4-agent:verify # archive and reproduce complete Experiments
+npm run bench:stage4:verify # model-free gates, T6/T7 attribution, memory, and replay
 npm run bench:smoke    # generate and validate two trap plus two honest tasks
 npm run golden-path    # regenerate the reference study and print its table
 ```

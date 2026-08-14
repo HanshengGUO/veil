@@ -1,0 +1,11 @@
+# read-set-tombstone.yaml — normalized veil.read-set-tombstone.v0 record
+#
+# Written before an external retention policy removes snapshot bytes. It preserves why exact
+# reproduction is unavailable; it does not authorize fallback to current data.
+
+format: veil.read-set-tombstone.v0
+snapshotId: <sha256>
+deletedAt: 2026-08-13T12:00:00.000Z
+reason: Vendor contract ended.
+actor: retention-operator
+tombstoneHash: <sha256>

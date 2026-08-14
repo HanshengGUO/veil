@@ -13,19 +13,22 @@ and does not ask you to learn a new research API. It changes one thing:
 Nobody would accept an editor that blocks their keystrokes. Everybody accepts CI that blocks their
 merge. Veil is CI for research claims.
 
-Status: **v0.1 / Stage 3 implementation, release acceptance pending.** The `veil-quant` Pi package now
+Status: **Stage 4 implementation complete locally; v0.2 release acceptance pending.** The `veil-quant` Pi package now
 registers `veil-data`, `veil-backtest`, and `veil-memory`; captures C6 chronology in Pi's append-only
 session tree; keeps ordinary exploration tools unblocked; and writes content-addressed structural
 run evidence plus an honest Markdown log. The engine beneath it provides the backend-neutral temporal
 guard, CSV/Parquet file backend, read-set identities/snapshots, content-addressed artifacts, framed
 runtime execution, per-decision mask-first WFA contracts, and the narrow promotion boundary. A
-successful v0.1 run is `contract-verified` and still explicitly `unverified`: it contains no prices,
-returns, metrics, gate verdict, or Experiment id. The hand-written golden-path metrics remain an
-independent reference until Stage 4 pricing and statistical gates exist.
+request without a Stage 4 block stops at a `contract-verified`, explicitly `unverified` candidate.
+A complete Stage 4 request replays retained evidence, prices OOS trades, executes the immutable
+eight-gate policy, archives accepted and rejected Experiments in family memory, and can reproduce an
+Experiment from exact artifact bytes and read-set snapshots. Typed `CostModel` and `NullGenerator`
+interfaces include audited equity/crypto methods and a runnable contribution template.
 
-The source package can be installed locally now; `pi install npm:veil-quant@0.1.0` becomes available
-only after the v0.1 tag passes release smoke and is published. Model-free and local acceptance do not
-replace the remaining external own-data, bench, cross-OS user, hidden-set, and native CI trials.
+The source package can be installed locally now. No npm version is documented as available until its
+tag passes release smoke and is actually published. Local acceptance does not replace the remaining
+external plugin-author, full hidden-set, cross-OS user, and native CI trials required for formal
+Stage 4 exit.
 
 ---
 
@@ -79,7 +82,7 @@ Two surfaces, different rules.
 │ your agent, your code, your workflow                                     │
 ├────────────────────────────┬──────────────────────────┬──────────────────┤
 │ EXPLORATION                │ STRUCTURAL PROMOTION     │ CLAIM (Stage 4)  │
-│ never blocked              │ enforced in v0.1        │ not in v0.1      │
+│ never blocked              │ enforced                │ enforced locally │
 │                            │                          │                  │
 │ guarded views available;   │ artifact rerun at each  │ pricing, costs,  │
 │ ordinary code and shell;   │ train/OOS decision;     │ statistical and  │
@@ -118,6 +121,9 @@ examples/artifact-execution/ guarded Arrow + clean framed artifact child
 examples/walk-forward-windows/ explicit schedule + derived windows + deterministic run record
 examples/walk-forward-contract/ per-decision PIT + mask-first C1-C4 contract record
 examples/agent-loop/       cold Stage 3 brief → candidate → research-log loop
+examples/stage4-plugin/    runnable CostModel + NullGenerator contribution template
+examples/stage4-claim/     direct pricing → gates → Experiment → reproduction chain
+examples/stage4-agent-loop/ default tool path with rejection memory and snapshot replay
 docs/                     one page per thing
 ```
 
@@ -132,6 +138,8 @@ docs/                     one page per thing
 | [read-sets.md](./docs/read-sets.md) | Distinguish source, query, logical result, Arrow, and whole-read identities |
 | [veil-data.md](./docs/veil-data.md) | Query guarded point views and export exploration-grade panels |
 | [artifacts.md](./docs/artifacts.md) | Package and execute locked artifacts over guarded Arrow |
+| [gates.md](./docs/gates.md) | Understand Stage 4 pricing, gate-policy, and Experiment evidence |
+| [faq.md](./docs/faq.md) | Resolve common claim, degradation, plugin, and reproduction questions |
 | [examples/csv-pit](./examples/csv-pit) | Run the smallest guarded CSV point-in-time view |
 | [examples/parquet-pit](./examples/parquet-pit) | Run the same guarded view over generated Parquet |
 | [examples/multi-file-pit](./examples/multi-file-pit) | Read a stable multi-file view through one portable glob |
@@ -144,19 +152,20 @@ docs/                     one page per thing
 | [examples/walk-forward-windows](./examples/walk-forward-windows) | Execute derived rolling windows through a custom backend and deterministic run record |
 | [examples/walk-forward-contract](./examples/walk-forward-contract) | Verify fresh PIT and mask-first train/OOS decisions without binding to a database |
 | [examples/agent-loop](./examples/agent-loop) | Run the Stage 3 orchestration in an isolated project without a model |
+| [examples/stage4-plugin](./examples/stage4-plugin) | Implement and execute custom cost and null providers |
+| [examples/stage4-claim](./examples/stage4-claim) | Run direct Stage 4 issuance, memory, and exact reproduction |
+| [examples/stage4-agent-loop](./examples/stage4-agent-loop) | Run the default agent path through rejected and accepted Experiments |
 | [examples/golden-path](./examples/golden-path) | What a Veil research log looks like, with real numbers |
 | [bench/README.md](./bench/README.md) | How scoring works: two axes, four attribution layers |
 | [bench.md](./docs/bench.md) | Run, score, replay, and contribute Veil-bench tasks |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Three ways to contribute without reading the internals |
-
-Written as they are built: `gates` and `faq` arrive with the features they document.
 
 ## Roadmap
 
 | Stage | Delivers | Release |
 | --- | --- | --- |
 | 0 | Contract v1.0, skeleton, hand-written golden path, CI | — |
-| 1 | Veil-bench: 14 tasks, runner, bare-agent baseline | — |
+| 1 | Veil-bench: 15 current tasks, runner, bare-agent baseline | — |
 | 2 | Point-in-time views, adapters, verification engine, C1-C6 at runtime | — |
 | 3 | The Pi package, end-to-end research loop | **v0.1** |
 | 4 | Statistical gates, experiment memory, metric-level reproduction | **v0.2** |
@@ -177,10 +186,13 @@ npm install
 npm run check          # lint, types, tests, file cold probes, bench smoke, golden path
 npm run data:inspect -- --help # inspect your own CSV/Parquet from this checkout
 npm run agent-loop:verify # run the cold Stage 3 brief-to-candidate loop
+npm run stage4-plugin:verify # execute the public plugin conformance example
+npm run stage4-agent:verify # run complete tool-path Experiment archival and reproduction
 npm run golden-path    # regenerate the reference study and print the table above
 npm run golden-path:evidence:verify # run the full 370,728-row structural acceptance path
 npm run bench:stage2:verify # run model-free T1-T5 enforcement and honest-task preflights
 npm run bench:stage3:verify # verify the Pi surface and cold Stage 3 loop without a model
+npm run bench:stage4:verify # verify model-free gates, memory, T6/T7 attribution, and replay
 npm run bench:evaluate -- --profile veil ... # run the diagnostic model-enabled Veil profile
 npm run release:verify # verify v0.1 package and Pi resource manifests without publishing
 ```

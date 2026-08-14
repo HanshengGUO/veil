@@ -9,9 +9,9 @@ Status:
   bench task declarations, and are part of the public interface.
 - **The meaning of C1-C5 is frozen from v0.1** and will not change inside 1.x. Wording may be
   sharpened.
-- **C6 and the degradation tiers in §5 are provisional until v1.0.** Statistical gates arrive in
-  Stage 4, and both are expected to need adjustment once they exist. Changes during 0.x are recorded
-  in the changelog.
+- **C6 and the degradation tiers in §5 are provisional until v1.0.** Stage 4 now prices the
+  preregistered tier at 95% DSR confidence and the exploratory tier at 99%; both may still be adjusted
+  during 0.x with changes recorded in the changelog.
 - Moving an invariant's enforcement **earlier** — from claim time to read time, say — is a
   strengthening, not a semantic change, and is allowed at any point.
 
@@ -154,6 +154,16 @@ citable; that requires a later Experiment record.
 replay-verified contract record and rejects exploration, child, or training-only results as C5. Its
 own `claimStatus` remains `unverified`; a candidate id is never an experiment id.
 
+The first Stage 4 boundary is now explicit. `veil.pricing-evidence.v0` binds immutable trades, gross
+returns, costs, net returns, and aggregate metrics to that replayed candidate;
+`veil.gate-evaluation.v0` must cover every entry in a content-addressed cost-plus-statistical policy;
+and only `veil.experiment.v0` can carry the resulting citable metrics and verdict.
+`executeOosPricing()` issues the first record only after replaying retained contract evidence,
+deriving every series, and running the candidate-bound registered cost model.
+`executeStandardGateEvaluation()` then derives the observable trial count and complete eight-gate
+result; `executeExperiment()` accepts only that engine-issued bundle. See
+[`gates.md`](./gates.md).
+
 ### C6 — Hypothesis pre-registration
 
 > A hypothesis MUST be registered, with a timestamp and its source of information, before the result
@@ -220,8 +230,9 @@ apply and which conclusions are degraded.
 | `provenance.certified` | absent or `false` | Nothing is rejected; the dataset simply gets no credit beyond what `guarantees` claims. Not being certified is a normal state, not a defect |
 | C4 operator exemption | declared | Permitted for research whose subject is the untradable instruments; recorded in the audit log, and every conclusion reached through it is marked |
 
-The tiers in this table are provisional until v1.0: "a one-step higher significance bar" is given a
-number when the statistical gates exist in Stage 4, not before.
+The tiers in this table are provisional until v1.0. The current Stage 4 standard and higher
+deflated-Sharpe confidence levels are 95% and 99%. Critical point-in-time or survivorship
+degradations are rejected before pricing rather than repaired by a statistical threshold.
 
 **Why `availability_basis` exists.** You start collecting a feed today and the vendor hands you
 fifteen years of history in the first pull. Every row's availability timestamp is *today*. Two exits

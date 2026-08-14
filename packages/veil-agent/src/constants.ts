@@ -5,11 +5,13 @@ export const VEIL_VERIFICATION_START_ENTRY = "veil.verification-start.v0" as con
 export const VEIL_RUN_RESULT_ENTRY = "veil.run-result.v0" as const;
 export const VEIL_VIOLATION_ENTRY = "veil.violation.v0" as const;
 export const VEIL_ADVISORY_ENTRY = "veil.advisory.v0" as const;
+export const VEIL_EXPERIMENT_ENTRY = "veil.experiment-memory.v0" as const;
 
 export const VEIL_PROJECT_FORMAT = "veil.project.v0" as const;
 export const VEIL_PROMOTION_REQUEST_FORMAT = "veil.promotion-request.v0" as const;
 export const VEIL_RUN_EVIDENCE_FORMAT = "veil.run-evidence.v0" as const;
 export const VEIL_AGENT_TOOL_RESULT_FORMAT = "veil.agent-tool-result.v0" as const;
+export const VEIL_EXPERIMENT_ARCHIVE_FORMAT = "veil.experiment-archive.v0" as const;
 
 export const VEIL_DATA_TOOL = "veil-data" as const;
 export const VEIL_BACKTEST_TOOL = "veil-backtest" as const;
@@ -27,6 +29,7 @@ export const VEIL_AGENT_ENTRY_TYPES = Object.freeze([
   VEIL_RUN_RESULT_ENTRY,
   VEIL_VIOLATION_ENTRY,
   VEIL_ADVISORY_ENTRY,
+  VEIL_EXPERIMENT_ENTRY,
 ] as const);
 
 export type VeilAgentEntryType = (typeof VEIL_AGENT_ENTRY_TYPES)[number];

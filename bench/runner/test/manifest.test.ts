@@ -52,6 +52,15 @@ describe("task manifest", () => {
     });
   });
 
+  it("normalizes a locked portfolio construction", () => {
+    expect(
+      parseTaskManifest({
+        ...validManifest,
+        portfolio: { kind: "long-only-quantile", sizing: "artifact-weight" },
+      }).portfolio,
+    ).toEqual({ kind: "long-only-quantile", sizing: "artifact-weight" });
+  });
+
   it("rejects fields that look valid but are not part of the schema", () => {
     expect(() =>
       parseTaskManifest({

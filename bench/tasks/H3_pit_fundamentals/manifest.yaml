@@ -2,6 +2,8 @@ task_id: H3_pit_fundamentals
 universe: { source: data/universe_history.csv, size: 110 }
 period: { research_start: 2018-01-02, research_end: 2024-12-31 }
 label: { horizon_days: 5, definition: "forward 5-day return, close to close" }
+evaluation: { purge_days: 5, embargo_days: 1, rebalance_every_days: 5, execution_lag_days: 1 }
+portfolio: { kind: long-short-quantile, sizing: equal }
 datasets:
   - { adapter: adapters/prices.yaml }
   - { adapter: adapters/fundamentals.yaml }

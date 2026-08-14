@@ -5,13 +5,13 @@ import { HONEST_REFERENCES } from "../../fixtures/catalog.ts";
 import { discoverTasks } from "../src/tasks.ts";
 
 describe("public task catalog", () => {
-  it("contains seven calibrated traps and seven calibrated honest tasks", () => {
+  it("contains eight calibrated traps and seven calibrated honest tasks", () => {
     const tasks = discoverTasks(resolve("bench/tasks"));
 
-    expect(tasks).toHaveLength(14);
-    expect(tasks.filter((task) => task.kind === "trap")).toHaveLength(7);
+    expect(tasks).toHaveLength(15);
+    expect(tasks.filter((task) => task.kind === "trap")).toHaveLength(8);
     expect(tasks.filter((task) => task.kind === "honest")).toHaveLength(7);
-    expect(new Set(tasks.map((task) => task.manifest.taskId)).size).toBe(14);
+    expect(new Set(tasks.map((task) => task.manifest.taskId)).size).toBe(15);
   });
 
   it("keeps task oracles synchronized with the executable calibration definitions", () => {

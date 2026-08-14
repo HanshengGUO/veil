@@ -1,0 +1,21 @@
+# gate-method-evidence.yaml — normalized veil.gate-method-evidence.v0 record
+#
+# One content-addressed method record backs each compact result in gate-evaluation.yaml.
+
+format: veil.gate-method-evidence.v0
+gateId: trials-aware-deflated-sharpe
+candidateHash: <sha256>
+pricingHash: <sha256>
+trialAuditHash: <sha256>
+outcome: passed                  # passed | failed | unavailable
+reasonCode: deflated-sharpe-passed
+implementationHash: <sha256>
+dependencyHashes: [<sha256>, <sha256>]
+statistics:                      # canonical, unique, name-sorted finite values
+  - name: deflated-sharpe-probability
+    value: 0.982
+  - name: effective-trials
+    value: 4
+  - name: required-confidence
+    value: 0.95
+evidenceHash: <sha256>

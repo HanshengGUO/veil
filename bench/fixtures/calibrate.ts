@@ -188,6 +188,24 @@ export const CALIBRATIONS: readonly CalibrationDefinition[] = [
     minAbsDelta: 0.12,
   },
   {
+    id: "T7_knowledge_pollution",
+    title: "post-sample hypothesis treated as independent historical validation",
+    class: "silent",
+    market: NULL_MARKET,
+    evaluate: ({ panel }) => {
+      const control = {
+        ...HONEST,
+        costBps: 0,
+        lookbacks: MULTIPLE_TESTING_LOOKBACKS,
+      } satisfies Protocol;
+      return protocolPair(panel, control, {
+        ...control,
+        parameters: "chosen-on-full-sample",
+      });
+    },
+    minAbsDelta: 0.12,
+  },
+  {
     id: "T11_period_selection",
     title: "best fold reported instead of the complete OOS path",
     class: "silent",

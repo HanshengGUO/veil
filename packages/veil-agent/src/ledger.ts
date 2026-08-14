@@ -1,14 +1,19 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
+  createExperimentMemoryRecord,
   createHypothesisRegistration,
+  type ExperimentExecutionResult,
+  type ExperimentMemoryRecord,
   type HypothesisRegistrationRecord,
   type PromotionCandidateRecord,
+  verifyExperimentMemoryRecord,
 } from "@veilquant/engine";
 import {
   VEIL_ADVISORY_ENTRY,
   VEIL_AGENT_ENTRY_TYPES,
   VEIL_BRIEF_ENTRY,
   VEIL_DATA_READ_ENTRY,
+  VEIL_EXPERIMENT_ENTRY,
   VEIL_HYPOTHESIS_ENTRY,
   VEIL_RUN_RESULT_ENTRY,
   VEIL_VERIFICATION_START_ENTRY,
@@ -104,7 +109,8 @@ export type VeilLedgerData =
   | VerificationStartEntryData
   | RunResultEntryData
   | ViolationEntryData
-  | AdvisoryEntryData;
+  | AdvisoryEntryData
+  | ExperimentMemoryRecord;
 
 export interface SessionEntryLike {
   readonly type: string;
@@ -131,6 +137,7 @@ export interface VeilSessionLedger {
   readonly runResults: readonly DurableLedgerEntry<RunResultEntryData>[];
   readonly violations: readonly DurableLedgerEntry<ViolationEntryData>[];
   readonly advisories: readonly DurableLedgerEntry<AdvisoryEntryData>[];
+  readonly experiments: readonly DurableLedgerEntry<ExperimentMemoryRecord>[];
 }
 
 export function createBriefEntry(statementInput: string, captureMode: CaptureMode): BriefEntryData {
@@ -186,6 +193,11 @@ export function candidateSummary(candidate: PromotionCandidateRecord): RunCandid
   });
 }
 
+/** Trusted Stage 4 bridge for Pi's append-only custom-entry ledger. */
+export function experimentEntryData(result: ExperimentExecutionResult): ExperimentMemoryRecord {
+  return createExperimentMemoryRecord(result);
+}
+
 export function reconstructSessionLedger(entriesInput: readonly unknown[]): VeilSessionLedger {
   if (!Array.isArray(entriesInput)) throw corruptLedger("session branch is not an entry array");
   const briefs: DurableLedgerEntry<BriefEntryData>[] = [];
@@ -195,6 +207,7 @@ export function reconstructSessionLedger(entriesInput: readonly unknown[]): Veil
   const runResults: DurableLedgerEntry<RunResultEntryData>[] = [];
   const violations: DurableLedgerEntry<ViolationEntryData>[] = [];
   const advisories: DurableLedgerEntry<AdvisoryEntryData>[] = [];
+  const experiments: DurableLedgerEntry<ExperimentMemoryRecord>[] = [];
 
   for (const input of entriesInput) {
     const entry = sessionEntry(input);
@@ -222,9 +235,13 @@ export function reconstructSessionLedger(entriesInput: readonly unknown[]): Veil
       case VEIL_ADVISORY_ENTRY:
         advisories.push(durable as DurableLedgerEntry<AdvisoryEntryData>);
         break;
+      case VEIL_EXPERIMENT_ENTRY:
+        experiments.push(durable as DurableLedgerEntry<ExperimentMemoryRecord>);
+        break;
     }
   }
   enforceRunChronology(verificationStarts, runResults);
+  enforceExperimentChronology(experiments);
   return Object.freeze({
     briefs: Object.freeze(briefs),
     hypotheses: Object.freeze(hypotheses),
@@ -233,7 +250,23 @@ export function reconstructSessionLedger(entriesInput: readonly unknown[]): Veil
     runResults: Object.freeze(runResults),
     violations: Object.freeze(violations),
     advisories: Object.freeze(advisories),
+    experiments: Object.freeze(experiments),
   });
+}
+
+function enforceExperimentChronology(
+  experiments: readonly DurableLedgerEntry<ExperimentMemoryRecord>[],
+): void {
+  const ids = new Set<string>();
+  for (const entry of experiments) {
+    if (ids.has(entry.data.experimentId)) {
+      throw corruptLedger("Experiment id appears more than once on the active branch");
+    }
+    if (Date.parse(entry.timestamp) < Date.parse(entry.data.issuedAt)) {
+      throw corruptLedger("Experiment memory entry predates engine issuance");
+    }
+    ids.add(entry.data.experimentId);
+  }
 }
 
 export function hypothesisRegistrationFromEntry(
@@ -294,6 +327,8 @@ function normalizeLedgerData(type: VeilAgentEntryType, input: unknown): VeilLedg
       return normalizeViolation(input);
     case VEIL_ADVISORY_ENTRY:
       return normalizeAdvisory(input);
+    case VEIL_EXPERIMENT_ENTRY:
+      return verifyExperimentMemoryRecord(input);
   }
 }
 

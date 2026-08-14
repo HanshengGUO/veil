@@ -32,6 +32,24 @@ decision_schedule: []
 columns:
   - ticker
   - close
-# This is a portable logical id, not a filesystem path or locator URI. Replace it when Stage 4 issues a
-# registered method reference; Stage 3 does not apply costs.
-cost_model: stage4-not-issued
+  - volume
+# This is a registered logical id, not a filesystem path or locator URI.
+cost_model: replace-with-registered-cost-model
+stage4:
+  signal_column: signal
+  price_column: close
+  market_columns: [volume]
+  periods_per_year: 252
+  portfolio_kind: long-short-quantile
+  quantile: 0.2
+  # Use a positive artifact-output column for trailing-information sizing, otherwise null.
+  weight_column: null
+  capacity:
+    portfolio_nav: 1000000
+    volume_column: volume
+    maximum_participation_rate: 0.05
+  null_generator: replace-with-registered-null-generator
+  trial_budget: 12
+  # Record the originating model's knowledge cutoff. Use null only when genuinely unavailable;
+  # doing so makes the optional contamination gate unavailable and the Experiment degraded.
+  knowledge_cutoff: 2025-12-31T00:00:00.000Z

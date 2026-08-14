@@ -17,9 +17,10 @@ capture, G1-G4 attribution, dual-axis aggregation, and multi-model baseline repo
 3. Require `submission.json`, then score deterministically. Bare runs require unverified metrics.
    The Stage 3 Veil profile additionally collects promotion violations and candidate evidence from
    the active Pi branch, requires honest submissions to cite an immutable run file, and rejects any
-   premature Experiment id or verified metric. Stage 4 will activate Experiment-backed scoring.
+   premature Experiment id or verified metric. The `veil-stage4` profile requires Experiment-backed
+   scoring and exact submitted/archived metric identity.
    Free-form prose remains in `research.md` and is not used to decide safety.
-4. Compare models through either the isolated `bare` or packaged `veil` profile and write a report
+4. Compare models through the isolated `bare`, structural `veil`, or complete `veil-stage4` profile and write a report
    under the requested run directory. Reviewed bare reports belong in
    [`../baselines`](../baselines); Stage 3 Veil output remains diagnostic until the deferred gates
    and external acceptance runs are complete.

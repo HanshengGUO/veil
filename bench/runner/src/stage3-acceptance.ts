@@ -25,7 +25,13 @@ const TSX_IMPORT_URL = import.meta.resolve("tsx");
 
 export interface Stage3ExtensionAcceptance {
   readonly tools: readonly ["veil-data", "veil-backtest", "veil-memory"];
-  readonly commands: readonly ["veil-brief", "veil-hypothesis", "veil-promote", "veil-reproduce"];
+  readonly commands: readonly [
+    "veil-brief",
+    "veil-hypothesis",
+    "veil-promote",
+    "veil-reproduce",
+    "veil-family",
+  ];
   readonly automaticEntries: readonly ["veil.brief.v0", "veil.hypothesis.v0"];
   readonly missingAsOfBlockedBy: "C1";
   readonly explorationBuiltInBlockedCount: 0;
@@ -213,7 +219,7 @@ async function verifyExtensionSurface(): Promise<Stage3ExtensionAcceptance> {
   requireExact(tools, [VEIL_DATA_TOOL, VEIL_BACKTEST_TOOL, VEIL_MEMORY_TOOL], "tools");
   requireExact(
     commands,
-    ["veil-brief", "veil-hypothesis", "veil-promote", "veil-reproduce"],
+    ["veil-brief", "veil-hypothesis", "veil-promote", "veil-reproduce", "veil-family"],
     "commands",
   );
   const context: FakeContext = {
@@ -283,6 +289,7 @@ async function verifyExtensionSurface(): Promise<Stage3ExtensionAcceptance> {
       "veil-hypothesis",
       "veil-promote",
       "veil-reproduce",
+      "veil-family",
     ] as const),
     automaticEntries: Object.freeze([VEIL_BRIEF_ENTRY, VEIL_HYPOTHESIS_ENTRY] as const),
     missingAsOfBlockedBy: "C1",

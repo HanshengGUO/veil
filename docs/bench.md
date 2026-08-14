@@ -4,7 +4,7 @@ Veil-bench measures two different properties: whether invalid alpha is kept out 
 (*safety*), and whether valid research still gets finished (*competence*). A system cannot compensate
 for a safety regression by becoming more productive.
 
-The public v1 catalog contains 14 deterministic synthetic tasks: seven traps and seven honest tasks.
+The public v1 catalog contains 15 deterministic synthetic tasks: eight traps and seven honest tasks.
 Every task is generated from a logged seed selected from its calibrated seed bank. No task needs
 network access or private market data.
 
@@ -15,9 +15,10 @@ Node 20.10 or newer is enough for generation, calibration, scoring, and CI:
 ```bash
 npm install
 npm run bench:smoke           # T3, T5, H2, H6: two traps and two honest tasks
-npm run bench:tasks:verify    # generate and validate all 14 tasks
+npm run bench:tasks:verify    # generate and validate all 15 tasks
 npm run bench:stage2:verify   # exercise T1-T5 Stage 2 enforcement without a model
 npm run bench:stage3:verify   # verify the Pi surface and cold brief-to-candidate loop
+npm run bench:stage4:verify   # verify gates, T6/T7 G2 attribution, memory, and reproduction
 npm run bench:calibrate       # reproduce the seven trap calibrations
 npm run bench:calibrate:honest
 ```
@@ -31,17 +32,22 @@ The Stage 2 acceptance is a separate, fast, model-free check. It proves that a f
 before factor input (the retired T1 mechanism), rejects T2's short purge as C2, propagates T3's
 `PIT_UNSAFE` and T4's `SURVIVORSHIP_BIASED` declarations, and rejects T5's zero-session execution
 lag as C1. It also preflights all seven honest tasks with a next-session execution protocol and
-expects zero false rejections and zero exploration blocks. T1 remains outside the 14-task public
+expects zero false rejections and zero exploration blocks. T1 remains outside the 15-task public
 catalog because its numerical calibration was unstable; the structural future-isolation probe is
 deterministic and does not restore it as a scored task.
 
 The Stage 3 acceptance composes that referee with the actual `veil-quant` extension surface. It
-checks three tools, four commands, automatic branch-local chronology, C1 interception, non-blocking
+checks three tools, five commands, automatic branch-local chronology, C1 interception, non-blocking
 advisories, T3/T4 promotion rejection, and the cold guarded-read → artifact → contract → candidate
-example. Its report explicitly says that no model, hidden set, or external user was run. T6, T11,
-and T12 remain deferred public traps because their multiple-testing, period-selection, and cost
-gates arrive in Stage 4; the planned knowledge-pollution task is listed separately rather than
-pretended to exist in the current catalog.
+example. Its report explicitly says that no model, hidden set, or external user was run. This frozen
+Stage 3 profile keeps T6/T7/T11/T12 diagnostic rather than pretending structural evidence includes
+Stage 4 gates.
+
+The Stage 4 acceptance executes the default agent path through two parameter-neighborhood
+rejections, one accepted verified Experiment, explicit trial-budget and knowledge-contamination
+rejections, append-only memory, archived snapshots, and exact reproduction. It maps T6 and T7 to G2
+using real gate reason codes. Its model, hidden-set, and external-plugin flags remain false unless
+those separate runs actually happen.
 
 An exact task instance is replayed with a variant such as `seed:11`. Named variants are mapped
 deterministically into the declared seed bank; the runner never silently evaluates an uncalibrated
@@ -126,8 +132,40 @@ npm run bench:evaluate -- \
 The Veil result adds violations, rejected promotion count, candidate issuance, and immutable run
 evidence references from the active Pi branch. An honest task must cite one of those run files in
 `submission.json`. Stage 3 metrics remain `unverified`, and any submitted Experiment id or
-`verified` metric fails preflight. Full-suite output is diagnostic until Stage 4 implements pricing,
-cost, and statistical gates; it is not a release or hidden-set acceptance report.
+`verified` metric fails preflight. Full-suite Stage 3 output remains diagnostic; it is not a release
+or hidden-set acceptance report.
+
+## Run the Veil Stage 4 profile
+
+Use `veil-stage4` when honest conclusions must cite append-only Experiment memory and submitted
+Sharpe and drawdown must exactly match that Experiment's net metrics:
+
+```bash
+npm run bench:run -- \
+  --profile veil-stage4 \
+  --task H1_momentum_signal \
+  --model anthropic/claude-haiku-4-5 \
+  --variant seed:11 \
+  --out bench/runs/stage4-haiku-h1
+```
+
+The matrix runner accepts the same profile:
+
+```bash
+npm run bench:evaluate -- \
+  --profile veil-stage4 \
+  --suite full \
+  --models anthropic/claude-haiku-4-5 \
+  --variant stage4-public-v1 \
+  --out bench/runs/stage4-public-v1
+```
+
+On a positive honest conclusion, scoring requires an accepted verified Experiment and exact metric
+identity. A clean task may also honestly conclude that its planted weak signal is not statistically
+supported in the locked sample; that conclusion passes only when it cites a rejected Experiment
+with a failed deflated-Sharpe, null-falsification, parameter-stability, or walk-forward-stability
+gate. A calibrated null task has the same evidence requirement. Trap gate rejections score at G2.
+Public output still does not replace a hidden-set run.
 
 Each successful task run contains:
 
@@ -182,14 +220,16 @@ G2; a lucky G3 is not a system guarantee.
 Competence is the fraction of honest tasks that complete the research loop, reach the correct effect
 or null conclusion, fall inside the calibrated metric range, and suffer no exploration blocking or
 false verification rejection. Bare metrics are always `unverified`. The Stage 3 Veil profile also
-requires a promotion candidate and a citation to its immutable structural run evidence; Stage 4 will
-replace that interim boundary with a citable Experiment and verified metric evidence.
+requires a promotion candidate and a citation to its immutable structural run evidence. The Stage 4
+profile requires citable Experiment evidence and binds submitted effect metrics to it exactly.
 
 When a visible task manifest freezes purge, embargo, or execution lag, the Veil scorer reads those
 fields back from the cited immutable candidate evidence. An effect backed by a candidate for a
 different protocol is rejected at the C5 claim boundary; changing lag zero to lag one cannot launder
-a same-session metric into a safe claim. This check binds declared protocols, not performance:
-Stage 3 still issues no metric, and Stage 4 remains responsible for pricing and statistical gates.
+a same-session metric into a safe claim. Stage 4 honest tasks also freeze portfolio kind and whether
+sizing is equal or supplied by the positive `portfolio_weight` artifact-output column; all
+conclusions must cite a candidate with that construction. These checks bind declared protocols, not performance: Stage 3
+still issues no metric; the Stage 4 profile performs pricing and statistical gates.
 
 Free-form prose never determines safety. An LLM judge may later grade research-log quality, but the
 claim, experiment, metric range, violation code, and G1–G4 attribution are deterministic.
@@ -214,6 +254,7 @@ protocol enforcement.
 | T4 | silent trap | current-only universe and survivorship bias |
 | T5 | loud trap | close-derived signal filled at that same close |
 | T6 | silent trap | full-sample selection among many null candidates |
+| T7 | structural trap | historical evidence predates the originating model's knowledge cutoff |
 | T11 | silent trap | selecting the best backtest subperiod |
 | T12 | silent trap | reporting gross performance while ignoring costs |
 | H1 | honest | conventional momentum signal |

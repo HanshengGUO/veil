@@ -2,7 +2,8 @@ task_id: H7_slow_momentum
 universe: { source: data/universe_history.csv, size: 132 }
 period: { research_start: 2016-01-04, research_end: 2024-12-31 }
 label: { horizon_days: 20, definition: "forward 20-day return, close to close" }
-evaluation: { purge_days: 25, embargo_days: 5, rebalance_every_days: 20 }
+portfolio: { kind: long-short-quantile, sizing: equal }
+evaluation: { purge_days: 25, embargo_days: 5, rebalance_every_days: 20, execution_lag_days: 1 }
 datasets: [{ adapter: adapters/prices.yaml }]
 tools: { allowed: [veil-data, veil-backtest, veil-memory] }
 data_generation: { script: generate.ts, seeds: [11, 22, 33] }
