@@ -1,27 +1,25 @@
 # @veilquant/engine
 
-The engine underneath Veil's evidence-first research harness. Everything that turns exploratory code
-into a reviewable, reproducible research result lives here: temporal views, executable artifacts,
-walk-forward contracts, pricing, gates, memory, and replay.
+[English documentation](https://github.com/HanshengGUO/veil/blob/master/docs/README.md) |
+[简体中文](https://github.com/HanshengGUO/veil/blob/master/docs/zh-CN/README.md)
 
-Its checks make unsafe claims expensive, but that is only half the value. Stable evidence handoffs
-also make good work easier to review, compare, archive, and reuse.
+This is the engine behind Veil's research harness: temporal views, artifact execution, walk-forward
+contracts, pricing, gates, memory, and replay.
 
-Status: released in v0.1.0, with broader Stage 4 external acceptance continuing toward v0.2. The backend-neutral temporal plan, opaque source bindings, mandatory Arrow
-guard, strict adapter YAML loader, default single/multi-file DuckDB CSV/Parquet backend, source and
-read-set v0 identities, durable content-addressed snapshots, and the minimum `veil-data` point/panel
-surface are implemented and hardened with operator-controlled snapshot quarantine. Portable
-content-addressed artifact identity and runtime-provider-neutral framed execution are also
-implemented. Explicit-session rolling/expanding plans, replayable derived views, per-decision OOS
-mask-first execution, and complete C1-C4 contract records now feed a narrow promotion boundary.
-That boundary checks C5/C6 evidence and emits an unverified candidate for pricing and gates. The
-golden-path prices and point-in-time membership meet through replayable composite
-evidence before this contract path. `veil-quant` now supplies the Pi session timestamps and invokes
-this public library. Stage 4 adds deterministic OOS pricing, typed cost/null providers, observable
-trial accounting, the immutable eight-gate policy, safe Experiment issuance, append-only memory, and
-exact metric-level reproduction.
+The checks keep invalid claims out. The records they produce also make valid work easier to review
+and reproduce.
 
-Install it with `npm install @veilquant/engine`.
+Prepared for v0.1.0. The package currently includes:
+
+- strict adapter loading and guarded CSV/Parquet reads;
+- source, read-set, snapshot, and artifact identities;
+- bounded artifact execution and mask-first walk-forward contracts;
+- OOS pricing, cost/null providers, trial accounting, and the eight-gate policy;
+- Experiment memory and exact replay from archived artifacts and read sets.
+
+Broader Stage 4 plugin-author and external-user acceptance continues toward v0.2.
+
+After publication, install it with `npm install @veilquant/engine`.
 
 ## Stage 4 evidence boundary
 
@@ -81,9 +79,9 @@ Its pushdown capabilities are performance hints only: even if it reports that th
 applied, `TemporalGuard` independently checks every returned decision-time value. A missing or broken
 pushdown can waste I/O; it cannot expose a correctly timestamped future row through the guarded API.
 
-This is the invisible protection **and delivery** boundary: callers use the same `as_of` read
-regardless of where the data lives, and every backend produces the same downstream evidence shape.
-Backend-specific SQL, connections, and credentials stay behind the adapter.
+Callers use the same `as_of` read regardless of where the data lives, and every backend produces the
+same downstream evidence shape. Backend-specific SQL, connections, and credentials stay behind the
+adapter.
 
 ## `veil-data` exploration surface
 

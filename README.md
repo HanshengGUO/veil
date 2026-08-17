@@ -1,5 +1,7 @@
 # Veil
 
+English | [简体中文](./README.zh-CN.md)
+
 [![CI](https://github.com/HanshengGUO/veil/actions/workflows/ci.yml/badge.svg)](https://github.com/HanshengGUO/veil/actions/workflows/ci.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/HanshengGUO/veil?display_name=tag)](https://github.com/HanshengGUO/veil/releases)
 [![npm](https://img.shields.io/npm/v/veil-quant?logo=npm&label=veil-quant)](https://www.npmjs.com/package/veil-quant)
@@ -24,22 +26,19 @@ merge. Veil is CI and an evidence delivery pipeline for quant research.
 > One result surprised us: in the evaluated workflow, contracts, independent review, and bounded
 > repair did more than protect the work — they improved the quality of the final delivery.
 
-That is the broader promise. Veil keeps unsafe alpha out of claims, but it also gives agents a stable
-contract, explicit handoffs, durable memory, and exact reproduction so they can finish stronger work
-with less ambiguity for the researcher who has to review, trust, and reuse it.
+Veil still keeps unsafe alpha out of claims. The same structure also makes good work easier to
+review and continue: the contract is explicit, failed ideas stay in memory, and a result can be
+reproduced without reconstructing the original chat session.
 
-Status: **v0.1.0 is the first public release.** Stage 4 implementation is included; its broader
-external plugin-author, hidden-set, and user acceptance continues toward v0.2. The `veil-quant` Pi package
-registers `veil-data`, `veil-backtest`, and `veil-memory`; captures C6 chronology in Pi's append-only
-session tree; keeps ordinary exploration tools unblocked; and writes content-addressed structural
-run evidence plus an honest Markdown log. The engine beneath it provides the backend-neutral temporal
-guard, CSV/Parquet file backend, read-set identities/snapshots, content-addressed artifacts, framed
-runtime execution, per-decision mask-first WFA contracts, and the narrow promotion boundary. A
-request without a Stage 4 block stops at a `contract-verified`, explicitly `unverified` candidate.
-A complete Stage 4 request replays retained evidence, prices OOS trades, executes the immutable
-eight-gate policy, archives accepted and rejected Experiments in family memory, and can reproduce an
-Experiment from exact artifact bytes and read-set snapshots. Typed `CostModel` and `NullGenerator`
-interfaces include audited equity/crypto methods and a runnable contribution template.
+Status: **v0.1.0 is ready for release.** Package manifests and release automation are ready; npm
+publication waits for the `v0.1.0` tag. Broader plugin-author, hidden-set, and user
+acceptance continues toward v0.2.
+
+The `veil-quant` Pi package registers `veil-data`, `veil-backtest`, and `veil-memory`. The engine
+beneath it handles temporal guards, CSV/Parquet reads, read-set snapshots, artifact execution, and
+mask-first walk-forward contracts. A run without a Stage 4 block stops at a `contract-verified` but
+explicitly `unverified` candidate. A complete run adds OOS pricing, eight gates, Experiment memory,
+and exact reproduction from archived code and read sets.
 
 The release workflow publishes only after the package matrix and full repository gate pass. That
 release evidence does not replace the remaining external plugin-author, full hidden-set, and
@@ -104,7 +103,7 @@ notes, machine-readable results, and limitations.
 
 ## Start a loop
 
-Install the Pi package from npm:
+After v0.1.0 is published, install the Pi package from npm:
 
 ```bash
 pi install npm:veil-quant
@@ -159,7 +158,7 @@ interception, session log and package system it uses rather than reimplements. V
 ```
 packages/veil-contract/   the invariants, the declaration formats, their validators
 packages/veil-engine/     point-in-time views, walk-forward verification, promotion evidence
-packages/veil-agent/      the Pi package users install (published as veil-quant)
+packages/veil-agent/      the Pi package users install (npm name: veil-quant)
 bench/                    Veil-bench: tasks, runner, bare-agent baselines
 bench/results/            reviewed local evaluation snapshots
 examples/golden-path/     independent reference + full structural evidence acceptance

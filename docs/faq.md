@@ -1,17 +1,15 @@
 # Frequently asked questions
 
+English | [简体中文](./zh-CN/faq.md)
+
 ## Is Veil only a safety layer?
 
-No. Safety is the non-negotiable boundary, but the product is an evidence-first harness for
-AI-assisted quant research. It wraps the workflow researchers already use; contracts clarify what
-must be produced, independent evidence makes review concrete, memory prevents silent rediscovery,
-and reproduction turns a one-off result into reusable work.
+No. Veil is a research harness with a strict claim boundary. It leaves ordinary exploration alone,
+then adds contracts, gates, memory, and reproduction when a result is promoted.
 
-One result surprised us: the evaluated contract, independent-review, and bounded-repair workflow
-improved the strict official QBench aggregate in all three tested model configurations — Kimi K3 by
-4.25 points and DeepSeek V4 Flash and Pro by 3.25 points each. That supports a claim about final
-delivery quality, not wall-clock speed or universal benchmark improvement. See the
-[reviewed snapshots](../bench/results/) for protocols and limitations.
+In the current QBench runs, the contract/review/repair workflow also improved the strict official
+aggregate in all three tested model configurations. That is evidence about these runs, not a claim
+that every model gets faster or better. See the [reviewed snapshots](../bench/results/).
 
 ## Does Veil stop ordinary exploration?
 

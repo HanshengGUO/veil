@@ -1,14 +1,15 @@
 # veil-quant
 
-The evidence-first quant research harness for Pi. It wraps a normal single-agent workflow without
-replacing Pi or blocking ordinary coding work. Exploration stays familiar; promising work gains a
-contract, reviewable evidence, durable memory, an explicit verdict, and exact reproduction.
+[English documentation](https://github.com/HanshengGUO/veil/blob/master/README.md) |
+[简体中文](https://github.com/HanshengGUO/veil/blob/master/README.zh-CN.md)
 
-The result is more than invisible protection at the claim boundary. Veil helps the agent finish a
-better deliverable: one a researcher can inspect, trust, hand off, and continue instead of reverse
-engineering a transient chat and working tree.
+Veil is a quant research harness for Pi. It leaves ordinary coding alone, then adds a contract,
+evidence, gates, memory, and reproduction when a result is promoted.
 
-Install the published Pi package with `pi install npm:veil-quant`. During source development, run
+The aim is simple: a researcher should be able to inspect and continue the work without reverse
+engineering the original chat and working tree.
+
+Registry install after publication: `pi install npm:veil-quant`. During source development, run
 `npm install` at the repository root and use `pi install ./packages/veil-agent` instead.
 
 Veil libraries support Node 20.10 through 29. The repository-pinned Pi 0.84.1 model runner requires
@@ -79,7 +80,7 @@ Known `PIT_UNSAFE`, unverified point-in-time, assumed-availability, and survivor
 unknown declarations remain available for exploration but are rejected at promotion with C1. Do not
 change an adapter guarantee merely to pass that boundary.
 
-This is intentional. `@veilquant/engine` already freezes the trustworthy chain:
+The engine freezes this chain before a metric can become a claim:
 
 ```text
 guarded read → artifact → per-decision contract → registration chronology

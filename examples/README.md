@@ -1,9 +1,8 @@
 # Examples
 
-The examples build one evidence-first delivery path in small, runnable pieces. Start with ordinary
-data and exploration, then add portable semantics, exact identities, executable contracts, explicit
-decisions, memory, and reproduction. Together they show how Veil improves the artifact a researcher
-hands off — not just how it blocks an invalid claim.
+These examples build Veil a piece at a time. Start with a guarded read, then add stable identities,
+artifact execution, walk-forward contracts, gates, memory, and reproduction. Each directory is
+runnable on its own.
 
 | Example | What it is |
 | --- | --- |

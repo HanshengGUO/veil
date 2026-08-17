@@ -1,7 +1,9 @@
 # Veil-bench
 
-Veil-bench is the referee for Veil's full promise: protect conclusions **and** help agents finish
-better research. It exists before the system it judges and scores two separate axes:
+English | [简体中文](../docs/zh-CN/bench.md)
+
+Veil-bench checks whether Veil catches false alpha without making clean research harder to finish.
+It scores two axes separately:
 
 | Axis | Question |
 | --- | --- |
@@ -11,10 +13,9 @@ better research. It exists before the system it judges and scores two separate a
 The meta-rule: **maximize competence subject to safety never regressing.** A system that refuses
 everything scores full safety and is useless.
 
-That second axis is why Veil is a delivery system rather than a guardrail alone. The neighboring
-QBench evaluation measures final engineering delivery quality; across the three reviewed model
-configurations, the frozen contract/review workflow improved the strict official aggregate every
-time. See [`results/`](./results/) for score@1 protocols and limitations.
+Competence is why refusing everything is not enough. We also use QBench as a separate engineering
+check. The frozen contract/review workflow improved its strict official aggregate in all three
+reviewed model configurations; [`results/`](./results/) contains the score@1 protocols and caveats.
 
 ## Layer attribution (G1-G4)
 

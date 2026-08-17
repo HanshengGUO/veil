@@ -1,8 +1,7 @@
 # Contributing to Veil
 
-Veil is building an evidence-first harness for AI-assisted quant research, not only a collection of
-safety checks. The best contributions help researchers and agents finish work that is more honest,
-more reviewable, more reproducible, or easier to extend — ideally several at once.
+Veil is an evidence-first harness for AI-assisted quant research. Good contributions make research
+safer to claim, easier to reproduce, or easier for the next person to pick up.
 
 Three ways to contribute that do not require reading Veil's internals. All three are "add a file,
 open a pull request".
@@ -79,6 +78,13 @@ And the ordinary ones:
 - No new dependency without a reason in the pull request. Direct dependencies are pinned exactly.
 - Do not weaken a check to make a test pass. If a check is wrong, fix the check and say why.
 
+## Documentation languages
+
+English is the default and the source of truth. The public Simplified Chinese mirror lives in
+`README.zh-CN.md` and `docs/zh-CN/`. If a change affects a mirrored core page, update both versions in
+the same pull request. Code, schemas, errors, package metadata, issues, and pull requests stay in
+English.
+
 ## Numbers in documentation
 
 Every metric in this repository is generated, not typed. If you change the golden path, run
@@ -91,8 +97,8 @@ That includes the table in the README.
 Safety may never regress, including in a change that improves everything else. A patch that raises
 competence by ten points and lowers safety by one is a regression and will not be merged.
 
-The positive target is equally important: competence, final delivery quality, and time to a trusted,
-reusable result should keep improving. A system that only refuses work is not a successful Veil.
+Safety is a constraint, not the whole score. Clean tasks still need to finish, and the result should
+be useful to someone who did not watch the original run.
 
 If your change affects the contract, the gates, the tools, or prompts, say what happened to the bench
 numbers in the pull request.

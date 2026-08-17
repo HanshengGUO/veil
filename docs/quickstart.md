@@ -1,14 +1,14 @@
 # Quickstart: your first Veil research loop
 
-This is the 30-minute path from a private CSV to a structurally verified promotion candidate inside
+English | [简体中文](./zh-CN/quickstart.md)
+
+This guide takes a private CSV to a structurally verified promotion candidate inside
 [Pi](https://github.com/badlogic/pi-mono). You keep the normal coding-agent workflow: explore with
 files and scripts, then ask Veil to re-execute, price, and gate one packaged factor before it can
 become a claim.
 
-The goal is larger than catching a bad backtest. By the end, useful work has a stable contract,
-reviewable evidence, an explicit decision, durable family memory, and an exact reproduction path —
-the pieces that turn an exploratory notebook into a research deliverable another person can trust
-and continue.
+By the end, the run has a contract, a verdict, family memory, and enough archived evidence for
+another person to reproduce it.
 
 One boundary matters from the start: a request without a `stage4` block produces a
 **contract-verified, unverified promotion candidate**. A complete Stage 4 request additionally prices
@@ -17,8 +17,8 @@ the retained OOS execution, audits trials, runs every gate, and archives a citab
 ## 1. Install
 
 Veil's libraries require Node 20.10 or newer. Use a Pi release compatible with your Node version;
-the repository-pinned Pi 0.84.1 model runner requires Node 22.19 or newer. Install the published Pi
-package:
+the repository-pinned Pi 0.84.1 model runner requires Node 22.19 or newer. After the registry release
+is published, install the Pi package with:
 
 ```bash
 pi install npm:veil-quant

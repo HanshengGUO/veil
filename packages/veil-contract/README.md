@@ -1,8 +1,10 @@
 # @veilquant/contract
 
-The Veil Contract: six invariants (C1-C6) plus the portable declarations that let agents, engines,
-reviewers, and reproduction agree on what a research result means. It prevents invalid claims while
-giving valid work a stable path from exploration to a reusable deliverable.
+[English](https://github.com/HanshengGUO/veil/blob/master/docs/contract.md) |
+[简体中文](https://github.com/HanshengGUO/veil/blob/master/docs/zh-CN/contract.md)
+
+This package contains the six Veil invariants (C1-C6) and the portable declarations used by agents,
+the engine, and reproduction. It defines what a research result is allowed to claim.
 
 - Normative specification:
   [`docs/contract.md`](https://github.com/HanshengGUO/veil/blob/master/docs/contract.md)
@@ -13,7 +15,7 @@ derivation, lineage cross-checking, and content identity are implemented. Backen
 reads, their mandatory Arrow guard, and artifact identity/execution live in
 `@veilquant/engine`. Storage and runtime providers remain outside this pure semantic package.
 
-Install it with `npm install @veilquant/contract`.
+After publication, install it with `npm install @veilquant/contract`.
 
 ## What lives here
 

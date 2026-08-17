@@ -1,11 +1,12 @@
 # Read-set identity
 
+English | [简体中文](./zh-CN/read-sets.md)
+
 A guarded Arrow view now carries a `veil.read-set.v0` manifest describing what produced it and what
 rows were actually delivered. The manifest separates five identities that must not be collapsed:
 
-This identity is what turns “I ran it on the data” into a useful handoff. A reviewer can inspect the
-same evidence, a later run can prove whether anything changed, and reproduction can use the exact
-delivered bytes rather than a best-effort reconstruction.
+The separation lets a reviewer tell whether the declaration, physical source, query, logical rows,
+or exact Arrow bytes changed between two runs.
 
 | Identity | Meaning |
 | --- | --- |

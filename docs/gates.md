@@ -1,12 +1,12 @@
 # Gates, Experiments, and reproduction
 
+English | [简体中文](./zh-CN/gates.md)
+
 Stage 4 turns one structurally verified promotion candidate into a priced and policy-evaluated
 Experiment. It is the first point where Veil can issue a citable performance metric.
 
-Gates are therefore a delivery system, not merely a rejection system. Accepted work becomes a
-citable result; degraded work states exactly what is missing; rejected work becomes durable negative
-evidence instead of another idea to rediscover and debug. Every outcome leaves the next researcher
-with a clearer, more reusable starting point.
+Gates record all three useful outcomes. Accepted work becomes a citable result, degraded work says
+what is missing, and rejected work is kept as negative evidence instead of being rediscovered later.
 
 ```text
 guarded reads → artifact → walk-forward contract → promotion candidate

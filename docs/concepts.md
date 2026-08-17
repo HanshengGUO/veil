@@ -1,16 +1,14 @@
 # Concepts
 
-Veil is built around a productive idea: safety and research quality do not have to be opposing
-forces. Free exploration keeps the search space open; contracts, evidence, reviewable handoffs, and
-reproduction help an agent turn the work worth keeping into a stronger final delivery.
+English | [简体中文](./zh-CN/concepts.md)
 
-Eight terms make that delivery path concrete. Once they are clear, the rest of Veil is mechanical.
+Veil separates free exploration from the stricter path used to make a claim. These eight terms
+describe that split.
 
 ## Exploration surface
 
-Your normal workflow. An agent reads data, writes code, runs its own backtest, iterates. Veil never
-blocks anything here, and it never will — a harness that interrupts exploration would cost more than
-the errors it prevents, and would be abandoned within a week.
+Your normal workflow. An agent reads data, writes code, runs its own backtest, and iterates. Veil does
+not block this surface; if it did, researchers would simply route around it.
 
 What Veil does instead is make the safe path the default one: `veil-data` provides a point-in-time
 view with a tradability mask attached, and when tool output looks like a leak, you get an advisory.
@@ -98,6 +96,5 @@ the Experiment.
 
 ## The one-sentence version
 
-Explore however you like; when a result is worth keeping, Veil turns it into a reviewable,
-reproducible Experiment through a protocol you cannot quietly bend — protecting the claim while
-improving the quality of what you deliver.
+Explore however you like. When a result is ready to become a claim, package it and let Veil issue the
+Experiment.

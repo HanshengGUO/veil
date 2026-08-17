@@ -1,12 +1,10 @@
 # The Veil Contract, version 1.0
 
-This is the normative specification. It is written before the code that enforces it, and the code
-follows it rather than the other way round.
+English | [简体中文](./zh-CN/contract.md)
 
-The contract is not only a list of ways to say no. It is the stable interface that lets data access,
-artifact execution, pricing, gates, review, memory, and reproduction hand work to one another without
-reinterpreting the research at every step. That structure is what makes safer delivery capable of
-being better delivery too.
+This is the normative specification; the implementation follows it. The contract defines both the
+conditions for making a claim and the records passed between data access, artifact execution,
+pricing, gates, memory, and reproduction.
 
 Status:
 

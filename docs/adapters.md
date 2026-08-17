@@ -1,20 +1,19 @@
 # Dataset adapters
 
+English | [简体中文](./zh-CN/adapters.md)
+
 An adapter tells Veil what your rows mean in time. It maps arbitrary source column names onto the
 three fields the contract needs:
-
-That declaration is productive infrastructure: define the semantics once, then let exploration,
-verification, review, and reproduction share the same meaning instead of asking every agent or
-researcher to infer it again.
 
 ```text
 (entity, event_time, available_time, payload)
 ```
 
-Status: released in v0.1.0. Declaration validation, strict YAML
-loading, the backend-neutral temporal guard, the default single/multi-file CSV/Parquet backend, read-set v0
-identities, source manifests, and operator-controlled snapshots now feed both the minimum
-`veil-data` point/panel surface and the mask-first walk-forward contract path.
+Declare those semantics once. Exploration, verification, and reproduction will then use the same
+interpretation instead of inferring it again in each tool.
+
+Status: implemented for v0.1.0. Strict YAML loading, CSV/Parquet backends, source manifests,
+read-set identities, and snapshots feed both `veil-data` and the mask-first walk-forward path.
 
 ## Smallest honest CSV declaration
 
@@ -168,12 +167,11 @@ Run the committed future-sentinel examples with `npm run csv-pit:verify` and
 [`examples/multi-file-pit`](../examples/multi-file-pit/). The Parquet example generates a temporary
 source from committed CSV data, so no opaque binary fixture is stored in the repository.
 
-## A 30-minute local CSV trial
+## Try a local CSV
 
-The package is still private, so the current trial runs from this checkout. Follow the copyable
-[`quickstart`](./quickstart.md) to create an adapter and run `npm run data:inspect` against a private
-CSV without editing TypeScript. That page also contains the external trial checklist and a
-privacy-safe result template.
+From a source checkout, follow the [`quickstart`](./quickstart.md) to create an adapter and run
+`npm run data:inspect` against a private CSV without editing TypeScript. That page also contains the
+external trial checklist and a privacy-safe result template.
 
 The expected success condition is not merely “the CSV loaded”: the decision time and filtered
 column must be explicit, rows after the cutoff must be absent, every declared mask must remain

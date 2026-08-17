@@ -5,7 +5,7 @@
 ## Checklist
 
 - [ ] `npm run check` passes (lint, typecheck, tests, golden-path reproduction)
-- [ ] Documentation updated in `docs/` — a user-visible change without its page is not finished
+- [ ] Documentation updated in `docs/`; mirrored core pages also update `docs/zh-CN/`
 - [ ] `CHANGELOG.md` updated under `[Unreleased]`
 - [ ] Numbers quoted in prose were regenerated, not typed by hand
 
