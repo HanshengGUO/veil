@@ -39,6 +39,9 @@ const sourceRoot = fileURLToPath(new URL(".", import.meta.url));
 const runner = fileURLToPath(
   new URL("../../packages/veil-agent/runtime/node-runner.mjs", import.meta.url),
 );
+// The runner imports TypeScript package exports. Node 20 needs the same loader used by the
+// production project runtime; keep it as a file URL so --import also works on Windows.
+const tsxImportUrl = import.meta.resolve("tsx");
 const schedule = Array.from({ length: 35 }, (_, index) =>
   new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
 );
@@ -125,7 +128,10 @@ runtimes.register(
     id: "veil-node",
     implementation: { name: "node", version: process.versions.node },
     supports: (constraint) => constraint === ">=20.10.0,<30",
-    launch: () => ({ executable: process.execPath, arguments: [runner] }),
+    launch: () => ({
+      executable: process.execPath,
+      arguments: ["--import", tsxImportUrl, runner],
+    }),
   }),
 );
 const registration = createHypothesisRegistration({
