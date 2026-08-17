@@ -28,7 +28,8 @@ try {
     },
   };
   await writeFile(join(temporaryRoot, "package.json"), `${JSON.stringify(packageJson, null, 2)}\n`);
-  await execFileAsync(npmExecutable(), ["install", "--no-audit", "--no-fund"], {
+  const npm = npmInvocation(["install", "--no-audit", "--no-fund"]);
+  await execFileAsync(npm.executable, npm.arguments, {
     cwd: temporaryRoot,
     windowsHide: true,
   });
@@ -114,8 +115,18 @@ function requiredTarball(files: readonly string[], prefix: string): string {
   return match;
 }
 
-function npmExecutable(): string {
-  return process.platform === "win32" ? "npm.cmd" : "npm";
+function npmInvocation(arguments_: readonly string[]): {
+  readonly executable: string;
+  readonly arguments: readonly string[];
+} {
+  const npmCli = process.env.npm_execpath;
+  if (npmCli !== undefined && npmCli.length > 0) {
+    return { executable: process.execPath, arguments: [npmCli, ...arguments_] };
+  }
+  if (process.platform === "win32") {
+    throw new Error("npm_execpath is required to run the packed install smoke on Windows");
+  }
+  return { executable: "npm", arguments: arguments_ };
 }
 
 function fileDependency(path: string): string {

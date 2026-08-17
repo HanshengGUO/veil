@@ -64,6 +64,7 @@ jobs:
           name: npm-packages
           path: .release/*.tgz
           if-no-files-found: error
+          include-hidden-files: true
 
   publish:
     name: Publish npm packages and GitHub release
