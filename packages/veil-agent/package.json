@@ -1,7 +1,7 @@
 {
   "name": "veil-quant",
   "version": "0.1.0",
-  "description": "Evidence-first quant research delivery for Pi: tools, contracts, reviewable memory and reproduction",
+  "description": "Evidence-first quant research harness for Pi: contracts, gates, reviewable memory and reproduction",
   "license": "MIT",
   "type": "module",
   "engines": {

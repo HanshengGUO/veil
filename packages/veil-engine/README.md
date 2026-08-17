@@ -1,8 +1,8 @@
 # @veilquant/engine
 
-The evidence and delivery engine. Everything that turns exploratory code into a reviewable,
-reproducible research result lives here: temporal views, executable artifacts, walk-forward
-contracts, pricing, gates, memory, and replay.
+The engine underneath Veil's evidence-first research harness. Everything that turns exploratory code
+into a reviewable, reproducible research result lives here: temporal views, executable artifacts,
+walk-forward contracts, pricing, gates, memory, and replay.
 
 Its checks make unsafe claims expensive, but that is only half the value. Stable evidence handoffs
 also make good work easier to review, compare, archive, and reuse.

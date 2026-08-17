@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Evidence-first quant research delivery: explore freely, verify rigorously, deliver better research",
+  "description": "Evidence-first harness for AI-assisted quant research: explore freely, verify rigorously, deliver better work",
   "license": "MIT",
   "workspaces": [
     "packages/*",

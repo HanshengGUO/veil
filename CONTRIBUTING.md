@@ -1,8 +1,8 @@
 # Contributing to Veil
 
-Veil is building an evidence-first research delivery system, not only a collection of safety checks.
-The best contributions help researchers and agents finish work that is more honest, more reviewable,
-more reproducible, or easier to extend — ideally several at once.
+Veil is building an evidence-first harness for AI-assisted quant research, not only a collection of
+safety checks. The best contributions help researchers and agents finish work that is more honest,
+more reviewable, more reproducible, or easier to extend — ideally several at once.
 
 Three ways to contribute that do not require reading Veil's internals. All three are "add a file,
 open a pull request".

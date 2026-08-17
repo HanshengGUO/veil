@@ -1,12 +1,18 @@
 # Veil
 
-**An evidence-first research delivery system for AI-assisted quant work: explore freely, verify
-rigorously, and deliver better research.**
+[![CI](https://github.com/HanshengGUO/veil/actions/workflows/ci.yml/badge.svg)](https://github.com/HanshengGUO/veil/actions/workflows/ci.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/HanshengGUO/veil?display_name=tag)](https://github.com/HanshengGUO/veil/releases)
+[![npm](https://img.shields.io/npm/v/veil-quant?logo=npm&label=veil-quant)](https://www.npmjs.com/package/veil-quant)
+[![Node.js](https://img.shields.io/node/v/veil-quant?logo=nodedotjs)](./packages/veil-agent/package.json)
+[![License: MIT](https://img.shields.io/github/license/HanshengGUO/veil)](./LICENSE)
 
-Veil sits on top of your normal AI coding workflow. You keep writing factors, models and backtests
-with an agent exactly as you do now — Veil does not intercept that, does not replace your backtester,
-and does not ask you to learn a new research API. It adds a delivery path that turns promising
-exploration into reviewable, reproducible, promotion-ready evidence:
+**An evidence-first harness for AI-assisted quant research — explore freely, then turn promising
+work into verified, reproducible results.**
+
+Veil is a harness around your normal AI coding workflow. You keep writing factors, models and
+backtests with an agent exactly as you do now — Veil does not intercept that, does not replace your
+backtester, and does not ask you to learn a new research API. It adds a delivery path that turns
+promising exploration into reviewable, reproducible, promotion-ready evidence:
 
 > A number becomes a **result** only after the factor has been repackaged, re-executed walk-forward
 > on windows where future data does not exist, and put through the gates. Everything else is labelled

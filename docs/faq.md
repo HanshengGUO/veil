@@ -2,9 +2,10 @@
 
 ## Is Veil only a safety layer?
 
-No. Safety is the non-negotiable boundary, but the product is an evidence-first research delivery
-system. Contracts clarify what must be produced, independent evidence makes review concrete, memory
-prevents silent rediscovery, and reproduction turns a one-off result into reusable work.
+No. Safety is the non-negotiable boundary, but the product is an evidence-first harness for
+AI-assisted quant research. It wraps the workflow researchers already use; contracts clarify what
+must be produced, independent evidence makes review concrete, memory prevents silent rediscovery,
+and reproduction turns a one-off result into reusable work.
 
 One result surprised us: the evaluated contract, independent-review, and bounded-repair workflow
 improved the strict official QBench aggregate in all three tested model configurations — Kimi K3 by

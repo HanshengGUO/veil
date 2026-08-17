@@ -1,7 +1,7 @@
 {
   "name": "@veilquant/engine",
   "version": "0.1.0",
-  "description": "Veil delivery engine: point-in-time views, executable research contracts, gates and reproduction",
+  "description": "Core engine for Veil's quant research harness: point-in-time views, contracts, gates and reproduction",
   "license": "MIT",
   "type": "module",
   "engines": {

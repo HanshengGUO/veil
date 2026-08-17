@@ -1,9 +1,8 @@
 # veil-quant
 
-The Pi package that turns a normal single-agent quant workflow into an evidence-first research
-delivery loop — without replacing Pi or blocking ordinary coding work. Exploration stays familiar;
-promising work gains a contract, reviewable evidence, durable memory, an explicit verdict, and exact
-reproduction.
+The evidence-first quant research harness for Pi. It wraps a normal single-agent workflow without
+replacing Pi or blocking ordinary coding work. Exploration stays familiar; promising work gains a
+contract, reviewable evidence, durable memory, an explicit verdict, and exact reproduction.
 
 The result is more than invisible protection at the claim boundary. Veil helps the agent finish a
 better deliverable: one a researcher can inspect, trust, hand off, and continue instead of reverse
