@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "status": "local-pre-release",
+  "reviewedAt": "2026-08-17",
+  "benchmark": "QBench v2 Engineering Track",
+  "taskCount": 5,
+  "scoreAt": 1,
+  "thinking": "high",
+  "dataRelease": "2026-07-30",
+  "dataArchiveSha256": "2dfa8be5c38513e67cc18d1208b535660be6bf1612e0f3d19638518e107b5761",
+  "models": {
+    "deepseek-v4-flash": {
+      "displayName": "DeepSeek V4 Flash",
+      "baseline": {
+        "officialStrictScore": 40.0,
+        "officialByTask": {
+          "q01": 14.5,
+          "q02": 0.0,
+          "q03": 6.75,
+          "q04": 9.25,
+          "q05": 9.5
+        },
+        "compatibilityDiagnostic": 54.0,
+        "runnerDurationMs": 9927864
+      },
+      "workflow": {
+        "officialStrictScore": 43.25,
+        "officialByTask": {
+          "q01": 14.5,
+          "q02": 0.0,
+          "q03": 10.5,
+          "q04": 7.25,
+          "q05": 11.0
+        },
+        "compatibilityDiagnostic": 57.5,
+        "runnerDurationMs": 23042496
+      },
+      "officialStrictDelta": 3.25,
+      "compatibilityDiagnosticDelta": 3.5
+    },
+    "deepseek-v4-pro": {
+      "displayName": "DeepSeek V4 Pro",
+      "baseline": {
+        "officialStrictScore": 41.0,
+        "officialByTask": {
+          "q01": 18.0,
+          "q02": 0.0,
+          "q03": 6.75,
+          "q04": 3.75,
+          "q05": 12.5
+        },
+        "compatibilityDiagnostic": 64.25,
+        "runnerDurationMs": 11984734
+      },
+      "workflow": {
+        "officialStrictScore": 44.25,
+        "officialByTask": {
+          "q01": 14.5,
+          "q02": 0.0,
+          "q03": 7.25,
+          "q04": 11.0,
+          "q05": 11.5
+        },
+        "compatibilityDiagnostic": 55.25,
+        "runnerDurationMs": 20086262
+      },
+      "officialStrictDelta": 3.25,
+      "compatibilityDiagnosticDelta": -9.0
+    }
+  },
+  "workflow": {
+    "name": "evidence-precedence-v6",
+    "deliveryDiscipline": true,
+    "contractLedger": true,
+    "contractChallenge": true,
+    "contractReview": true,
+    "boundedRepair": true,
+    "evidencePrecedence": true
+  },
+  "integrity": {
+    "runnerTaskCount": 20,
+    "submissionsPresent": 20,
+    "officialRunReports": 20,
+    "officialEvaluations": 16,
+    "q2EvaluatorErrorsCountedAsZero": 4,
+    "officialEvaluatorModified": false,
+    "qbenchInputsModified": false,
+    "veilCoreModified": false,
+    "runnerSha256": "c354ca4957eea322d9f69ba4ca82a317fa3622815c61ef4653a253d5d55c0f85"
+  }
+}

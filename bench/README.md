@@ -33,8 +33,15 @@ Exploration is free; only claims are scored.
 bench/
 ├── tasks/       # public task set; one directory per task (contribution entry point)
 ├── runner/      # execution and scoring
-└── baselines/   # bare agent, no contract — the control group
+├── baselines/   # bare agent, no contract — the control group
+└── results/     # reviewed aggregate snapshots; raw and hidden artifacts stay private
 ```
+
+Reviewed local snapshots include
+[`results/kimi-k3-stage4-2026-08`](./results/kimi-k3-stage4-2026-08/) and the later
+[`results/deepseek-v4-qbench-2026-08`](./results/deepseek-v4-qbench-2026-08/) replication. They keep
+official external scores separate from non-official diagnostics and document where protocols are
+not directly comparable.
 
 Run the four-task, model-free CI subset with `npm run bench:smoke`, or validate all generators with
 `npm run bench:tasks:verify`. `npm run bench:stage2:verify` separately checks the Stage 2 structural

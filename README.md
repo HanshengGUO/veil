@@ -55,6 +55,38 @@ The last row is the one that matters. A protocol that reports an edge on pure no
 evidence of anything. Full study and reproduction instructions:
 [`examples/golden-path`](./examples/golden-path).
 
+## Measured results
+
+The current evidence is local and pre-release. Model tasks were frozen score@1 runs: one session per
+task, with no result-selected reruns. Kimi K3 was evaluated at Pi thinking level `low` on Veil-bench
+and `high` on QBench. A later QBench-only replication evaluated DeepSeek V4 Flash and V4 Pro at
+`high` under one frozen protocol.
+
+> Across all three evaluated QBench model configurations, the strict official aggregate increased:
+> **+4.25 for Kimi K3, +3.25 for DeepSeek V4 Flash, and +3.25 for DeepSeek V4 Pro.**
+
+| Evidence                  | Reference                                                                              | Measured result                                                                                                         |
+| ------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Veil-bench public**     | Historical bare Kimi K3 control: 35.7% safety, 57.1% competence, 2 false-effect claims | Current Veil profile: **100% safety**, **71.4% competence**, 0 false-effect claims; all 8 traps stopped at G1/G2        |
+| **Held-out safety check** | Frozen acceptance: safety >= 87.5%, no G4 or false-effect claim                        | **4/4 traps stopped at G1**, 0 G4, 0 false-effect claims; the single honest smoke task passed                           |
+| **QBench v2 Engineering** | Prior Kimi K3 official score: 41.50/100                                                | Internal opt-in delivery workflow: **45.75/100 strict official aggregate** (**+4.25**; evaluator error counted as zero) |
+| **QBench replication**    | Bare DeepSeek V4 Flash / Pro: 40.00 / 41.00                                            | Same frozen workflow: **43.25 / 44.25** — **+3.25 for both models** (evaluator error counted as zero)                   |
+
+These rows measure different things. Veil-bench evaluates whether Veil keeps invalid research out of
+claims while preserving useful work. QBench evaluates general engineering delivery; its gain came
+from an internal test-time contract/review workflow, not a change to QBench or Veil's core. The
+DeepSeek replication held the benchmark release, data fingerprint, task budgets, runner and workflow
+fixed; both model variants independently gained 3.25 strict official points. Separate non-official
+compatibility diagnostics did not move uniformly with official scores and remain outside the
+headline; their full values are retained in the linked snapshots. The official score@1 gains are not
+presented as causal estimates. The DeepSeek row is QBench-only and does not claim a Veil-bench
+competence gain. The held-out set is deliberately small, and its one honest task is a smoke test
+rather than a hidden competence estimate.
+
+See the reviewed evaluation snapshots for [Kimi K3](./bench/results/kimi-k3-stage4-2026-08/) and the
+[DeepSeek V4 QBench replication](./bench/results/deepseek-v4-qbench-2026-08/) for protocols, integrity
+notes, machine-readable results, and limitations.
+
 ## Start a loop
 
 From a source checkout:
@@ -108,6 +140,7 @@ packages/veil-contract/   the invariants, the declaration formats, their validat
 packages/veil-engine/     point-in-time views, walk-forward verification, promotion evidence
 packages/veil-agent/      the Pi package users install (published as veil-quant)
 bench/                    Veil-bench: tasks, runner, bare-agent baselines
+bench/results/            reviewed local evaluation snapshots
 examples/golden-path/     independent reference + full structural evidence acceptance
 examples/csv-pit/         the smallest adapter → guarded CSV view
 examples/parquet-pit/     the same guarded contract over Parquet
