@@ -4,6 +4,10 @@ Wire formats for the declarations Veil reads. Adapter machine validation lives i
 `@veilquant/contract`; normalized artifact identity and code-tree validation live in
 `@veilquant/engine`. These annotated files remain the copyable human reference.
 
+Together they are Veil's delivery vocabulary: each format makes one handoff explicit so an agent,
+engine, reviewer, archive, and reproducer can continue the same piece of research without silently
+changing what it means.
+
 | File | Declares | Validation |
 | --- | --- | --- |
 | [`adapter.yaml`](./adapter.yaml) | What a dataset means in time, and what it can guarantee | Implemented: normalize, validate, derive semantics, hash |

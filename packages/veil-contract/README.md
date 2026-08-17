@@ -1,7 +1,8 @@
 # @veilquant/contract
 
-The Veil Contract: the six invariants (C1-C6) that any claim must satisfy, the adapter and
-guarantee declaration formats, and the validators that enforce them.
+The Veil Contract: six invariants (C1-C6) plus the portable declarations that let agents, engines,
+reviewers, and reproduction agree on what a research result means. It prevents invalid claims while
+giving valid work a stable path from exploration to a reusable deliverable.
 
 - Normative specification:
   [`docs/contract.md`](https://github.com/HanshengGUO/veil/blob/master/docs/contract.md)

@@ -10,6 +10,10 @@ The most valuable tasks come from real work. If you hit a leak in your own resea
 only found after something looked too good — that is worth more than any synthetic idea. Veil's
 working rule is that a newly discovered leak becomes a task *before* it becomes a fix.
 
+Clean tasks matter just as much. They show whether a workflow can finish a useful, honest research
+delivery instead of becoming safer by refusing everything. A strong contribution can expose a real
+failure mode or raise the bar for competent completion.
+
 ## Files
 
 | File | Who reads it | Contents |

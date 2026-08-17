@@ -5,6 +5,10 @@ An artifact is the immutable unit that crosses from free exploration into verifi
 and the data semantics and protocol it expects. Changing any identity-bearing input creates a
 different artifact; a mutable working-tree path is never evidence of identity.
 
+Packaging is also a quality upgrade. The same explicit unit can be executed, reviewed, compared,
+archived, and reproduced, so the final research delivery no longer depends on reconstructing an
+agent's temporary workspace or guessing which version produced a number.
+
 Status: `veil.artifact.v0`, runtime-provider-neutral framed subprocess execution, deterministic
 training-window orchestration, and per-decision mask-first C1-C4 contract verification are
 implemented. The resulting contract record is structural evidence, not a priced Experiment. See

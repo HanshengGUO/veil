@@ -1,6 +1,11 @@
 # @veilquant/engine
 
-The verification surface. Everything that makes a claim expensive lives here.
+The evidence and delivery engine. Everything that turns exploratory code into a reviewable,
+reproducible research result lives here: temporal views, executable artifacts, walk-forward
+contracts, pricing, gates, memory, and replay.
+
+Its checks make unsafe claims expensive, but that is only half the value. Stable evidence handoffs
+also make good work easier to review, compare, archive, and reuse.
 
 Status: Stage 4 engine implementation complete locally; release acceptance pending — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
 guard, strict adapter YAML loader, default single/multi-file DuckDB CSV/Parquet backend, source and
@@ -74,8 +79,9 @@ Its pushdown capabilities are performance hints only: even if it reports that th
 applied, `TemporalGuard` independently checks every returned decision-time value. A missing or broken
 pushdown can waste I/O; it cannot expose a correctly timestamped future row through the guarded API.
 
-This is the “invisible protection” boundary: callers use the same `as_of` read regardless of where
-the data lives. Backend-specific SQL, connections, and credentials stay behind the adapter.
+This is the invisible protection **and delivery** boundary: callers use the same `as_of` read
+regardless of where the data lives, and every backend produces the same downstream evidence shape.
+Backend-specific SQL, connections, and credentials stay behind the adapter.
 
 ## `veil-data` exploration surface
 

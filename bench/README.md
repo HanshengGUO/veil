@@ -1,6 +1,7 @@
 # Veil-bench
 
-Veil-bench is the referee, and it exists before the system it judges. Two axes:
+Veil-bench is the referee for Veil's full promise: protect conclusions **and** help agents finish
+better research. It exists before the system it judges and scores two separate axes:
 
 | Axis | Question |
 | --- | --- |
@@ -9,6 +10,11 @@ Veil-bench is the referee, and it exists before the system it judges. Two axes:
 
 The meta-rule: **maximize competence subject to safety never regressing.** A system that refuses
 everything scores full safety and is useless.
+
+That second axis is why Veil is a delivery system rather than a guardrail alone. The neighboring
+QBench evaluation measures final engineering delivery quality; across the three reviewed model
+configurations, the frozen contract/review workflow improved the strict official aggregate every
+time. See [`results/`](./results/) for score@1 protocols and limitations.
 
 ## Layer attribution (G1-G4)
 

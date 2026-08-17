@@ -1,17 +1,26 @@
 # Veil
 
-**A quant research harness that lets you explore freely and makes you verify before you claim.**
+**An evidence-first research delivery system for AI-assisted quant work: explore freely, verify
+rigorously, and deliver better research.**
 
 Veil sits on top of your normal AI coding workflow. You keep writing factors, models and backtests
 with an agent exactly as you do now — Veil does not intercept that, does not replace your backtester,
-and does not ask you to learn a new research API. It changes one thing:
+and does not ask you to learn a new research API. It adds a delivery path that turns promising
+exploration into reviewable, reproducible, promotion-ready evidence:
 
 > A number becomes a **result** only after the factor has been repackaged, re-executed walk-forward
 > on windows where future data does not exist, and put through the gates. Everything else is labelled
 > `unverified`.
 
 Nobody would accept an editor that blocks their keystrokes. Everybody accepts CI that blocks their
-merge. Veil is CI for research claims.
+merge. Veil is CI and an evidence delivery pipeline for quant research.
+
+> One result surprised us: in the evaluated workflow, contracts, independent review, and bounded
+> repair did more than protect the work — they improved the quality of the final delivery.
+
+That is the broader promise. Veil keeps unsafe alpha out of claims, but it also gives agents a stable
+contract, explicit handoffs, durable memory, and exact reproduction so they can finish stronger work
+with less ambiguity for the researcher who has to review, trust, and reuse it.
 
 Status: **Stage 4 implementation complete locally; v0.2 release acceptance pending.** The `veil-quant` Pi package now
 registers `veil-data`, `veil-backtest`, and `veil-memory`; captures C6 chronology in Pi's append-only
@@ -206,9 +215,9 @@ docs/                     one page per thing
 | 6 | Hardening profile, full docs, model leaderboard | **v1.0** |
 | 7 | Deployment alignment: artifact identity, parity gate | v2 |
 
-Every stage exits on bench numbers, not on opinion. Safety may never regress; competence has to keep
-climbing. The rules are in [`bench/README.md`](./bench/README.md); the invariants they protect are in
-[`docs/contract.md`](./docs/contract.md).
+Every stage exits on bench numbers, not on opinion. Safety may never regress; competence and delivery
+quality have to keep climbing. The rules are in [`bench/README.md`](./bench/README.md); the invariants
+that make better delivery trustworthy are in [`docs/contract.md`](./docs/contract.md).
 
 ## Development
 

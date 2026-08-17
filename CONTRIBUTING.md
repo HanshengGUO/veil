@@ -1,5 +1,9 @@
 # Contributing to Veil
 
+Veil is building an evidence-first research delivery system, not only a collection of safety checks.
+The best contributions help researchers and agents finish work that is more honest, more reviewable,
+more reproducible, or easier to extend — ideally several at once.
+
 Three ways to contribute that do not require reading Veil's internals. All three are "add a file,
 open a pull request".
 
@@ -82,10 +86,13 @@ Every metric in this repository is generated, not typed. If you change the golde
 CI compares committed metrics against a fresh run on three platforms and fails on any difference.
 That includes the table in the README.
 
-## Bench: the one rule that constrains everyone
+## Bench: improve delivery without trading away trust
 
 Safety may never regress, including in a change that improves everything else. A patch that raises
 competence by ten points and lowers safety by one is a regression and will not be merged.
+
+The positive target is equally important: competence, final delivery quality, and time to a trusted,
+reusable result should keep improving. A system that only refuses work is not a successful Veil.
 
 If your change affects the contract, the gates, the tools, or prompts, say what happened to the bench
 numbers in the pull request.

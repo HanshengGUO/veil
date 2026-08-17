@@ -6,6 +6,10 @@ parameter variants through `veil-backtest`, retrieves prior rejected Experiments
 evidence, accepts the stable third variant, and reproduces it from archived code and guarded
 read-set snapshots.
 
+The sequence demonstrates the productive side of the workflow: earlier rejections become useful
+memory, the next attempt starts with better evidence, and the accepted delivery is immediately
+reviewable and reproducible.
+
 ```bash
 npm run stage4-agent:verify
 ```

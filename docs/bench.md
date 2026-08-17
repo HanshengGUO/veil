@@ -4,6 +4,12 @@ Veil-bench measures two different properties: whether invalid alpha is kept out 
 (*safety*), and whether valid research still gets finished (*competence*). A system cannot compensate
 for a safety regression by becoming more productive.
 
+Competence is not a courtesy metric. It is how Veil distinguishes a useful research delivery system
+from a brake: clean work must reach an honest, reviewable conclusion. The separate QBench engineering
+evaluation tests a neighboring outcome — final delivery quality — and the frozen workflow improved
+the strict official aggregate in all three evaluated model configurations. Reviewed, score@1 results
+and their limitations live in [`bench/results`](../bench/results/).
+
 The public v1 catalog contains 15 deterministic synthetic tasks: eight traps and seven honest tasks.
 Every task is generated from a logged seed selected from its calibrated seed bank. No task needs
 network access or private market data.

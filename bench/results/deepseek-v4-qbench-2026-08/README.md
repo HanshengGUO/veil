@@ -12,6 +12,11 @@ diagnostic; it does not contribute to Veil-bench safety or competence.
 The same workflow improved the strict official aggregate by **3.25 points for both evaluated model
 variants**.
 
+That was the surprising result: contracts, independent review, and bounded repair did more than add
+a safety net. They improved the quality of the final delivery under the unchanged official
+evaluator. This snapshot keeps that positive result prominent while retaining the diagnostic and
+runtime boundaries needed to interpret it honestly.
+
 | Model | Run | Q1 | Q2 | Q3 | Q4 | Q5 | Strict official aggregate |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | DeepSeek V4 Flash | bare baseline | 14.50 | 0* | 6.75 | 9.25 | 9.50 | 40.00 |

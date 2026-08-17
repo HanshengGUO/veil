@@ -41,6 +41,11 @@ precedence. It did not modify QBench tasks, cases, data, submissions after compl
 evaluator, and it did not modify Veil core. The official score increased by 4.25 points even though
 Q2's evaluator failure was scored as zero.
 
+This was the first indication that the same structure could improve delivery quality rather than
+merely protect the workflow. The later DeepSeek V4 replication moved the strict official aggregate
+by another 3.25 points for each of two model variants; its separate snapshot retains that protocol
+and its mixed compatibility diagnostic.
+
 ## Integrity and limitations
 
 - Every scored row comes from one frozen score@1 session. Supplemental diagnostics were not

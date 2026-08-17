@@ -1,7 +1,7 @@
 {
   "name": "@veilquant/contract",
   "version": "0.1.0",
-  "description": "Veil Contract: C1-C6 invariants, adapter/guarantee declarations, and their validators",
+  "description": "Veil Contract: stable evidence handoffs for safer, reviewable and reproducible quant research",
   "license": "MIT",
   "type": "module",
   "engines": {

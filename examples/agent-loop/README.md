@@ -1,6 +1,8 @@
 # Single-agent loop
 
-This cold example exercises the Stage 3 orchestration without calling a model:
+This cold example exercises the Stage 3 delivery orchestration without calling a model. It shows how
+a brief and ordinary development read become a portable, reviewable promotion candidate rather than
+ending as disconnected chat output and workspace files:
 
 ```text
 brief → durable hypothesis entry → guarded development read

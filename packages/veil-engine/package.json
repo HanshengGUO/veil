@@ -1,7 +1,7 @@
 {
   "name": "@veilquant/engine",
   "version": "0.1.0",
-  "description": "Veil engine: point-in-time views, artifact execution, and walk-forward contract evidence",
+  "description": "Veil delivery engine: point-in-time views, executable research contracts, gates and reproduction",
   "license": "MIT",
   "type": "module",
   "engines": {

@@ -3,6 +3,10 @@
 `veil-data` is the minimum exploration surface over the point-in-time view layer. It has two modes,
 and both require an explicit decision time:
 
+It keeps the fast, familiar part of research intact while giving successful ideas a clean route into
+the evidence pipeline. Researchers get ordinary Arrow-shaped data; later stages get stable temporal
+semantics and read identities without asking the exploration code to become a new framework.
+
 | Mode | Output shape | Label | Intended use |
 | --- | --- | --- | --- |
 | `point` | The requested projection plus a declared tradability mask at one `as_of` | `guarded` | Inspect or compute from the information set available then |

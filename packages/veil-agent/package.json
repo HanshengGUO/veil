@@ -1,7 +1,7 @@
 {
   "name": "veil-quant",
   "version": "0.1.0",
-  "description": "Veil for Pi: research tools, contract interception, memory, skills and prompts",
+  "description": "Evidence-first quant research delivery for Pi: tools, contracts, reviewable memory and reproduction",
   "license": "MIT",
   "type": "module",
   "engines": {

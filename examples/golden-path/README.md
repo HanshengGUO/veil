@@ -1,5 +1,10 @@
 # Golden path — research log and structural acceptance
 
+The golden path shows the product outcome in one place: free exploration becomes a concise,
+reviewable research log, and the result worth keeping becomes portable evidence another researcher
+can reproduce. The honest answer is lower than the naive answer, but the final delivery is far more
+useful because its assumptions, failure modes, and surviving claim are explicit.
+
 `research.ts` remains the hand-written reference run: it does not call Veil and is the target Stage
 3 asks an agent to reproduce. A separate `evidence.ts` harness now sends the honest candidate through
 the implemented Stage 2 structural path. Keeping those implementations separate prevents the system

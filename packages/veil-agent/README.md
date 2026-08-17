@@ -1,7 +1,13 @@
 # veil-quant
 
-The Pi package that adds Veil's single-agent research loop without replacing Pi or blocking normal
-coding work.
+The Pi package that turns a normal single-agent quant workflow into an evidence-first research
+delivery loop — without replacing Pi or blocking ordinary coding work. Exploration stays familiar;
+promising work gains a contract, reviewable evidence, durable memory, an explicit verdict, and exact
+reproduction.
+
+The result is more than invisible protection at the claim boundary. Veil helps the agent finish a
+better deliverable: one a researcher can inspect, trust, hand off, and continue instead of reverse
+engineering a transient chat and working tree.
 
 No registry release is documented as available until it is published. During source development, run
 `npm install` at the repository root and use `pi install ./packages/veil-agent`.

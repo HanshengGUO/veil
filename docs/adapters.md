@@ -3,6 +3,10 @@
 An adapter tells Veil what your rows mean in time. It maps arbitrary source column names onto the
 three fields the contract needs:
 
+That declaration is productive infrastructure: define the semantics once, then let exploration,
+verification, review, and reproduction share the same meaning instead of asking every agent or
+researcher to infer it again.
+
 ```text
 (entity, event_time, available_time, payload)
 ```

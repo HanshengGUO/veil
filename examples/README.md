@@ -1,5 +1,10 @@
 # Examples
 
+The examples build one evidence-first delivery path in small, runnable pieces. Start with ordinary
+data and exploration, then add portable semantics, exact identities, executable contracts, explicit
+decisions, memory, and reproduction. Together they show how Veil improves the artifact a researcher
+hands off — not just how it blocks an invalid claim.
+
 | Example | What it is |
 | --- | --- |
 | [`csv-pit/`](./csv-pit) | The smallest adapter → guarded CSV point-in-time read. |

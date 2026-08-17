@@ -8,6 +8,10 @@ failure mode: an inflated headline result for a loud trap, a stable paired disto
 trap, or acceptance of an invalid protocol for a structural trap. If it does not, the task needs
 investigation before any Veil score from it can be trusted.
 
+Baselines also answer the positive question: did the added structure help the agent deliver better
+work, or did it only add ceremony? Safety, competence, delivery quality, failures, and runtime stay
+separate so the project cannot market refusal or latency as progress.
+
 Generate a local two-model report with `npm run bench:baseline`; see
 [`docs/bench.md`](../../docs/bench.md). Raw event logs live under the ignored `bench/runs/` directory.
 Only copy a reviewed `REPORT.md` and `summary.json` here. Provider failures and incomplete sessions

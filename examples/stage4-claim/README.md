@@ -1,6 +1,7 @@
 # Stage 4 claim path
 
-This model-free acceptance example exercises the complete claim boundary:
+This model-free acceptance example exercises the complete claim and delivery boundary. It turns
+locked research work into an explicit decision, durable memory, and an exactly reproducible result:
 
 ```text
 three locked parameter variants

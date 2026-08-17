@@ -1,5 +1,17 @@
 # Frequently asked questions
 
+## Is Veil only a safety layer?
+
+No. Safety is the non-negotiable boundary, but the product is an evidence-first research delivery
+system. Contracts clarify what must be produced, independent evidence makes review concrete, memory
+prevents silent rediscovery, and reproduction turns a one-off result into reusable work.
+
+One result surprised us: the evaluated contract, independent-review, and bounded-repair workflow
+improved the strict official QBench aggregate in all three tested model configurations — Kimi K3 by
+4.25 points and DeepSeek V4 Flash and Pro by 3.25 points each. That supports a claim about final
+delivery quality, not wall-clock speed or universal benchmark improvement. See the
+[reviewed snapshots](../bench/results/) for protocols and limitations.
+
 ## Does Veil stop ordinary exploration?
 
 No. Shell commands, notebooks, scripts, and exploratory metrics remain available. Veil labels those

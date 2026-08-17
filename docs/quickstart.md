@@ -5,6 +5,11 @@ This is the 30-minute path from a private CSV to a structurally verified promoti
 files and scripts, then ask Veil to re-execute, price, and gate one packaged factor before it can
 become a claim.
 
+The goal is larger than catching a bad backtest. By the end, useful work has a stable contract,
+reviewable evidence, an explicit decision, durable family memory, and an exact reproduction path —
+the pieces that turn an exploratory notebook into a research deliverable another person can trust
+and continue.
+
 One boundary matters from the start: a request without a `stage4` block produces a
 **contract-verified, unverified promotion candidate**. A complete Stage 4 request additionally prices
 the retained OOS execution, audits trials, runs every gate, and archives a citable Experiment.

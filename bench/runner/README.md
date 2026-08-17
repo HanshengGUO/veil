@@ -4,6 +4,10 @@ Drives a research session end to end and scores it. Task discovery, calibrated s
 oracle-safe workspace materialization, structured submissions, Pi SDK sessions, complete event
 capture, G1-G4 attribution, dual-axis aggregation, and multi-model baseline reports are implemented.
 
+The runner measures both halves of the product promise: whether invalid work is stopped and whether
+clean work becomes a complete, honest delivery. A workflow that merely refuses tasks cannot score
+its way into looking useful.
+
 ## Execution boundary
 
 1. Instantiate a task from a logged seed selected deterministically from its calibrated seed bank.

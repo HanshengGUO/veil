@@ -1,6 +1,10 @@
 # Concepts
 
-Eight terms. Once these are clear, the rest of Veil is mechanical.
+Veil is built around a productive idea: safety and research quality do not have to be opposing
+forces. Free exploration keeps the search space open; contracts, evidence, reviewable handoffs, and
+reproduction help an agent turn the work worth keeping into a stronger final delivery.
+
+Eight terms make that delivery path concrete. Once they are clear, the rest of Veil is mechanical.
 
 ## Exploration surface
 
@@ -94,5 +98,6 @@ the Experiment.
 
 ## The one-sentence version
 
-Explore however you like; when you want to promote something, the system re-runs it under a protocol
-you cannot bend, then keeps it unverified until the complete claim pipeline says what is left.
+Explore however you like; when a result is worth keeping, Veil turns it into a reviewable,
+reproducible Experiment through a protocol you cannot quietly bend — protecting the claim while
+improving the quality of what you deliver.

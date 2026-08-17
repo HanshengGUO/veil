@@ -3,6 +3,11 @@
 This is the normative specification. It is written before the code that enforces it, and the code
 follows it rather than the other way round.
 
+The contract is not only a list of ways to say no. It is the stable interface that lets data access,
+artifact execution, pricing, gates, review, memory, and reproduction hand work to one another without
+reinterpreting the research at every step. That structure is what makes safer delivery capable of
+being better delivery too.
+
 Status:
 
 - **Identifiers `C1`-`C6` are stable from v0.1.** They appear in error messages, audit records, and
@@ -22,6 +27,9 @@ Status:
 Leakage costs nothing while you are exploring. It costs something at exactly two moments: when a
 result is **believed**, and when a strategy is **deployed**. Both are claims. So Veil places its
 enforcement on claims, not on keystrokes.
+
+At the same boundary, Veil converts an informal result into a portable deliverable: the method is
+locked, the evidence is explicit, the decision is reviewable, and the exact work can be reproduced.
 
 This gives two surfaces with different rules:
 

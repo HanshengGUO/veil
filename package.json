@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Quant-native agent harness: explore freely, verify before you claim",
+  "description": "Evidence-first quant research delivery: explore freely, verify rigorously, deliver better research",
   "license": "MIT",
   "workspaces": [
     "packages/*",
