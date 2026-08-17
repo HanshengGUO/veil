@@ -6,7 +6,7 @@ English | [简体中文](./README.zh-CN.md)
 [![GitHub Release](https://img.shields.io/github/v/release/HanshengGUO/veil?display_name=tag)](https://github.com/HanshengGUO/veil/releases)
 [![npm](https://img.shields.io/npm/v/veil-quant?logo=npm&label=veil-quant)](https://www.npmjs.com/package/veil-quant)
 [![Node.js](https://img.shields.io/node/v/veil-quant?logo=nodedotjs)](./packages/veil-agent/package.json)
-[![License: MIT](https://img.shields.io/github/license/HanshengGUO/veil)](./LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 **An evidence-first harness for AI-assisted quant research — explore freely, then turn promising
 work into verified, reproducible results.**

@@ -6,7 +6,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/HanshengGUO/veil?display_name=tag)](https://github.com/HanshengGUO/veil/releases)
 [![npm](https://img.shields.io/npm/v/veil-quant?logo=npm&label=veil-quant)](https://www.npmjs.com/package/veil-quant)
 [![Node.js](https://img.shields.io/node/v/veil-quant?logo=nodedotjs)](./packages/veil-agent/package.json)
-[![License: MIT](https://img.shields.io/github/license/HanshengGUO/veil)](./LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 **一个面向 AI 辅助量化研究的 evidence-first harness：自由探索，再把值得保留的工作变成经过验证、可以复现的结果。**
 
