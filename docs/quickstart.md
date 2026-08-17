@@ -17,8 +17,14 @@ the retained OOS execution, audits trials, runs every gate, and archives a citab
 ## 1. Install
 
 Veil's libraries require Node 20.10 or newer. Use a Pi release compatible with your Node version;
-the repository-pinned Pi 0.84.1 model runner requires Node 22.19 or newer. Until a registry release is
-actually published, install from a source checkout and point Pi at the package:
+the repository-pinned Pi 0.84.1 model runner requires Node 22.19 or newer. Install the published Pi
+package:
+
+```bash
+pi install npm:veil-quant
+```
+
+To work from a source checkout instead:
 
 ```bash
 git clone https://github.com/HanshengGUO/veil.git

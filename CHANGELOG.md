@@ -9,6 +9,8 @@ appears here.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-17
+
 ### Changed
 
 Contract v1.0 review rulings, applied to the specification:
@@ -247,6 +249,6 @@ Contract v1.0 review rulings, applied to the specification:
 
 ### Notes
 
-- v0.1 package and release automation are prepared for source/path installation. The npm command is
-  not available until a versioned project release tag passes the release matrix and the publish job;
-  local automation is not represented as an npm or external-user release pass.
+- Initial public release of `@veilquant/contract`, `@veilquant/engine`, and `veil-quant`. The tagged
+  release matrix verifies all three package tarballs on Linux, macOS, and Windows before publishing
+  them to npm with provenance.

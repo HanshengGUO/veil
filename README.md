@@ -22,7 +22,8 @@ That is the broader promise. Veil keeps unsafe alpha out of claims, but it also 
 contract, explicit handoffs, durable memory, and exact reproduction so they can finish stronger work
 with less ambiguity for the researcher who has to review, trust, and reuse it.
 
-Status: **Stage 4 implementation complete locally; v0.2 release acceptance pending.** The `veil-quant` Pi package now
+Status: **v0.1.0 is the first public release.** Stage 4 implementation is included; its broader
+external plugin-author, hidden-set, and user acceptance continues toward v0.2. The `veil-quant` Pi package
 registers `veil-data`, `veil-backtest`, and `veil-memory`; captures C6 chronology in Pi's append-only
 session tree; keeps ordinary exploration tools unblocked; and writes content-addressed structural
 run evidence plus an honest Markdown log. The engine beneath it provides the backend-neutral temporal
@@ -34,10 +35,9 @@ eight-gate policy, archives accepted and rejected Experiments in family memory, 
 Experiment from exact artifact bytes and read-set snapshots. Typed `CostModel` and `NullGenerator`
 interfaces include audited equity/crypto methods and a runnable contribution template.
 
-The source package can be installed locally now. No npm version is documented as available until its
-tag passes release smoke and is actually published. Local acceptance does not replace the remaining
-external plugin-author, full hidden-set, cross-OS user, and native CI trials required for formal
-Stage 4 exit.
+The release workflow publishes only after the package matrix and full repository gate pass. That
+release evidence does not replace the remaining external plugin-author, full hidden-set, and
+cross-OS user trials required for formal Stage 4 exit.
 
 ---
 
@@ -66,10 +66,10 @@ evidence of anything. Full study and reproduction instructions:
 
 ## Measured results
 
-The current evidence is local and pre-release. Model tasks were frozen score@1 runs: one session per
-task, with no result-selected reruns. Kimi K3 was evaluated at Pi thinking level `low` on Veil-bench
-and `high` on QBench. A later QBench-only replication evaluated DeepSeek V4 Flash and V4 Pro at
-`high` under one frozen protocol.
+The evaluation evidence below was collected locally before the first public release. Model tasks
+were frozen score@1 runs: one session per task, with no result-selected reruns. Kimi K3 was evaluated
+at Pi thinking level `low` on Veil-bench and `high` on QBench. A later QBench-only replication
+evaluated DeepSeek V4 Flash and V4 Pro at `high` under one frozen protocol.
 
 > Across all three evaluated QBench model configurations, the strict official aggregate increased:
 > **+4.25 for Kimi K3, +3.25 for DeepSeek V4 Flash, and +3.25 for DeepSeek V4 Pro.**
@@ -98,7 +98,13 @@ notes, machine-readable results, and limitations.
 
 ## Start a loop
 
-From a source checkout:
+Install the Pi package from npm:
+
+```bash
+pi install npm:veil-quant
+```
+
+For source development:
 
 ```bash
 npm install

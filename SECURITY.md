@@ -5,9 +5,8 @@
 Use GitHub's private vulnerability reporting on this repository's **Security** tab
 ("Report a vulnerability"). Please do not open a public issue for something exploitable.
 
-v0.1 is the first supported release line. Until its first tag is published, the repository remains
-pre-release and fixes land on the default branch. After publication, the latest 0.1.x release and
-the default branch receive security fixes; older 0.x minors are unsupported unless stated otherwise.
+v0.1 is the first supported release line. The latest 0.1.x release and the default branch receive
+security fixes; older 0.x minors are unsupported unless stated otherwise.
 
 ## Scope
 

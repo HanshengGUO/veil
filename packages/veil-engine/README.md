@@ -7,7 +7,7 @@ contracts, pricing, gates, memory, and replay.
 Its checks make unsafe claims expensive, but that is only half the value. Stable evidence handoffs
 also make good work easier to review, compare, archive, and reuse.
 
-Status: Stage 4 engine implementation complete locally; release acceptance pending — the backend-neutral temporal plan, opaque source bindings, mandatory Arrow
+Status: released in v0.1.0, with broader Stage 4 external acceptance continuing toward v0.2. The backend-neutral temporal plan, opaque source bindings, mandatory Arrow
 guard, strict adapter YAML loader, default single/multi-file DuckDB CSV/Parquet backend, source and
 read-set v0 identities, durable content-addressed snapshots, and the minimum `veil-data` point/panel
 surface are implemented and hardened with operator-controlled snapshot quarantine. Portable
@@ -20,6 +20,8 @@ evidence before this contract path. `veil-quant` now supplies the Pi session tim
 this public library. Stage 4 adds deterministic OOS pricing, typed cost/null providers, observable
 trial accounting, the immutable eight-gate policy, safe Experiment issuance, append-only memory, and
 exact metric-level reproduction.
+
+Install it with `npm install @veilquant/engine`.
 
 ## Stage 4 evidence boundary
 

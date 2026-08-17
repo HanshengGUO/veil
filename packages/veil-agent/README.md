@@ -9,8 +9,8 @@ The result is more than invisible protection at the claim boundary. Veil helps t
 better deliverable: one a researcher can inspect, trust, hand off, and continue instead of reverse
 engineering a transient chat and working tree.
 
-No registry release is documented as available until it is published. During source development, run
-`npm install` at the repository root and use `pi install ./packages/veil-agent`.
+Install the published Pi package with `pi install npm:veil-quant`. During source development, run
+`npm install` at the repository root and use `pi install ./packages/veil-agent` instead.
 
 Veil libraries support Node 20.10 through 29. The repository-pinned Pi 0.84.1 model runner requires
 Node 22.19 or newer.

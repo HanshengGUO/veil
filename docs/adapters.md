@@ -11,11 +11,10 @@ researcher to infer it again.
 (entity, event_time, available_time, payload)
 ```
 
-Status: v0.1 implementation, release acceptance pending. Declaration validation, strict YAML
+Status: released in v0.1.0. Declaration validation, strict YAML
 loading, the backend-neutral temporal guard, the default single/multi-file CSV/Parquet backend, read-set v0
 identities, source manifests, and operator-controlled snapshots now feed both the minimum
-`veil-data` point/panel surface and the mask-first walk-forward contract path. No package is
-published yet.
+`veil-data` point/panel surface and the mask-first walk-forward contract path.
 
 ## Smallest honest CSV declaration
 

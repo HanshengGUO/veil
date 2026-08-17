@@ -68,4 +68,4 @@ and its mixed compatibility diagnostic.
   Its separate, non-official compatibility diagnostic moved from `68.00/100` to `63.00/100`, driven
   mainly by Q5. It does not replace the official score, and the official improvement is not claimed
   as a stable causal effect.
-- External plugin-author, cross-OS user, release, and broader hidden-set acceptance remain pending.
+- External plugin-author, cross-OS user, and broader hidden-set acceptance remain pending.
