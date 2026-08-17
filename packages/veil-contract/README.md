@@ -15,7 +15,7 @@ derivation, lineage cross-checking, and content identity are implemented. Backen
 reads, their mandatory Arrow guard, and artifact identity/execution live in
 `@veilquant/engine`. Storage and runtime providers remain outside this pure semantic package.
 
-After publication, install it with `npm install @veilquant/contract`.
+Install it with `npm install @veilquant/contract`.
 
 ## What lives here
 

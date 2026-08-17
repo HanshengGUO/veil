@@ -83,5 +83,6 @@ sandbox. See the threat model in [`contract.md`](./contract.md).
 
 ## Is the npm release available?
 
-The repository can be installed from source. A registry version is documented as available only
-after its tag, cross-platform release smoke, and publication have actually completed.
+Yes. v0.1.0 passed the cross-platform release smoke and is available as `veil-quant`,
+`@veilquant/engine`, and `@veilquant/contract`. Install the Pi package with
+`pi install npm:veil-quant`.

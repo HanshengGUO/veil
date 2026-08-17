@@ -9,8 +9,8 @@ evidence, gates, memory, and reproduction when a result is promoted.
 The aim is simple: a researcher should be able to inspect and continue the work without reverse
 engineering the original chat and working tree.
 
-Registry install after publication: `pi install npm:veil-quant`. During source development, run
-`npm install` at the repository root and use `pi install ./packages/veil-agent` instead.
+Install from npm with `pi install npm:veil-quant`. During source development, run `npm install` at
+the repository root and use `pi install ./packages/veil-agent` instead.
 
 Veil libraries support Node 20.10 through 29. The repository-pinned Pi 0.84.1 model runner requires
 Node 22.19 or newer.

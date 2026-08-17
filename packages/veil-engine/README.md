@@ -9,7 +9,7 @@ contracts, pricing, gates, memory, and replay.
 The checks keep invalid claims out. The records they produce also make valid work easier to review
 and reproduce.
 
-Prepared for v0.1.0. The package currently includes:
+Released as v0.1.0. The package includes:
 
 - strict adapter loading and guarded CSV/Parquet reads;
 - source, read-set, snapshot, and artifact identities;
@@ -19,7 +19,7 @@ Prepared for v0.1.0. The package currently includes:
 
 Broader Stage 4 plugin-author and external-user acceptance continues toward v0.2.
 
-After publication, install it with `npm install @veilquant/engine`.
+Install it with `npm install @veilquant/engine`.
 
 ## Stage 4 evidence boundary
 

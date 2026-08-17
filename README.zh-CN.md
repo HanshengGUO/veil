@@ -26,8 +26,9 @@ Veil 包在你已经使用的 AI coding workflow 外面。你仍然让 agent 写
 这套结构也让正常结果更容易接手：contract 是明确的，失败想法会留在 memory 里，复现不需要重新猜测
 原始聊天和临时工作树里发生过什么。
 
-当前状态：**v0.1.0 已完成发布准备。** Package manifest 和发布自动化已经就绪；npm 发布仍需等待
-`v0.1.0` tag。更大规模的插件作者、隐藏集和外部用户验收会继续推进到 v0.2。
+当前状态：**[v0.1.0](https://github.com/HanshengGUO/veil/releases/tag/v0.1.0) 已在 npm 正式发布。**
+发布前的 package 安装 smoke 已覆盖 Linux、macOS 和 Windows。更大规模的插件作者、隐藏集和外部用户
+验收会继续推进到 v0.2。
 
 `veil-quant` Pi 包注册了 `veil-data`、`veil-backtest` 和 `veil-memory`。底层 engine 负责时间防护、
 CSV/Parquet 读取、read-set snapshot、artifact 执行和 mask-first walk-forward contract。没有 Stage 4
@@ -80,7 +81,7 @@ Veil-bench competence 提升；小隐藏集也只是一项安全 no-regression �
 
 ## 开始使用
 
-v0.1.0 发布后，可以从 npm 安装 Pi 包：
+从 npm 安装 Pi 包：
 
 ```bash
 pi install npm:veil-quant

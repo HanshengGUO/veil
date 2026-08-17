@@ -74,5 +74,5 @@ shell 描述成安全 sandbox。详见[契约的 threat model](./contract.md)。
 
 ## npm 版本已经可以安装了吗？
 
-源码始终可以安装。只有在 tag、跨平台 release smoke 和 npm publish 都实际完成后，文档才会把 registry
-版本标记为可用。
+可以。v0.1.0 已通过跨平台 release smoke，并以 `veil-quant`、`@veilquant/engine` 和
+`@veilquant/contract` 发布。Pi 包可用 `pi install npm:veil-quant` 安装。

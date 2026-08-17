@@ -13,7 +13,7 @@ Experiment。
 ## 1. 安装
 
 Veil library 需要 Node 20.10 或更高版本；仓库固定的 Pi 0.84.1 runner 需要 Node 22.19 或更高版本。
-Registry 版本发布后可以运行：
+安装已经发布的 npm 包：
 
 ```bash
 pi install npm:veil-quant

@@ -30,9 +30,9 @@ Veil still keeps unsafe alpha out of claims. The same structure also makes good 
 review and continue: the contract is explicit, failed ideas stay in memory, and a result can be
 reproduced without reconstructing the original chat session.
 
-Status: **v0.1.0 is ready for release.** Package manifests and release automation are ready; npm
-publication waits for the `v0.1.0` tag. Broader plugin-author, hidden-set, and user
-acceptance continues toward v0.2.
+Status: **[v0.1.0](https://github.com/HanshengGUO/veil/releases/tag/v0.1.0) is available on npm.**
+The release passed package installation smoke tests on Linux, macOS, and Windows before publication.
+Broader plugin-author, hidden-set, and user acceptance continues toward v0.2.
 
 The `veil-quant` Pi package registers `veil-data`, `veil-backtest`, and `veil-memory`. The engine
 beneath it handles temporal guards, CSV/Parquet reads, read-set snapshots, artifact execution, and
@@ -103,7 +103,7 @@ notes, machine-readable results, and limitations.
 
 ## Start a loop
 
-After v0.1.0 is published, install the Pi package from npm:
+Install the Pi package from npm:
 
 ```bash
 pi install npm:veil-quant
